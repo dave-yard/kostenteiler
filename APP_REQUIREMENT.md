@@ -325,7 +325,3 @@ Rest-Kontrolle: Die Live-Anzeige des Restbetrags stellt sicher, dass die Summe d
 
 - **NFR-3.1 (Mobile First / Responsive Design):** Da die Anwendung direkt vor Ort (z. B. beim Einkaufen oder im Restaurant auf dem Smartphone) bedient wird, müssen alle Ansichten, insbesondere Listen, Eingabemasken und Pop-ups/Sheets, kompromisslos für mobile Endgeräte optimiert sein.
 - **NFR-3.2 (Initial Load):** Durch das standardmäßige Laden ausschließlich offener Listen wird die Datenmenge beim Aufrufen einer Gruppe gering gehalten, was die Performance spürbar verbessert.
-
-```
-
-```
