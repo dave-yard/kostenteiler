@@ -10,6 +10,7 @@ import {
   UsersRound,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/contexts/AuthContext"
 
 type AuthMode = "login" | "signup" | "magic-link"
@@ -251,7 +252,7 @@ export function AuthScreen() {
             </div>
 
             <div className="mb-6 grid grid-cols-2 rounded-xl bg-[#f4f5f2] p-1">
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setMode("login")
@@ -259,11 +260,12 @@ export function AuthScreen() {
                   setCanResendConfirmation(false)
                   setSuccessMessage(null)
                 }}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${mode !== "signup" ? "bg-white text-[#20241f] shadow-sm" : "text-[#777b74] hover:text-[#20241f]"}`}
+                variant="ghost"
+                className={`h-auto rounded-lg px-3 py-2 text-sm font-medium transition ${mode !== "signup" ? "bg-white text-[#20241f] shadow-sm" : "text-[#777b74] hover:text-[#20241f]"}`}
               >
                 Anmelden
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => {
                   setMode("signup")
@@ -271,10 +273,11 @@ export function AuthScreen() {
                   setCanResendConfirmation(false)
                   setSuccessMessage(null)
                 }}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${mode === "signup" ? "bg-white text-[#20241f] shadow-sm" : "text-[#777b74] hover:text-[#20241f]"}`}
+                variant="ghost"
+                className={`h-auto rounded-lg px-3 py-2 text-sm font-medium transition ${mode === "signup" ? "bg-white text-[#20241f] shadow-sm" : "text-[#777b74] hover:text-[#20241f]"}`}
               >
                 Registrieren
-              </button>
+              </Button>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -290,7 +293,7 @@ export function AuthScreen() {
                     aria-hidden="true"
                     className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#8a8f87]"
                   />
-                  <input
+                  <Input
                     autoComplete="email"
                     className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-4 pl-10 text-sm outline-none transition placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
                     id="auth-email"
@@ -317,8 +320,8 @@ export function AuthScreen() {
                       Passwort
                     </label>
                     {mode === "login" && (
-                      <button
-                        className="text-xs font-medium text-[#54705a] hover:text-[#263f2e]"
+                      <Button
+                        className="h-auto p-0 text-xs font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
                         onClick={() => {
                           setMode("magic-link")
                           setErrorMessage(null)
@@ -326,13 +329,14 @@ export function AuthScreen() {
                           setSuccessMessage(null)
                         }}
                         type="button"
+                        variant="ghost"
                       >
                         Mit Anmeldelink anmelden
-                      </button>
+                      </Button>
                     )}
                   </div>
                   <div className="relative">
-                    <input
+                    <Input
                       autoComplete={
                         mode === "signup" ? "new-password" : "current-password"
                       }
@@ -346,20 +350,22 @@ export function AuthScreen() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                     />
-                    <button
+                    <Button
                       aria-label={
                         showPassword ? "Passwort verbergen" : "Passwort anzeigen"
                       }
-                      className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#8a8f87] hover:bg-[#f4f5f2] hover:text-[#32372f]"
+                      className="absolute top-1/2 right-3 size-8 -translate-y-1/2 rounded-lg p-0 text-[#8a8f87] hover:bg-[#f4f5f2] hover:text-[#32372f]"
                       onClick={() => setShowPassword((visible) => !visible)}
+                      size="icon"
                       type="button"
+                      variant="ghost"
                     >
                       {showPassword ? (
                         <EyeOff aria-hidden="true" className="size-4" />
                       ) : (
                         <Eye aria-hidden="true" className="size-4" />
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -383,14 +389,15 @@ export function AuthScreen() {
                     {errorMessage}
                   </p>
                   {canResendConfirmation && (
-                    <button
-                      className="text-sm font-medium text-[#54705a] hover:text-[#263f2e] disabled:opacity-50"
+                    <Button
+                      className="h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e] disabled:opacity-50"
                       disabled={isSubmitting || !email}
                       onClick={handleResendConfirmation}
                       type="button"
+                      variant="ghost"
                     >
                       Neue Bestätigungsmail anfordern
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
@@ -417,8 +424,8 @@ export function AuthScreen() {
             </form>
 
             {mode === "magic-link" ? (
-              <button
-                className="mt-5 w-full text-center text-sm font-medium text-[#54705a] hover:text-[#263f2e]"
+              <Button
+                className="mt-5 h-auto w-full p-0 text-center text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
                 onClick={() => {
                   setMode("login")
                   setErrorMessage(null)
@@ -426,9 +433,10 @@ export function AuthScreen() {
                   setSuccessMessage(null)
                 }}
                 type="button"
+                variant="ghost"
               >
                 Zurück zur Passwort-Anmeldung
-              </button>
+              </Button>
             ) : (
               <p className="mt-6 text-center text-xs leading-5 text-[#878b84]">
                 Deine Anmeldung wird sicher über Supabase Auth verarbeitet.

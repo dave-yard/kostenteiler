@@ -68,6 +68,10 @@ durch ihre Farbe unterscheiden.
   unwiderruflich, eine Bestätigung.
 - Eingabefelder haben sichtbare Labels, ausreichende Höhe und einen deutlich
   erkennbaren Tastatur-Fokus.
+- Interaktive Controls verwenden die shadcn/ui-Komponenten des Projekts.
+  Benötigte, noch fehlende Controls werden nach dem vorhandenen shadcn/ui-
+  Muster ergänzt; native Buttons, Eingabefelder, Auswahlfelder und Checkboxen
+  werden nicht direkt in Fachseiten eingesetzt.
 - Ladezustände deaktivieren doppelte Absendungen und zeigen den laufenden
   Vorgang an.
 - Fehler erscheinen nahe an der betroffenen Aktion und erklären, was als
@@ -86,9 +90,16 @@ durch ihre Farbe unterscheiden.
   bleiben.
 - `100svh` kann als Mindesthöhe dienen, darf aber nicht mit `overflow-hidden`
   das Dokument oder den Login-Inhalt abschneiden.
+- In der Gruppenübersicht bleiben Kopfbereich und Formular zum Erstellen
+  einer Gruppe sichtbar. Ausschließlich die Gruppenliste scrollt innerhalb
+  des verfügbaren Bereichs. Detail- und Adminansichten scrollen unabhängig
+  davon in ihrem Inhaltsbereich.
 - Horizontales Überlaufen wird vermieden; vertikales Scrollen bleibt für
   Seiteninhalte und Tastatur geöffnet.
 - Interaktive Flächen müssen bequem mit Touch bedienbar sein.
+- Sortierbare Listen bieten einen klar erkennbaren Drag-Handle, der mit Touch
+  und Tastatur bedienbar ist; Änderungen der Reihenfolge werden dauerhaft
+  gespeichert und Fehler sichtbar gemeldet.
 - Auf größeren Bildschirmen kann das Login als zweispaltige Karte erscheinen;
   die ergänzende Marken-/Illustrationsfläche entfällt auf Mobilgeräten.
 
@@ -114,4 +125,3 @@ Der Login ist die erste Referenz für die visuelle Sprache der Anwendung:
   konsistentes Formularmuster.
 - Supabase-Konfigurationsfehler, Authentifizierungsfehler und Bestätigungen
   werden sichtbar im Formularbereich ausgegeben.
-

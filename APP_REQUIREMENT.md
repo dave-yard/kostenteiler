@@ -29,6 +29,7 @@
 
 - **FR-1.1 (Gruppen erstellen):** Registrierte Benutzer können neue Gruppen erstellen. Der Ersteller wird automatisch als Administrator der Gruppe definiert.
 - **FR-1.2 (Gruppenübersicht):** Benutzer können eine Übersicht aller Gruppen einsehen, denen sie fest zugeordnet sind.
+- **FR-1.2.1 (Gruppen sortieren):** Benutzer können die Reihenfolge ihrer Gruppenübersicht per Drag-and-drop anpassen. Die Sortierung ist pro Benutzer gespeichert und beeinflusst nicht die Ansicht anderer Gruppenmitglieder.
 - **FR-1.3 (Nutzer anlegen):** Admins können Nutzer einer Gruppe zuordnen, auch wenn diese noch nicht registriert sind (virtuelle/passwortlose Nutzer).
 - **FR-1.4.1 (Einladungslinks):** Admins können einen personalisierten Einladungslink für einen virtuellen Nutzer versenden. Der Link verwendet ein einmaliges, zeitlich begrenztes Token und nicht eine erratbare Nutzer-ID als Berechtigungsnachweis. Die Einladung muss bestätigt werden, bevor der virtuelle Nutzer mit dem registrierten Account verknüpft wird.
 - **FR-1.4.2 (Doppelte Nutzer / Verknüpfung):** Sollte ein Nutzer sich nicht über den Einladungslink registrieren, muss ein Admin den virtuellen Nutzer mit einem registrierten Account verknüpfen können. Die Verknüpfung erfordert eine Bestätigung und überträgt alle zugehörigen Positionen, Aufteilungen und Ausgleichsdaten. Danach wird der virtuelle Nutzer entfernt.
@@ -313,7 +314,7 @@ Rest-Kontrolle: Die Live-Anzeige des Restbetrags stellt sicher, dass die Summe d
 ### 3.1 Technologie-Stack & Architektur
 
 - **NFR-1.1 (Frontend):** Entwicklung als moderne Single-Page-Application (SPA) mit **React**, **TypeScript** und **Vite** für schnelle Ladezeiten und optimale Entwicklungs-DX. Mobile-First.
-- **NFR-1.2 (Styling & UI):** Verwendung von **Tailwind CSS** in Kombination mit **shadcn/ui** für ein einheitliches, modernes und barrierearmes Design (Modals, Bottom Sheets, Accordions).
+- **NFR-1.2 (Styling & UI):** Verwendung von **Tailwind CSS** in Kombination mit **shadcn/ui** für ein einheitliches, modernes und barrierearmes Design (Buttons, Eingabefelder, Checkboxen, Auswahlfelder, Modals, Bottom Sheets und Accordions). Interaktive Controls werden über wiederverwendbare shadcn/ui-Komponenten bereitgestellt; fehlen benötigte Controls, werden sie nach dem Projektmuster unter `src/components/ui/` ergänzt. Native HTML-Elemente dienen der semantischen Struktur, nicht als Ersatz für diese Controls.
 - **NFR-1.3 (Backend & Database):** Nutzung von **Supabase** als Backend-as-a-Service (PostgreSQL-Datenbank, Authentifizierung, Storage für Bon-Bilder, Edge Functions für Bon-Verarbeitung).
 
 ### 3.2 Sicherheit und Datenintegrität

@@ -98,9 +98,16 @@ Ein Provider, der einen anderen Context verwendet, muss unterhalb des benötigte
 ### Komponenten und Dialoge
 
 - Wiederverwendbare, möglichst fachneutrale UI-Bausteine liegen unter `components/ui/`.
+- Interaktive Controls wie Buttons, Eingabefelder, Checkboxen, Auswahlfelder
+  und Dialoge verwenden die shadcn/ui-Komponenten unter `components/ui/`.
+- Fehlt ein benötigtes Control, wird es als shadcn/ui-Komponente ergänzt,
+  statt es in Fachseiten als natives HTML-Control nachzubauen.
+- Native HTML-Elemente bleiben für semantische Struktur (z. B. `form`,
+  `label` und `nav`) zulässig; sie ersetzen keine interaktiven UI-Controls.
 - Zusammengesetzte, fachbezogene Dialoge liegen unter `components/dialogs/`.
 - Eine Komponente erhält über Props nur die Daten und Callbacks, die sie wirklich benötigt.
 - Vor- und Nachbedingungen eines Formulars werden im Formular oder einer zentral verwendeten Validierungsfunktion geprüft.
+- Nutzerbezogene Reihenfolgen (z. B. die Sortierung der eigenen Gruppenübersicht) werden an der jeweiligen Mitgliedschaft gespeichert und über eine autorisierte, atomare Service-/RPC-Operation persistiert.
 - Flüchtiger UI-Zustand (z. B. Dialog offen, Eingabedraft, Drag-Zustand, lokale Fehlermeldung) bleibt mit `useState` nahe an der UI, wenn ihn keine anderen Komponenten benötigen.
 - Ein Formulardraft ist nicht automatisch der persistierte Datensatz. Erst nach erfolgreichem Speichern wird der gemeinsame Zustand aktualisiert.
 
@@ -132,12 +139,12 @@ Der Supabase-Client in `src/lib/supabase.ts` wird einmalig erzeugt und wiederver
 
 Ein Context ist für fachlichen Zustand geeignet, wenn mehrere Komponenten innerhalb eines klaren Bereichs dieselben Daten oder Operationen benötigen. Beispiele aus der App:
 
-| Context | Gehört hinein | Beispiel |
-| --- | --- | --- |
-| `AuthContext` | Session, Auth-Ladezustand, An-/Abmelden | Die App-Grenze und Navigation lesen die Session. |
-| `UserContext` | aktuelles Profil, gemeinsam verwendete Profile, Profiloperationen | Profilseite und Zuweisungsauswahl nutzen Profildaten. |
-| `BoardOverviewContext` | Liste und Operationen der Boards | Übersichtsseite und Detailbereich benötigen Boardtitel bzw. Umbenennung. |
-| `BoardDetailsContext` | aktives Board, Columns/Threads und Detailoperationen | Detailseite und ihre Dialoge bearbeiten dasselbe Board. |
+| Context                | Gehört hinein                                                     | Beispiel                                                                 |
+| ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `AuthContext`          | Session, Auth-Ladezustand, An-/Abmelden                           | Die App-Grenze und Navigation lesen die Session.                         |
+| `UserContext`          | aktuelles Profil, gemeinsam verwendete Profile, Profiloperationen | Profilseite und Zuweisungsauswahl nutzen Profildaten.                    |
+| `BoardOverviewContext` | Liste und Operationen der Boards                                  | Übersichtsseite und Detailbereich benötigen Boardtitel bzw. Umbenennung. |
+| `BoardDetailsContext`  | aktives Board, Columns/Threads und Detailoperationen              | Detailseite und ihre Dialoge bearbeiten dasselbe Board.                  |
 
 Keinen Context für jeden einzelnen Wert oder ausschließlich für lokale Interaktionen anlegen. Ein Context ist auch kein Sammelplatz für sämtliche Anwendungsdaten: getrennte Domänen erhalten getrennte Contexts und klare Provider-Grenzen.
 
@@ -156,12 +163,7 @@ Jeder fachliche Context sollte:
 Das folgende generische Muster ist auf eine neue Domäne anzupassen:
 
 ```tsx
-import {
-  createContext,
-  useContext,
-  useReducer,
-  type ReactNode,
-} from "react"
+import { createContext, useContext, useReducer, type ReactNode } from "react"
 import type { Project, ProjectId } from "@/types/project"
 import {
   createProject as createProjectRecord,
@@ -179,14 +181,9 @@ interface ProjectContextValue {
   deleteProject: (projectId: ProjectId) => Promise<void>
 }
 
-const ProjectContext = createContext<ProjectContextValue | undefined>(
-  undefined
-)
+const ProjectContext = createContext<ProjectContextValue | undefined>(undefined)
 
-function projectReducer(
-  state: Project[],
-  action: ProjectAction
-): Project[] {
+function projectReducer(state: Project[], action: ProjectAction): Project[] {
   switch (action.type) {
     case "SET_PROJECTS":
       return action.payload
@@ -394,6 +391,7 @@ Die konkrete Abfrage und die Typen müssen natürlich zum tatsächlichen Schema 
 
 ## 10. Kostenteiler-spezifische Architekturregeln
 
+- **Gruppenübersicht und Administration:** Gruppen- und Mitgliederabfragen laufen über `groupService.ts`, der geteilte Gruppenstatus über `GroupOverviewContext`. Admin-Schreibaktionen werden durch Supabase-RPC-Funktionen autorisiert und in Transaktionen ausgeführt; RLS schützt den lesenden und direkten Datenbankzugriff. Admin-Buttons in der Oberfläche ersetzen niemals die serverseitige Rechteprüfung.
 - **Bon und Positionen:** Bonbilder werden über einen Service in Supabase Storage abgelegt und über den Positionsparent referenziert. Datenbankzugriffe und Storage-Operationen bleiben außerhalb von UI-Komponenten. Fehler beim Upload oder beim Speichern der Zuordnung müssen sichtbar behandelt werden; es darf kein erfolgreicher Upload ohne erkennbare Zuordnung zum Parent vorgetäuscht werden.
 - **Bon-Erkennung:** Eine Edge Function oder ein angebundener Erkennungsdienst liefert typisierte Erkennungsvorschläge. Die App vergleicht die Summe der erkannten Positionen mit der Parent-Gesamtsumme und zeigt Abweichungen zur Prüfung und Korrektur an. Eine Unterpositionssumme unterhalb des Parent-Betrags kann nach ausdrücklicher Bestätigung übernommen werden; der Rest wird nach dem Parent-Aufteilungsschlüssel verteilt. Liegt die Unterpositionssumme über dem Parent-Betrag, fragt die App, ob die Parent-Summe erhöht werden soll. Bleibt die Abweichung bestehen, muss der Kassensturz blockiert werden, bis sie durch Korrektur der Positionen oder der Parent-Summe behoben ist. Beim Modus „Nur Summe einlesen“ werden keine Positionen erkannt oder summiert.
 - **Aufteilungsvalidierung:** Prozentanteile müssen zusammen genau 100 % ergeben. Feste Beträge dürfen den Positionsbetrag nicht überschreiten; nicht zugewiesene Beträge werden über den Parent- oder Gruppenstandard verteilt.
