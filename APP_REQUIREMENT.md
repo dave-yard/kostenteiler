@@ -172,41 +172,41 @@ Nach click auf Bearbeiten
 - **FR-3.5 (Einzelpositionen ohne Bon):** Einzelpositionen, die keinem Bon/Positionsparent zugeordnet sind, werden in der Listenansicht unter der aufklappbaren Gruppe „Sonstiges“ zusammengefasst.
 
 ```
-+-----------------------------------+
-| [<] Wocheneinkauf REWE (⚙️) |
-+-----------------------------------+
-| Filter: [ Offene (Standard) v ] |
-| |
-
-| [+ Einzelpos] [+ Bon hochladen]       |
-| ------------------------------------- |
-|                                       |
-| 📦 **Bon: REWE Einkauf** (21.10.)     |
-| Ziel: 84,50 €                         | Zahler: Alex                                   |
-| [▶] Unterpositionen anzeigen (2)      | <- Default zugeklappt (Klick öffnet Accordion) |
-|                                       |                                                |
-| +-- Bio-Milch (2,50 €)                |
-|                                       | [✏️ Edit] [👥 Aufteilung]                      |
-|                                       |                                                |
-| +-- Socken (5,00 €)                   |
-|                                       | [✏️ Edit] [👥 Aufteilung]                      |
-|                                       |                                                |
-| +-- _(Rest: 77,00 € geteilt)_         |
-|                                       |
-| [ + Unterposition hinzufügen ]        |
-|                                       |
-| ---------------------------------     |
-| 🧀 **Käse & Brot**                    |
-| Betrag: 12,30 €                       | Zahler: Sam                                    |
-| [✏️ Edit] [👥 Aufteilung]             |
-| ---------------------------------     |
-|                                       |
-| **Gesamtsumme:** 96,80 €              |
-|                                       |
-| [ 🎯 Kassensturz durchführen ]        | <---- Nur Admins der Gruppe                    |
-| +-----------------------------------+ |
-| 🏠 Gruppen                            | 🔔 Aktiv                                       | ⚙️  |
-| +-----------------------------------+ |
++---------------------------------------------------+
+|  [<] Wocheneinkauf REWE                     (⚙️)   |
++---------------------------------------------------+
+| Filter: [ Offene (Standard) v ]                   |
+|                                                   |
+| [+ Einzelpos]  [+ Bon hochladen]                  |
+| ------------------------------------------------- |
+|                                                   |
+| 📦 **Bon: REWE Einkauf** (21.10.)                  |
+| Ziel: 84,50 €  |  Zahler: Alex                    |
+| [▶] Unterpositionen anzeigen (2)                  | <- Default zugeklappt (Klick öffnet Accordion)
+|                                                   |
+|   +-- Bio-Milch (2,50 €)                          |
+|       [✏️ Edit]  [👥 Aufteilung]                  |
+|                                                   |
+|   +-- Socken (5,00 €)                             |
+|       [✏️ Edit]  [👥 Aufteilung]                  |
+|                                                   |
+|   +-- *(Rest: 77,00 € geteilt)*                   |
+|                                                   |
+|   [ + Unterposition hinzufügen ]                  |
+|                                                   |
+| ------------------------------------------------- |
+| 🧀 **Käse & Brot**                                |
+| Betrag: 12,30 €  |  Zahler: Sam                   |
+| [✏️ Edit]  [👥 Aufteilung]                        |
+| ------------------------------------------------- |
+|                                                   |
+| **Gesamtsumme:** 96,80 €                          |
+|                                                   |
+| [ 🎯 Kassensturz durchführen ]*                   | <- *Nur für Admins der Gruppe sichtbar oder berechtige Personen
+|                                                   |
++---------------------------------------------------+
+|  🏠 Gruppen  |  🔔 Aktiv  |  ⚙️ Settings          |
++---------------------------------------------------+
 ```
 
 Popup Anpassen , nach click auf [✏️ Edit]
@@ -283,7 +283,6 @@ Popup nach click auf [ [👥 Aufteilung] ]
 |                                                   |
 | [ Abbrechen ]              [ 💾 Speichern ]       |
 +---------------------------------------------------+
-```
 
 Zahlungsquelle (paid_by): Legt fest, wer den Betrag ursprünglich ausgelegt bzw. bezahlt hat (wichtig für die spätere Kassensturz-Berechnung).
 
@@ -326,4 +325,7 @@ Rest-Kontrolle: Die Live-Anzeige des Restbetrags stellt sicher, dass die Summe d
 
 - **NFR-3.1 (Mobile First / Responsive Design):** Da die Anwendung direkt vor Ort (z. B. beim Einkaufen oder im Restaurant auf dem Smartphone) bedient wird, müssen alle Ansichten, insbesondere Listen, Eingabemasken und Pop-ups/Sheets, kompromisslos für mobile Endgeräte optimiert sein.
 - **NFR-3.2 (Initial Load):** Durch das standardmäßige Laden ausschließlich offener Listen wird die Datenmenge beim Aufrufen einer Gruppe gering gehalten, was die Performance spürbar verbessert.
+
+```
+
 ```
