@@ -108,6 +108,7 @@ Ein Provider, der einen anderen Context verwendet, muss unterhalb des benötigte
 - Eine Komponente erhält über Props nur die Daten und Callbacks, die sie wirklich benötigt.
 - Vor- und Nachbedingungen eines Formulars werden im Formular oder einer zentral verwendeten Validierungsfunktion geprüft.
 - Nutzerbezogene Reihenfolgen (z. B. die Sortierung der eigenen Gruppenübersicht) werden an der jeweiligen Mitgliedschaft gespeichert und über eine autorisierte, atomare Service-/RPC-Operation persistiert.
+- Persönliche Kontakte sind dem authentifizierten Nutzer zugeordnet und durch Row Level Security vor dem Zugriff anderer Nutzer geschützt. Beim Einladen eines Gruppenmitglieds werden passende eigene Kontakte vorgeschlagen. Die Einladung referenziert den Kontakt nur gruppenbezogen; der private Kontakt bleibt privat. Das Speichern des Kontakts allein versendet keine Einladung.
 - Flüchtiger UI-Zustand (z. B. Dialog offen, Eingabedraft, Drag-Zustand, lokale Fehlermeldung) bleibt mit `useState` nahe an der UI, wenn ihn keine anderen Komponenten benötigen.
 - Ein Formulardraft ist nicht automatisch der persistierte Datensatz. Erst nach erfolgreichem Speichern wird der gemeinsame Zustand aktualisiert.
 
@@ -190,9 +191,7 @@ function projectReducer(state: Project[], action: ProjectAction): Project[] {
     case "ADD_PROJECT":
       return [...state, action.payload]
     case "DELETE_PROJECT":
-      return state.filter(
-        (project) => project.id !== action.payload.projectId
-      )
+      return state.filter((project) => project.id !== action.payload.projectId)
   }
 }
 
@@ -392,6 +391,9 @@ Die konkrete Abfrage und die Typen müssen natürlich zum tatsächlichen Schema 
 ## 10. Kostenteiler-spezifische Architekturregeln
 
 - **Gruppenübersicht und Administration:** Gruppen- und Mitgliederabfragen laufen über `groupService.ts`, der geteilte Gruppenstatus über `GroupOverviewContext`. Admin-Schreibaktionen werden durch Supabase-RPC-Funktionen autorisiert und in Transaktionen ausgeführt; RLS schützt den lesenden und direkten Datenbankzugriff. Admin-Buttons in der Oberfläche ersetzen niemals die serverseitige Rechteprüfung.
+- **Passwort-Recovery:** Der Auth-Callback `type=recovery` wird vor den geschützten App-Seiten abgefangen und in `PasswordRecovery` verarbeitet. E-Mail-Versand und Passwortänderung laufen über `authService.ts` und den zentralen Supabase-Client; ungültige Links und API-Fehler werden sichtbar dargestellt.
+- **Hauptnavigation und Freundesliste:** Die Anwendung bietet ihre Navigation global über das anklickbare Branding im gemeinsamen Header an. „Gruppen“ ist der erste Menüpunkt; die private Freundesliste ist unabhängig von einer Gruppenauswahl erreichbar und verwaltet ausschließlich die Kontakte des angemeldeten Nutzers.
+- **Gruppeneinladungen:** Gruppen-Admins erstellen Einladungen nur für eigene private Kontakte. Der Datenbanktoken wird nicht im Klartext gespeichert, ist einmalig und läuft nach 14 Tagen ab. Nur ein angemeldetes Konto mit bestätigter, exakt passender E-Mail-Adresse kann die Einladung explizit annehmen. Die Annahme setzt die `user_id` am bestehenden Gruppenmitglied-Datensatz, damit dessen Positions- und Abrechnungsreferenzen erhalten bleiben. Einladungen gewähren vor der Annahme keinen Gruppenzugriff; es werden keine Daten gruppenübergreifend verknüpft. Der Link wird in der aktuellen Umsetzung manuell geteilt, ein E-Mail-Versand ist nicht eingerichtet.
 - **Bon und Positionen:** Bonbilder werden über einen Service in Supabase Storage abgelegt und über den Positionsparent referenziert. Datenbankzugriffe und Storage-Operationen bleiben außerhalb von UI-Komponenten. Fehler beim Upload oder beim Speichern der Zuordnung müssen sichtbar behandelt werden; es darf kein erfolgreicher Upload ohne erkennbare Zuordnung zum Parent vorgetäuscht werden.
 - **Bon-Erkennung:** Eine Edge Function oder ein angebundener Erkennungsdienst liefert typisierte Erkennungsvorschläge. Die App vergleicht die Summe der erkannten Positionen mit der Parent-Gesamtsumme und zeigt Abweichungen zur Prüfung und Korrektur an. Eine Unterpositionssumme unterhalb des Parent-Betrags kann nach ausdrücklicher Bestätigung übernommen werden; der Rest wird nach dem Parent-Aufteilungsschlüssel verteilt. Liegt die Unterpositionssumme über dem Parent-Betrag, fragt die App, ob die Parent-Summe erhöht werden soll. Bleibt die Abweichung bestehen, muss der Kassensturz blockiert werden, bis sie durch Korrektur der Positionen oder der Parent-Summe behoben ist. Beim Modus „Nur Summe einlesen“ werden keine Positionen erkannt oder summiert.
 - **Aufteilungsvalidierung:** Prozentanteile müssen zusammen genau 100 % ergeben. Feste Beträge dürfen den Positionsbetrag nicht überschreiten; nicht zugewiesene Beträge werden über den Parent- oder Gruppenstandard verteilt.

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/contexts/AuthContext"
 
-type AuthMode = "login" | "signup" | "magic-link"
+type AuthMode = "login" | "signup" | "magic-link" | "password-recovery"
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -26,9 +26,7 @@ function getErrorMessage(error: unknown) {
 function getAuthCallbackError() {
   const queryParams = new URLSearchParams(window.location.search)
   const hashParams = new URLSearchParams(window.location.hash.slice(1))
-  const params = queryParams.has("error_description")
-    ? queryParams
-    : hashParams
+  const params = queryParams.has("error_description") ? queryParams : hashParams
   const errorDescription = params.get("error_description")
 
   if (!errorDescription) {
@@ -56,6 +54,7 @@ export function AuthScreen() {
     signUpWithPassword,
     resendSignupConfirmation,
     sendMagicLink,
+    sendPasswordRecoveryEmail,
   } = useAuth()
   const [mode, setMode] = useState<AuthMode>("login")
   const [email, setEmail] = useState("")
@@ -69,6 +68,9 @@ export function AuthScreen() {
     () => getAuthCallbackError()?.isExpiredConfirmation ?? false
   )
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const hasInvitation = Boolean(
+    new URLSearchParams(window.location.search).get("invite")
+  )
 
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -116,10 +118,15 @@ export function AuthScreen() {
             "Fast geschafft! Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir gesendet haben."
           )
         }
-      } else {
+      } else if (mode === "magic-link") {
         await sendMagicLink(email)
         setSuccessMessage(
           "Wir haben dir einen Anmeldelink per E-Mail gesendet. Der Link ist nur einmal verwendbar."
+        )
+      } else {
+        await sendPasswordRecoveryEmail(email)
+        setSuccessMessage(
+          "Wenn ein Konto mit dieser E-Mail-Adresse besteht, erhältst du in Kürze einen Link zum Zurücksetzen deines Passworts."
         )
       }
     } catch (error) {
@@ -152,13 +159,15 @@ export function AuthScreen() {
     }
   }
 
-  const isPasswordMode = mode !== "magic-link"
+  const isPasswordMode = mode === "login" || mode === "signup"
   const submitLabel =
     mode === "login"
       ? "Anmelden"
       : mode === "signup"
         ? "Konto erstellen"
-        : "Anmeldelink senden"
+        : mode === "magic-link"
+          ? "Anmeldelink senden"
+          : "Recovery-E-Mail senden"
 
   return (
     <main className="relative flex min-h-svh items-start justify-center overflow-x-hidden bg-[#f5f6f2] px-4 py-6 text-[#20241f] sm:items-center sm:px-6 sm:py-10">
@@ -242,13 +251,24 @@ export function AuthScreen() {
                   ? "Konto erstellen"
                   : mode === "magic-link"
                     ? "Ohne Passwort anmelden"
-                    : "Willkommen zurück"}
+                    : mode === "password-recovery"
+                      ? "Passwort zurücksetzen"
+                      : "Willkommen zurück"}
               </h2>
               <p className="mt-2 text-sm leading-6 text-[#72766f]">
                 {mode === "signup"
                   ? "Erstelle ein Konto, um mit deiner Gruppe loszulegen."
-                  : "Melde dich an und behalte eure gemeinsamen Ausgaben im Blick."}
+                  : mode === "password-recovery"
+                    ? "Wir senden dir einen Link, mit dem du ein neues Passwort festlegen kannst."
+                    : "Melde dich an und behalte eure gemeinsamen Ausgaben im Blick."}
               </p>
+              {hasInvitation && (
+                <p className="mt-3 rounded-xl border border-[#d9e8d6] bg-[#f7faf5] px-3 py-2 text-sm leading-5 text-[#405b47]">
+                  Du hast eine Gruppeneinladung erhalten. Verwende für
+                  Registrierung oder Anmeldung die dazu eingeladene
+                  E-Mail-Adresse.
+                </p>
+              )}
             </div>
 
             <div className="mb-6 grid grid-cols-2 rounded-xl bg-[#f4f5f2] p-1">
@@ -282,10 +302,7 @@ export function AuthScreen() {
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <label
-                  className="text-sm font-medium"
-                  htmlFor="auth-email"
-                >
+                <label className="text-sm font-medium" htmlFor="auth-email">
                   E-Mail-Adresse
                 </label>
                 <div className="relative">
@@ -295,7 +312,7 @@ export function AuthScreen() {
                   />
                   <Input
                     autoComplete="email"
-                    className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-4 pl-10 text-sm outline-none transition placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+                    className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-4 pl-10 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
                     id="auth-email"
                     name="email"
                     onChange={(event) => {
@@ -340,7 +357,7 @@ export function AuthScreen() {
                       autoComplete={
                         mode === "signup" ? "new-password" : "current-password"
                       }
-                      className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-12 pl-4 text-sm outline-none transition placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+                      className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-12 pl-4 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
                       id="auth-password"
                       minLength={8}
                       name="password"
@@ -352,7 +369,9 @@ export function AuthScreen() {
                     />
                     <Button
                       aria-label={
-                        showPassword ? "Passwort verbergen" : "Passwort anzeigen"
+                        showPassword
+                          ? "Passwort verbergen"
+                          : "Passwort anzeigen"
                       }
                       className="absolute top-1/2 right-3 size-8 -translate-y-1/2 rounded-lg p-0 text-[#8a8f87] hover:bg-[#f4f5f2] hover:text-[#32372f]"
                       onClick={() => setShowPassword((visible) => !visible)}
@@ -370,12 +389,30 @@ export function AuthScreen() {
                 </div>
               )}
 
+              {mode === "login" && (
+                <Button
+                  className="h-auto p-0 text-xs font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+                  onClick={() => {
+                    setMode("password-recovery")
+                    setErrorMessage(null)
+                    setCanResendConfirmation(false)
+                    setSuccessMessage(null)
+                  }}
+                  type="button"
+                  variant="ghost"
+                >
+                  Passwort vergessen?
+                </Button>
+              )}
+
               {configurationError && (
                 <div
                   className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
                   role="alert"
                 >
-                  <p className="font-semibold">Supabase ist noch nicht verbunden</p>
+                  <p className="font-semibold">
+                    Supabase ist noch nicht verbunden
+                  </p>
                   <p>{configurationError}</p>
                 </div>
               )}
@@ -423,7 +460,7 @@ export function AuthScreen() {
               </Button>
             </form>
 
-            {mode === "magic-link" ? (
+            {mode === "magic-link" || mode === "password-recovery" ? (
               <Button
                 className="mt-5 h-auto w-full p-0 text-center text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
                 onClick={() => {
@@ -435,7 +472,7 @@ export function AuthScreen() {
                 type="button"
                 variant="ghost"
               >
-                Zurück zur Passwort-Anmeldung
+                Zurück zur Anmeldung
               </Button>
             ) : (
               <p className="mt-6 text-center text-xs leading-5 text-[#878b84]">

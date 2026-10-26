@@ -9,16 +9,27 @@ import {
 } from "react"
 import {
   createGroup as createGroupRecord,
-  createVirtualMember as createVirtualMemberRecord,
+  createPersonalContact as createPersonalContactRecord,
+  acceptGroupInvitation as acceptGroupInvitationRecord,
+  createGroupInvitation as createGroupInvitationRecord,
+  getGroupInvitation as getGroupInvitationRecord,
   getGroupMembers as getGroupMembersRecord,
   getMyGroups,
+  getMyContacts as getMyContactsRecord,
+  removePersonalContact as removePersonalContactRecord,
   removeGroupMember as removeGroupMemberRecord,
   renameGroup as renameGroupRecord,
   saveMyGroupOrder as saveMyGroupOrderRecord,
   setGroupMemberAdmin as setGroupMemberAdminRecord,
   updateGroupMemberPermissions as updateGroupMemberPermissionsRecord,
 } from "@/services/groupService"
-import type { Group, GroupMember, GroupMemberPermissions } from "@/types/group"
+import type {
+  Group,
+  GroupInvitation,
+  GroupMember,
+  GroupMemberPermissions,
+  PersonalContact,
+} from "@/types/group"
 
 interface GroupOverviewContextValue {
   groups: Group[]
@@ -27,9 +38,14 @@ interface GroupOverviewContextValue {
   refreshGroups: () => Promise<void>
   createGroup: (name: string) => Promise<string>
   saveGroupOrder: (groupIds: string[]) => Promise<void>
+  getMyContacts: () => Promise<PersonalContact[]>
+  createPersonalContact: (displayName: string, email: string) => Promise<void>
+  removePersonalContact: (contactId: string) => Promise<void>
+  createGroupInvitation: (groupId: string, contactId: string) => Promise<string>
+  getGroupInvitation: (token: string) => Promise<GroupInvitation>
+  acceptGroupInvitation: (token: string) => Promise<string>
   renameGroup: (groupId: string, name: string) => Promise<void>
   getGroupMembers: (groupId: string) => Promise<GroupMember[]>
-  createVirtualMember: (groupId: string, displayName: string) => Promise<void>
   setGroupMemberAdmin: (memberId: string, isAdmin: boolean) => Promise<void>
   updateGroupMemberPermissions: (
     memberId: string,
@@ -99,6 +115,30 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
     return createGroupRecord(name)
   }, [])
 
+  const getMyContacts = useCallback(() => getMyContactsRecord(), [])
+  const createPersonalContact = useCallback(
+    (displayName: string, email: string) =>
+      createPersonalContactRecord(displayName, email),
+    []
+  )
+  const removePersonalContact = useCallback(
+    (contactId: string) => removePersonalContactRecord(contactId),
+    []
+  )
+  const createGroupInvitation = useCallback(
+    (groupId: string, contactId: string) =>
+      createGroupInvitationRecord(groupId, contactId),
+    []
+  )
+  const getGroupInvitation = useCallback(
+    (token: string) => getGroupInvitationRecord(token),
+    []
+  )
+  const acceptGroupInvitation = useCallback(
+    (token: string) => acceptGroupInvitationRecord(token),
+    []
+  )
+
   const saveGroupOrder = useCallback(
     async (groupIds: string[]) => {
       const previousGroups = groups
@@ -136,11 +176,6 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
     (groupId: string) => getGroupMembersRecord(groupId),
     []
   )
-  const createVirtualMember = useCallback(
-    (groupId: string, displayName: string) =>
-      createVirtualMemberRecord(groupId, displayName),
-    []
-  )
   const setGroupMemberAdmin = useCallback(
     (memberId: string, isAdmin: boolean) =>
       setGroupMemberAdminRecord(memberId, isAdmin),
@@ -164,9 +199,14 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       refreshGroups,
       createGroup,
       saveGroupOrder,
+      getMyContacts,
+      createPersonalContact,
+      removePersonalContact,
+      createGroupInvitation,
+      getGroupInvitation,
+      acceptGroupInvitation,
       renameGroup,
       getGroupMembers,
-      createVirtualMember,
       setGroupMemberAdmin,
       updateGroupMemberPermissions,
       removeGroupMember,
@@ -178,9 +218,14 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       refreshGroups,
       createGroup,
       saveGroupOrder,
+      getMyContacts,
+      createPersonalContact,
+      removePersonalContact,
+      createGroupInvitation,
+      getGroupInvitation,
+      acceptGroupInvitation,
       renameGroup,
       getGroupMembers,
-      createVirtualMember,
       setGroupMemberAdmin,
       updateGroupMemberPermissions,
       removeGroupMember,

@@ -20,4 +20,17 @@ export interface GroupMember extends GroupMemberPermissions {
   displayName: string
   email: string | null
   role: "admin" | "member"
+  membershipStatus: "active" | "pending" | "legacy"
+}
+
+export interface GroupInvitation {
+  groupId: string
+  groupName: string
+  displayName: string
+}
+
+export interface PersonalContact {
+  id: string
+  displayName: string
+  email: string
 }

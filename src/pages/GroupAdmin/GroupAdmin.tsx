@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from "react"
 import {
   ArrowLeft,
   Check,
+  Clock3,
+  Copy,
   Crown,
   LoaderCircle,
+  MailPlus,
   Plus,
   Shield,
   Trash2,
@@ -14,7 +17,12 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
-import type { Group, GroupMember, GroupMemberPermissions } from "@/types/group"
+import type {
+  Group,
+  GroupMember,
+  GroupMemberPermissions,
+  PersonalContact,
+} from "@/types/group"
 
 const PERMISSIONS: {
   key: keyof GroupMemberPermissions
@@ -44,8 +52,9 @@ export function GroupAdmin({
     groups,
     loadError,
     getGroupMembers,
+    getMyContacts,
+    createGroupInvitation,
     renameGroup,
-    createVirtualMember,
     setGroupMemberAdmin,
     updateGroupMemberPermissions,
     removeGroupMember,
@@ -57,7 +66,11 @@ export function GroupAdmin({
     Record<string, GroupMemberPermissions>
   >({})
   const [memberName, setMemberName] = useState("")
+  const [contacts, setContacts] = useState<PersonalContact[]>([])
+  const [selectedContactId, setSelectedContactId] = useState("")
+  const [invitationLink, setInvitationLink] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true)
   const [isSavingName, setIsSavingName] = useState(false)
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null)
   const [isAddingMember, setIsAddingMember] = useState(false)
@@ -116,10 +129,27 @@ export function GroupAdmin({
         }
       })
 
+    getMyContacts()
+      .then((nextContacts) => {
+        if (isCurrent) {
+          setContacts(nextContacts)
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setErrorMessage(getErrorMessage(error))
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoadingContacts(false)
+        }
+      })
+
     return () => {
       isCurrent = false
     }
-  }, [applyMembers, getGroupMembers, group.id])
+  }, [applyMembers, getGroupMembers, getMyContacts, group.id])
 
   async function handleSaveGroupName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -143,29 +173,45 @@ export function GroupAdmin({
     }
   }
 
-  async function handleAddVirtualMember(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const trimmedName = memberName.trim()
-    if (!trimmedName) {
+  async function handleCreateInvitation(contactId: string) {
+    const selectedContact = contacts.find((contact) => contact.id === contactId)
+    if (!selectedContact) {
+      setErrorMessage("Wähle einen Kontakt aus deiner Freundesliste aus.")
       return
     }
 
     setErrorMessage(null)
     setSuccessMessage(null)
+    setInvitationLink("")
     setIsAddingMember(true)
 
     try {
-      await createVirtualMember(group.id, trimmedName)
+      const token = await createGroupInvitation(group.id, selectedContact.id)
+      setInvitationLink(
+        `${window.location.origin}/?invite=${encodeURIComponent(token)}`
+      )
       setMemberName("")
+      setSelectedContactId("")
       await loadMembers()
       await refreshGroups()
       setSuccessMessage(
-        `${trimmedName} wurde als virtuelles Mitglied angelegt.`
+        `Einladung für ${selectedContact.displayName} erstellt. Teile den Link mit der eingeladenen Person.`
       )
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
     } finally {
       setIsAddingMember(false)
+    }
+  }
+
+  async function handleCopyInvitationLink() {
+    try {
+      await navigator.clipboard.writeText(invitationLink)
+      setSuccessMessage("Einladungslink wurde in die Zwischenablage kopiert.")
+    } catch (error) {
+      setErrorMessage(
+        `Der Link konnte nicht automatisch kopiert werden. Kopiere ihn aus dem Feld. ${getErrorMessage(error)}`
+      )
     }
   }
 
@@ -256,6 +302,23 @@ export function GroupAdmin({
 
   const currentGroup = groups.find((entry) => entry.id === group.id)
   const displayedName = currentGroup?.name ?? group.name
+  const availableContacts = contacts.filter(
+    (contact) =>
+      !members.some(
+        (member) => member.email?.toLowerCase() === contact.email.toLowerCase()
+      )
+  )
+  const contactSuggestions = memberName.trim()
+    ? availableContacts
+        .filter((contact) => {
+          const query = memberName.trim().toLocaleLowerCase()
+          return (
+            contact.displayName.toLocaleLowerCase().includes(query) ||
+            contact.email.toLocaleLowerCase().includes(query)
+          )
+        })
+        .slice(0, 5)
+    : []
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -422,12 +485,42 @@ export function GroupAdmin({
                         >
                           {member.role === "admin"
                             ? "Gruppen-Admin"
-                            : "Mitglied"}
+                            : member.membershipStatus === "pending"
+                              ? "Einladung ausstehend"
+                              : member.membershipStatus === "legacy"
+                                ? "Altes virtuelles Mitglied"
+                                : "Mitglied"}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      {member.membershipStatus === "pending" &&
+                        member.email &&
+                        contacts.some(
+                          (contact) =>
+                            contact.email.toLowerCase() ===
+                            member.email?.toLowerCase()
+                        ) && (
+                          <Button
+                            className="h-9 rounded-xl text-xs"
+                            disabled={isAddingMember}
+                            onClick={() => {
+                              const contact = contacts.find(
+                                (entry) =>
+                                  entry.email.toLowerCase() ===
+                                  member.email?.toLowerCase()
+                              )
+                              if (contact) {
+                                void handleCreateInvitation(contact.id)
+                              }
+                            }}
+                            variant="outline"
+                          >
+                            <MailPlus aria-hidden="true" className="size-4" />
+                            Link neu erstellen
+                          </Button>
+                        )}
                       {member.userId && (
                         <Button
                           className="h-9 rounded-xl text-xs"
@@ -466,7 +559,9 @@ export function GroupAdmin({
                             <Checkbox
                               checked={draft[key]}
                               disabled={savingMemberId === member.id}
-                              onCheckedChange={() => togglePermission(member.id, key)}
+                              onCheckedChange={() =>
+                                togglePermission(member.id, key)
+                              }
                             />
                             {label}
                           </label>
@@ -497,40 +592,126 @@ export function GroupAdmin({
             <Plus aria-hidden="true" className="size-5" />
           </div>
           <div>
-            <h2 className="font-semibold">Neues virtuelles Mitglied</h2>
+            <h2 className="font-semibold">Person einladen</h2>
             <p className="text-sm text-[#72766f]">
-              Ein Platzhalter für Personen ohne App-Konto hinzufügen.
+              Wähle eine Person aus der Freundesliste. Noch nicht registrierte
+              Personen erhalten einen zeitlich begrenzten Einladungslink.
             </p>
           </div>
         </div>
         <form
           className="flex flex-col gap-3 sm:flex-row"
-          onSubmit={handleAddVirtualMember}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleCreateInvitation(selectedContactId)
+          }}
         >
           <label className="sr-only" htmlFor="new-member-name">
-            Name des neuen Mitglieds
+            Person aus der Freundesliste suchen
           </label>
-          <Input
-            className="h-11 min-w-0 flex-1 rounded-xl border border-[#e4e7e1] px-3.5 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
-            id="new-member-name"
-            maxLength={80}
-            onChange={(event) => setMemberName(event.target.value)}
-            placeholder="z. B. Karl"
-            required
-            value={memberName}
-          />
+          <div className="relative min-w-0 flex-1">
+            <Input
+              aria-autocomplete="list"
+              aria-controls="member-contact-suggestions"
+              aria-expanded={
+                !selectedContactId && contactSuggestions.length > 0
+              }
+              autoComplete="off"
+              className="h-11 min-w-0 rounded-xl border border-[#e4e7e1] px-3.5 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+              id="new-member-name"
+              maxLength={80}
+              onChange={(event) => {
+                setMemberName(event.target.value)
+                setSelectedContactId("")
+              }}
+              placeholder="Name oder E-Mail suchen"
+              required
+              value={memberName}
+            />
+            {isLoadingContacts && memberName.trim() && (
+              <p className="mt-2 text-xs text-[#72766f]" role="status">
+                Freundesliste wird durchsucht ...
+              </p>
+            )}
+            {!selectedContactId &&
+              !isLoadingContacts &&
+              contactSuggestions.length > 0 && (
+                <div
+                  className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-[#e4e7e1] bg-white p-1 shadow-lg"
+                  id="member-contact-suggestions"
+                  role="listbox"
+                  aria-label="Vorschläge aus deiner Freundesliste"
+                >
+                  {contactSuggestions.map((contact) => (
+                    <Button
+                      aria-selected={selectedContactId === contact.id}
+                      className="h-auto w-full justify-start rounded-lg px-3 py-2 text-left"
+                      key={contact.id}
+                      onClick={() => {
+                        setMemberName(contact.displayName)
+                        setSelectedContactId(contact.id)
+                      }}
+                      role="option"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">
+                          {contact.displayName}
+                        </span>
+                        <span className="block truncate text-xs text-[#72766f]">
+                          {contact.email}
+                        </span>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+          </div>
           <Button
             className="h-11 rounded-xl bg-[#1f3b2d] px-5 text-white hover:bg-[#294b38]"
-            disabled={isAddingMember || !memberName.trim()}
+            disabled={isAddingMember || !selectedContactId}
             type="submit"
           >
-            {isAddingMember ? "Wird hinzugefügt ..." : "Mitglied anlegen"}
+            {isAddingMember
+              ? "Einladung wird erstellt ..."
+              : "Einladung erstellen"}
           </Button>
         </form>
-        <p className="mt-3 text-xs leading-5 text-[#858a81]">
-          Einladungslinks und die Verknüpfung registrierter Konten werden in
-          einem späteren Schritt ergänzt.
-        </p>
+        {contacts.length === 0 && !isLoadingContacts && (
+          <p className="mt-3 text-sm text-[#72766f]">
+            Füge zuerst Kontakte in deiner Freundesliste hinzu.
+          </p>
+        )}
+        {invitationLink && (
+          <div className="mt-4 rounded-2xl border border-[#d9e8d6] bg-[#f7faf5] p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-[#31563e]">
+              <Clock3 aria-hidden="true" className="size-4" />
+              Der Link ist 14 Tage gültig und kann einmal angenommen werden.
+            </p>
+            <p className="mb-3 text-xs leading-5 text-[#72766f]">
+              Es wird keine E-Mail automatisch versendet. Teile diesen Link
+              selbst mit der eingeladenen Person.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                aria-label="Einladungslink"
+                className="h-10 min-w-0 flex-1 rounded-xl bg-white text-xs"
+                readOnly
+                value={invitationLink}
+              />
+              <Button
+                className="h-10 shrink-0 rounded-xl"
+                onClick={() => void handleCopyInvitationLink()}
+                type="button"
+                variant="outline"
+              >
+                <Copy aria-hidden="true" className="size-4" />
+                <span className="hidden sm:inline">Kopieren</span>
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   )

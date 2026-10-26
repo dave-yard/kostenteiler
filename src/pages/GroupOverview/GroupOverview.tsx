@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import {
   closestCenter,
   DndContext,
@@ -19,7 +19,9 @@ import {
   ArrowRight,
   Check,
   CircleDollarSign,
+  ContactRound,
   GripVertical,
+  Home,
   LogOut,
   Plus,
   Settings2,
@@ -28,6 +30,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GroupAdmin } from "@/pages/GroupAdmin/GroupAdmin"
+import { GroupInvitation } from "@/pages/GroupInvitation/GroupInvitation"
+import { PersonalContacts } from "@/pages/PersonalContacts/PersonalContacts"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import { useAuth } from "@/components/contexts/AuthContext"
 import type { Group } from "@/types/group"
@@ -172,6 +176,12 @@ export function GroupOverview() {
   } = useGroupOverview()
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [adminGroupId, setAdminGroupId] = useState<string | null>(null)
+  const [invitationToken, setInvitationToken] = useState(() =>
+    new URLSearchParams(window.location.search).get("invite")
+  )
+  const [isShowingContacts, setIsShowingContacts] = useState(false)
+  const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false)
+  const navigationMenuRef = useRef<HTMLDivElement>(null)
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [groupName, setGroupName] = useState("")
@@ -183,6 +193,31 @@ export function GroupOverview() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  useEffect(() => {
+    if (!isNavigationMenuOpen) {
+      return
+    }
+
+    function closeMenuOnOutsideClick(event: MouseEvent) {
+      if (!navigationMenuRef.current?.contains(event.target as Node)) {
+        setIsNavigationMenuOpen(false)
+      }
+    }
+
+    function closeMenuOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsNavigationMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", closeMenuOnOutsideClick)
+    document.addEventListener("keydown", closeMenuOnEscape)
+    return () => {
+      document.removeEventListener("pointerdown", closeMenuOnOutsideClick)
+      document.removeEventListener("keydown", closeMenuOnEscape)
+    }
+  }, [isNavigationMenuOpen])
 
   async function handleCreateGroup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -252,7 +287,33 @@ export function GroupOverview() {
     }
   }
 
+  function clearInvitationToken() {
+    const url = new URL(window.location.href)
+    url.searchParams.delete("invite")
+    window.history.replaceState(
+      {},
+      "",
+      `${url.pathname}${url.search}${url.hash}`
+    )
+  }
+
   function renderContent() {
+    if (invitationToken) {
+      return (
+        <GroupInvitation
+          onAccepted={() => {
+            clearInvitationToken()
+            setInvitationToken(null)
+          }}
+          onCancel={() => {
+            clearInvitationToken()
+            setInvitationToken(null)
+          }}
+          token={invitationToken}
+        />
+      )
+    }
+
     if (adminGroupId && selectedGroup) {
       return (
         <GroupAdmin
@@ -260,9 +321,14 @@ export function GroupOverview() {
           onBack={() => {
             setAdminGroupId(null)
             setSelectedGroup(null)
+            setIsShowingContacts(false)
           }}
         />
       )
+    }
+
+    if (isShowingContacts) {
+      return <PersonalContacts />
     }
 
     if (selectedGroup) {
@@ -316,7 +382,7 @@ export function GroupOverview() {
           </p>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y pb-2">
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain pb-2">
           {isLoading ? (
             <div
               className="rounded-3xl border border-[#e8ebe5] bg-white p-8 text-center text-sm text-[#72766f]"
@@ -359,7 +425,9 @@ export function GroupOverview() {
                 <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
                   <UsersRound aria-hidden="true" className="size-6" />
                 </div>
-                <h2 className="mt-4 text-lg font-semibold">Noch keine Gruppe</h2>
+                <h2 className="mt-4 text-lg font-semibold">
+                  Noch keine Gruppe
+                </h2>
                 <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-[#72766f]">
                   Erstelle eine Gruppe für deine WG, Reise oder gemeinsame
                   Haushaltsausgaben.
@@ -376,10 +444,7 @@ export function GroupOverview() {
             </div>
             <h2 className="font-semibold">Neue Gruppe erstellen</h2>
           </div>
-          <form
-            className="mt-2.5 flex gap-2"
-            onSubmit={handleCreateGroup}
-          >
+          <form className="mt-2.5 flex gap-2" onSubmit={handleCreateGroup}>
             <label className="sr-only" htmlFor="new-group-name">
               Gruppenname
             </label>
@@ -412,13 +477,65 @@ export function GroupOverview() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-[#f5f6f2] text-[#20241f]">
-      <header className="z-10 shrink-0 border-b border-black/5 bg-[#f5f6f2]/95 backdrop-blur">
+      <header className="z-20 shrink-0 border-b border-black/5 bg-[#f5f6f2]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-[#1f3b2d] text-white">
-              <CircleDollarSign aria-hidden="true" className="size-5" />
-            </div>
-            <span className="font-semibold tracking-tight">Kostenteiler</span>
+          <div className="relative" ref={navigationMenuRef}>
+            <Button
+              aria-expanded={isNavigationMenuOpen}
+              aria-haspopup="menu"
+              aria-label="Navigation öffnen"
+              className="h-auto gap-3 rounded-xl p-1.5 text-[#20241f] hover:bg-black/5"
+              onClick={() => setIsNavigationMenuOpen((isOpen) => !isOpen)}
+              type="button"
+              variant="ghost"
+            >
+              <span className="flex size-9 items-center justify-center rounded-xl bg-[#1f3b2d] text-white">
+                <CircleDollarSign aria-hidden="true" className="size-5" />
+              </span>
+              <span className="font-semibold tracking-tight">Kostenteiler</span>
+            </Button>
+            {isNavigationMenuOpen && (
+              <nav
+                aria-label="Hauptnavigation"
+                className="absolute top-full left-0 z-30 mt-2 w-56 rounded-2xl border border-[#e8ebe5] bg-white p-2 shadow-xl"
+                role="menu"
+              >
+                <Button
+                  className="h-11 w-full justify-start gap-3 rounded-xl text-[#31563e]"
+                  onClick={() => {
+                    setSelectedGroup(null)
+                    setAdminGroupId(null)
+                    setIsShowingContacts(false)
+                    setIsNavigationMenuOpen(false)
+                  }}
+                  role="menuitem"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Home aria-hidden="true" className="size-4" />
+                  Gruppen
+                </Button>
+                <div
+                  aria-hidden="true"
+                  className="my-1 border-t border-[#eef0eb]"
+                />
+                <Button
+                  className="h-11 w-full justify-start gap-3 rounded-xl text-[#405b47]"
+                  onClick={() => {
+                    setSelectedGroup(null)
+                    setAdminGroupId(null)
+                    setIsShowingContacts(true)
+                    setIsNavigationMenuOpen(false)
+                  }}
+                  role="menuitem"
+                  type="button"
+                  variant="ghost"
+                >
+                  <ContactRound aria-hidden="true" className="size-4" />
+                  Freundesliste
+                </Button>
+              </nav>
+            )}
           </div>
           <div className="flex items-center gap-2 text-sm text-[#72766f]">
             <span className="hidden max-w-48 truncate sm:inline">
@@ -446,7 +563,9 @@ export function GroupOverview() {
 
       <div
         className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-8 ${
-          selectedGroup ? "overflow-y-auto overscroll-y-contain" : ""
+          selectedGroup || isShowingContacts || invitationToken
+            ? "overflow-y-auto overscroll-y-contain"
+            : ""
         }`}
       >
         {signOutError && (
@@ -459,7 +578,6 @@ export function GroupOverview() {
         )}
         {renderContent()}
       </div>
-
     </main>
   )
 }

@@ -2,12 +2,25 @@ import { AuthScreen } from "@/components/AuthScreen"
 import { useAuth } from "@/components/contexts/AuthContext"
 import { GroupOverviewProvider } from "@/components/contexts/GroupOverviewContext"
 import { GroupOverview } from "@/pages/GroupOverview/GroupOverview"
+import { PasswordRecovery } from "@/pages/PasswordRecovery/PasswordRecovery"
+
+function isPasswordRecoveryCallback() {
+  return (
+    new URLSearchParams(window.location.hash.slice(1)).get("type") ===
+    "recovery"
+  )
+}
 
 export function App() {
-  const { session, isLoading, configurationError } = useAuth()
+  const { session, isLoading, isPasswordRecovery, configurationError } =
+    useAuth()
 
   if (configurationError) {
     return <AuthScreen />
+  }
+
+  if (isPasswordRecovery || isPasswordRecoveryCallback()) {
+    return <PasswordRecovery />
   }
 
   if (isLoading) {

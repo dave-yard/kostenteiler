@@ -1,5 +1,11 @@
 import { getSupabaseClient } from "@/lib/supabase"
-import type { Group, GroupMember, GroupMemberPermissions } from "@/types/group"
+import type {
+  Group,
+  GroupInvitation,
+  GroupMember,
+  GroupMemberPermissions,
+  PersonalContact,
+} from "@/types/group"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
@@ -81,6 +87,111 @@ export async function saveMyGroupOrder(groupIds: string[]) {
   }
 }
 
+export async function getMyContacts(): Promise<PersonalContact[]> {
+  const { data, error } = await getSupabaseClient()
+    .from("personal_contacts")
+    .select("id, display_name, email")
+    .order("display_name")
+
+  if (error) {
+    throw error
+  }
+
+  return readRows(data).map((row) => ({
+    id: readString(row, "id"),
+    displayName: readString(row, "display_name"),
+    email: readString(row, "email"),
+  }))
+}
+
+export async function createPersonalContact(
+  displayName: string,
+  email: string
+): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from("personal_contacts")
+    .insert({ display_name: displayName, email: email.toLowerCase() })
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function removePersonalContact(contactId: string): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from("personal_contacts")
+    .delete()
+    .eq("id", contactId)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function createGroupInvitation(
+  groupId: string,
+  contactId: string
+): Promise<string> {
+  const { data, error } = await getSupabaseClient().rpc(
+    "create_group_invitation",
+    {
+      p_group_id: groupId,
+      p_contact_id: contactId,
+    }
+  )
+
+  if (error) {
+    throw error
+  }
+  if (typeof data !== "string") {
+    throw new Error("Der Einladungslink konnte nicht erstellt werden.")
+  }
+
+  return data
+}
+
+export async function getGroupInvitation(
+  token: string
+): Promise<GroupInvitation> {
+  const { data, error } = await getSupabaseClient().rpc(
+    "get_group_invitation",
+    { p_token: token }
+  )
+
+  if (error) {
+    throw error
+  }
+
+  const row = readRows(data)[0]
+  if (!row) {
+    throw new Error("Die Einladung konnte nicht geladen werden.")
+  }
+
+  return {
+    groupId: readString(row, "group_id"),
+    groupName: readString(row, "group_name"),
+    displayName: readString(row, "display_name"),
+  }
+}
+
+export async function acceptGroupInvitation(token: string): Promise<string> {
+  const { data, error } = await getSupabaseClient().rpc(
+    "accept_group_invitation",
+    { p_token: token }
+  )
+
+  if (error) {
+    throw error
+  }
+  if (typeof data !== "string") {
+    throw new Error(
+      "Die Einladung wurde angenommen, aber die Gruppen-ID fehlt."
+    )
+  }
+
+  return data
+}
+
 export async function createGroup(name: string): Promise<string> {
   const { data, error } = await getSupabaseClient().rpc("create_group", {
     p_name: name,
@@ -135,24 +246,21 @@ export async function getGroupMembers(groupId: string): Promise<GroupMember[]> {
       canDeleteItems: readBoolean(row, "can_delete_items"),
       canEditSplits: readBoolean(row, "can_edit_splits"),
       canCloseLists: readBoolean(row, "can_close_lists"),
+      membershipStatus: readMembershipStatus(row, "membership_status"),
     }
   })
 }
 
-export async function createVirtualMember(
-  groupId: string,
-  displayName: string
-) {
-  const { error } = await getSupabaseClient().rpc(
-    "create_virtual_group_member",
-    {
-      p_group_id: groupId,
-      p_display_name: displayName,
-    }
-  )
-  if (error) {
-    throw error
+function readMembershipStatus(
+  row: Record<string, unknown>,
+  key: string
+): GroupMember["membershipStatus"] {
+  const value = readString(row, key)
+  if (value !== "active" && value !== "pending" && value !== "legacy") {
+    throw new Error("Supabase hat einen unbekannten Mitgliedsstatus geliefert.")
   }
+
+  return value
 }
 
 export async function setGroupMemberAdmin(memberId: string, isAdmin: boolean) {

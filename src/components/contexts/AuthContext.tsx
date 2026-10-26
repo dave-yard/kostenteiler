@@ -11,15 +11,21 @@ import type { Session } from "@supabase/supabase-js"
 import {
   resendSignupConfirmation as resendSignupConfirmationRequest,
   sendMagicLink as sendMagicLinkRequest,
+  sendPasswordRecoveryEmail as sendPasswordRecoveryEmailRequest,
   signInWithPassword as signInWithPasswordRequest,
   signOut as signOutRequest,
   signUpWithPassword as signUpWithPasswordRequest,
+  updatePassword as updatePasswordRequest,
 } from "@/services/authService"
-import { getSupabaseClient, getSupabaseConfigurationError } from "@/lib/supabase"
+import {
+  getSupabaseClient,
+  getSupabaseConfigurationError,
+} from "@/lib/supabase"
 
 interface AuthContextValue {
   session: Session | null
   isLoading: boolean
+  isPasswordRecovery: boolean
   configurationError: string | null
   signInWithPassword: (email: string, password: string) => Promise<void>
   signUpWithPassword: (
@@ -28,6 +34,8 @@ interface AuthContextValue {
   ) => Promise<{ needsEmailConfirmation: boolean }>
   resendSignupConfirmation: (email: string) => Promise<void>
   sendMagicLink: (email: string) => Promise<void>
+  sendPasswordRecoveryEmail: (email: string) => Promise<void>
+  updatePassword: (password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -37,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const configurationError = getSupabaseConfigurationError()
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(configurationError === null)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
 
   useEffect(() => {
     if (configurationError) {
@@ -45,8 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = getSupabaseClient().auth.onAuthStateChange((_event, nextSession) => {
+    } = getSupabaseClient().auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true)
+      } else if (event === "SIGNED_OUT") {
+        setIsPasswordRecovery(false)
+      }
       setIsLoading(false)
     })
 
@@ -71,27 +85,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sendMagicLinkRequest(email)
   }, [])
 
+  const sendPasswordRecoveryEmail = useCallback((email: string) => {
+    return sendPasswordRecoveryEmailRequest(email)
+  }, [])
+
+  const updatePassword = useCallback((password: string) => {
+    return updatePasswordRequest(password)
+  }, [])
+
   const signOut = useCallback(() => signOutRequest(), [])
 
   const value = useMemo(
     () => ({
       session,
       isLoading,
+      isPasswordRecovery,
       configurationError,
       signInWithPassword: signIn,
       signUpWithPassword: signUp,
       resendSignupConfirmation,
       sendMagicLink,
+      sendPasswordRecoveryEmail,
+      updatePassword,
       signOut,
     }),
     [
       session,
       isLoading,
+      isPasswordRecovery,
       configurationError,
       signIn,
       signUp,
       resendSignupConfirmation,
       sendMagicLink,
+      sendPasswordRecoveryEmail,
+      updatePassword,
       signOut,
     ]
   )

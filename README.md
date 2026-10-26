@@ -31,16 +31,28 @@ Die funktionalen Anforderungen stehen in
    Mitgliedschaften, Rechte, RPC-Funktionen und Row-Level-Security-Policies
    für diesen Funktionsumfang an.
 
-4. Unter **Authentication → URL Configuration** die lokale URL
-   `http://localhost:5173` als Redirect-URL erlauben. E-Mail-Bestätigung muss
-   aktiviert sein; Bestätigungslinks verwenden die konfigurierte Redirect-URL.
+4. Unter **Authentication → URL Configuration** `http://localhost:5173` als
+   **Site URL** und lokale Redirect-URL erlauben. E-Mail-Bestätigung muss
+   aktiviert sein; Bestätigungs- und Recovery-Links verwenden diese URL. Bei
+   einem anderen lokalen Port müssen Site URL und Redirect-URL übereinstimmen.
 
 5. Für die persönliche Gruppensortierung zusätzlich die Migration
    [`supabase/migrations/20261023144500_personal_group_sort_order.sql`](./supabase/migrations/20261023144500_personal_group_sort_order.sql)
    im Supabase SQL Editor ausführen, nachdem die Gruppen-Migration angewendet
    wurde.
 
-6. Entwicklungsserver starten:
+6. Für die persönliche Freundesliste und das Hinzufügen von Kontakten zu
+   Gruppen zusätzlich die Migration
+   [`supabase/migrations/20261023151000_personal_contacts.sql`](./supabase/migrations/20261023151000_personal_contacts.sql)
+   im Supabase SQL Editor ausführen.
+
+7. Für zeitlich begrenzte Gruppeneinladungen und die bestätigte Verknüpfung mit
+   registrierten Konten danach
+   [`supabase/migrations/20261023160000_group_member_invitations.sql`](./supabase/migrations/20261023160000_group_member_invitations.sql)
+   ausführen. Der Einladungslink wird in der App erzeugt und muss manuell
+   geteilt werden; ein E-Mail-Versand ist nicht konfiguriert.
+
+8. Entwicklungsserver starten:
 
    ```bash
    npm run dev

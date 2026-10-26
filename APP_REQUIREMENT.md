@@ -18,7 +18,7 @@
 ### 1.2 Lösungsansatz
 
 1. **Zentrales Listen- & Bon-System:** Eine Applikation für Gruppen, die offene und erledigte Ausgaben übersichtlich filtert und per Kassensturz exakt berechnet, wer wem wie viel erstatten muss.
-2. **Flexibles Aufteilungs-Pop-up & Virtuelle Konten:** Feingranulare Zuordnung pro Position (Gleichmäßig, Prozentual, Fester Betrag) sowie Verwaltung passwortloser Nutzer inklusive nahtloser Einladungs- und Registrierungsverknüpfung.
+2. **Flexible Aufteilung & sichere Einladungen:** Feingranulare Zuordnung pro Position (Gleichmäßig, Prozentual, Fester Betrag) sowie Einladungen für Personen ohne App-Konto mit bestätigter Verknüpfung nach Registrierung.
 3. **Automatisierung:** Automatisierte Generierung von wiederkehrenden Listen in einstellbaren Intervallen mit optionalem automatischen oder manuellen Abschluss.
 
 ---
@@ -30,36 +30,11 @@
 - **FR-1.1 (Gruppen erstellen):** Registrierte Benutzer können neue Gruppen erstellen. Der Ersteller wird automatisch als Administrator der Gruppe definiert.
 - **FR-1.2 (Gruppenübersicht):** Benutzer können eine Übersicht aller Gruppen einsehen, denen sie fest zugeordnet sind.
 - **FR-1.2.1 (Gruppen sortieren):** Benutzer können die Reihenfolge ihrer Gruppenübersicht per Drag-and-drop anpassen. Die Sortierung ist pro Benutzer gespeichert und beeinflusst nicht die Ansicht anderer Gruppenmitglieder.
-- **FR-1.3 (Nutzer anlegen):** Admins können Nutzer einer Gruppe zuordnen, auch wenn diese noch nicht registriert sind (virtuelle/passwortlose Nutzer).
-- **FR-1.4.1 (Einladungslinks):** Admins können einen personalisierten Einladungslink für einen virtuellen Nutzer versenden. Der Link verwendet ein einmaliges, zeitlich begrenztes Token und nicht eine erratbare Nutzer-ID als Berechtigungsnachweis. Die Einladung muss bestätigt werden, bevor der virtuelle Nutzer mit dem registrierten Account verknüpft wird.
-- **FR-1.4.2 (Doppelte Nutzer / Verknüpfung):** Sollte ein Nutzer sich nicht über den Einladungslink registrieren, muss ein Admin den virtuellen Nutzer mit einem registrierten Account verknüpfen können. Die Verknüpfung erfordert eine Bestätigung und überträgt alle zugehörigen Positionen, Aufteilungen und Ausgleichsdaten. Danach wird der virtuelle Nutzer entfernt.
-
-Popup nach click auf [ 🔀 Mit Account verknüpfen ]
-
-```
-+---------------------------------------------------+
-| 🔀 Nutzerkonten zusammenführen |
-+---------------------------------------------------+
-| |
-| Wähle den passwortlosen (virtuellen) Nutzer und |
-| den echten Account aus, um alle Ausgaben und |
-| Splits zu übertragen. |
-| |
-| Virtueller Nutzer (Bisheriger Platzhalter): |
-| [ Select: John Wayne v ] |
-| |
-| Registrierter Ziel-Account: |
-| [ Select: john.w@gmail.com (John) v ] |
-| |
-| ⚠️ **Achtung (Sicherheitshinweis):** |
-| Alle bisherigen Einträge, Positionen und |
-| Ausgleichszahlungen von "John Wayne" werden |
-| unwiderruflich auf "john.w@gmail.com" übertragen. |
-| Der virtuelle Nutzer wird danach gelöscht. |
-| |
-| [ Abbrechen ] [ ⚠️ Zusammenführung bestätigen ]|
-+---------------------------------------------------+
-```
+- **FR-1.2.2 (Persönliche Freundesliste):** Benutzer können Kontakte mit Namen und E-Mail-Adresse in einer privaten, gruppenübergreifend verfügbaren Freundesliste speichern. Beim Einladen eines Gruppenmitglieds werden passende eigene Kontakte vorgeschlagen. Die Auswahl erstellt eine gruppenbezogene ausstehende Einladung; der private Kontakt selbst wird nicht mit der Gruppe geteilt. Das Speichern eines Kontakts versendet keine Einladung.
+- **FR-1.2.3 (Hauptnavigation):** Ein Klick auf den Markennamen „Kostenteiler“ öffnet ein Menü. Der erste Menüpunkt ist „Gruppen“ mit Home-Symbol und führt zur Gruppenübersicht. Ein weiterer Menüpunkt öffnet die private Freundesliste unabhängig davon, ob der Benutzer einer Gruppe angehört oder Gruppen-Admin ist.
+- **FR-1.3 (Gruppenmitglieder einladen):** Gruppen-Admins können Personen aus ihrer privaten Freundesliste in eine Gruppe einladen. Ohne Auswahl eines gespeicherten Kontakts wird kein neues Gruppenmitglied angelegt.
+- **FR-1.4.1 (Einladungslinks):** Eine Einladung erzeugt einen einmaligen, nach 14 Tagen ablaufenden Link mit einem nicht erratbaren Token. Der Link wird nicht automatisch per E-Mail versendet und muss von der einladenden Person geteilt werden. Eine Einladung kann nur mit dem registrierten und bestätigten Konto der eingeladenen E-Mail-Adresse angenommen werden.
+- **FR-1.4.2 (Konto verknüpfen):** Nach ausdrücklicher Annahme wird das bestehende Gruppenmitglied mit dem bestätigten Konto verknüpft. Die Gruppenmitglied-ID bleibt erhalten, sodass zugehörige Positionen, Aufteilungen und Ausgleichsdaten bestehen bleiben. Es werden keine Kontakte oder Daten aus anderen Gruppen geteilt.
 
 ### 2.2 Listen- und Statusmanagement
 
@@ -128,30 +103,23 @@ Nach click auf Bearbeiten
 |  +---------------------------------------------+  |
 |                                                   |
 |  +---------------------------------------------+  |
-|  | 👻 John Wayne                               |  |
-|  | Status: Passwortlos (Virtuell)              |  |
-|  | [ 🔗 Einladungslink kopieren ]**            |  |
-|  | [ 🔀 Mit Account verknüpfen ]**             |  |
+|  | 👤 John Wayne                               |  |
+|  | Status: Einladung ausstehend                |  |
+|  | [ 🔗 Einladungslink neu erstellen ]         |  |
 |  +---------------------------------------------+  |
 |                                                   |
 |  ------------------------------------------------ |
 |                                                   |
-|  ➕ **Neues Mitglied hinzufügen**                 |
-|  Name / Name des Nutzers:                         |
+|  ➕ **Person einladen**                            |
+|  Name oder E-Mail aus Freundesliste suchen:        |
 |  [ z. B. Karl                                 ] |
-|                                                   |
-|  (•) Als virtuellen Nutzer anlegen                |
-|  ( ) Per E-Mail direkt einladen                   |
-|                                                   |
-|  [ + Mitglied anlegen ]                           |
+|  [ + Einladung erstellen ]                        |
 |                                                   |
 |  ------------------------------------------------ |
 +---------------------------------------------------+
 
 
-* Rollen-Button: Sichtbar für Gruppen-Admins; wird nur bei registrierten Nutzern (mit E-Mail & Passwort) angezeigt, um deren Admin-Status zu verwalten.
-
-** Virtuellen-Aktionen: Die Buttons für den Einladungslink und die Account-Verknüpfung werden ausschließlich bei passwortlosen/virtuellen Nutzern eingeblendet.
+* Rollen-Button: Sichtbar für Gruppen-Admins; wird nur bei registrierten Nutzern angezeigt, um deren Admin-Status zu verwalten.
 ```
 
 ### 2.3 Positionen, Bons und Hierarchiestruktur
@@ -320,7 +288,7 @@ Rest-Kontrolle: Die Live-Anzeige des Restbetrags stellt sicher, dass die Summe d
 ### 3.2 Sicherheit und Datenintegrität
 
 - **NFR-2.1 (Row Level Security - RLS):** Sämtliche gruppenbezogenen Datenbanktabellen, einschließlich Gruppen, Mitgliedschaften und Rollen/Rechten, Listen, Positionen, Aufteilungen, Ausgleichszahlungen, Einladungen und Gruppeneinstellungen, müssen in Supabase über Row Level Security (RLS) abgesichert sein. Lese- und Schreibzugriffe richten sich nach Gruppenmitgliedschaft, Rolle und den konfigurierten Rechten. Bon-Dateien im Supabase Storage müssen durch passende Storage-Richtlinien denselben Gruppenzugriffsschutz erhalten.
-- **NFR-2.2 (Authentifizierung):** Sichere Nutzerauthentifizierung über Supabase Auth (E-Mail/Passwort, Magic Links).
+- **NFR-2.2 (Authentifizierung):** Sichere Nutzerauthentifizierung über Supabase Auth (E-Mail/Passwort, Magic Links) mit E-Mail-basierter Passwort-Recovery und einer eigenen Ansicht zum Festlegen eines neuen Passworts.
 
 ### 3.3 Usability und Performance
 
