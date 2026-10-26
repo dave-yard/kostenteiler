@@ -6,6 +6,16 @@ export interface Group {
   currentUserIsAdmin: boolean
 }
 
+export interface ExpenseList {
+  id: string
+  groupId: string
+  name: string
+  status: "open" | "completed" | "isPaid"
+  createdAt: string
+  completedAt: string | null
+  paidAt: string | null
+}
+
 export interface GroupMemberPermissions {
   canCreateItems: boolean
   canEditItems: boolean

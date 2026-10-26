@@ -23,9 +23,11 @@ import {
   setGroupMemberAdmin as setGroupMemberAdminRecord,
   updateGroupMemberPermissions as updateGroupMemberPermissionsRecord,
 } from "@/services/groupService"
+import { getExpenseLists as getExpenseListsRecord } from "@/services/listService"
 import type {
   Group,
   GroupInvitation,
+  ExpenseList,
   GroupMember,
   GroupMemberPermissions,
   PersonalContact,
@@ -38,6 +40,10 @@ interface GroupOverviewContextValue {
   refreshGroups: () => Promise<void>
   createGroup: (name: string) => Promise<string>
   saveGroupOrder: (groupIds: string[]) => Promise<void>
+  getExpenseLists: (
+    groupId: string,
+    includeCompleted: boolean
+  ) => Promise<ExpenseList[]>
   getMyContacts: () => Promise<PersonalContact[]>
   createPersonalContact: (displayName: string, email: string) => Promise<void>
   removePersonalContact: (contactId: string) => Promise<void>
@@ -114,6 +120,12 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
   const createGroup = useCallback(async (name: string) => {
     return createGroupRecord(name)
   }, [])
+
+  const getExpenseLists = useCallback(
+    (groupId: string, includeCompleted: boolean) =>
+      getExpenseListsRecord(groupId, includeCompleted),
+    []
+  )
 
   const getMyContacts = useCallback(() => getMyContactsRecord(), [])
   const createPersonalContact = useCallback(
@@ -199,6 +211,7 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       refreshGroups,
       createGroup,
       saveGroupOrder,
+      getExpenseLists,
       getMyContacts,
       createPersonalContact,
       removePersonalContact,
@@ -218,6 +231,7 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       refreshGroups,
       createGroup,
       saveGroupOrder,
+      getExpenseLists,
       getMyContacts,
       createPersonalContact,
       removePersonalContact,

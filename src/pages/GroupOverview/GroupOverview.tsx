@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GroupAdmin } from "@/pages/GroupAdmin/GroupAdmin"
 import { GroupInvitation } from "@/pages/GroupInvitation/GroupInvitation"
+import { ExpenseLists } from "@/pages/ExpenseLists/ExpenseLists"
 import { PersonalContacts } from "@/pages/PersonalContacts/PersonalContacts"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import { useAuth } from "@/components/contexts/AuthContext"
@@ -129,38 +130,6 @@ function SortableGroupCard({
         )}
       </div>
     </article>
-  )
-}
-
-function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
-  return (
-    <section className="rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
-      <Button
-        className="mb-8 h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
-        onClick={onBack}
-        type="button"
-        variant="ghost"
-      >
-        ← Zur Gruppenübersicht
-      </Button>
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
-        <CircleDollarSign aria-hidden="true" className="size-6" />
-      </div>
-      <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em]">
-        {group.name}
-      </h1>
-      <p className="mt-2 text-sm leading-6 text-[#72766f]">
-        Deine Gruppe ist eingerichtet. Listen, Positionen und Abrechnungen
-        ergänzen wir als nächsten Schritt.
-      </p>
-      <div className="mt-7 rounded-2xl border border-dashed border-[#d7ded3] bg-[#fafbf9] px-5 py-8 text-center">
-        <p className="font-medium">Noch keine Listen</p>
-        <p className="mt-1 text-sm text-[#72766f]">
-          Sobald die Listenverwaltung verfügbar ist, kannst du hier gemeinsame
-          Ausgaben erfassen.
-        </p>
-      </div>
-    </section>
   )
 }
 
@@ -333,7 +302,7 @@ export function GroupOverview() {
 
     if (selectedGroup) {
       return (
-        <GroupDetail
+        <ExpenseLists
           group={selectedGroup}
           onBack={() => setSelectedGroup(null)}
         />

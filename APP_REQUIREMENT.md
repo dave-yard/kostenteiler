@@ -46,6 +46,41 @@
 - **FR-2.4 (Gruppenverwaltung und Mitgliederrechte):** Nur Gruppen-Admins dürfen Gruppendaten und Gruppenmitglieder verwalten. Neue Gruppen verwenden standardmäßig eine gleichmäßige Aufteilung auf alle Gruppenmitglieder. Admins können für normale Mitglieder separat freigeben, Positionen anzulegen, Positionen zu bearbeiten, Positionen zu löschen, Aufteilungen zu bearbeiten und einen Kassensturz durchzuführen. Nicht ausdrücklich freigegebene Aktionen bleiben Admins vorbehalten; der Kassensturz ist standardmäßig Admins vorbehalten.
 - **FR-2.5 (Suche und Betragsfilter):** Nutzer können Positionen nach Bezeichnung durchsuchen und nach Betrag filtern. Suchergebnisse für Unterpositionen zeigen zusätzlich den zugehörigen Bon/Positionsparent, damit die Herkunft der Position erkennbar bleibt.
 
+#### Umsetzungsumfang: Listen-Grundfunktion (MVP)
+
+Die Listenverwaltung wird in kleinen Ausbaustufen umgesetzt. Die erste Ausbaustufe umfasst ausschließlich einmalige Listen und schafft die Grundlage für spätere Positionen und Aufteilungen.
+
+**Enthalten:**
+
+- Eine Liste gehört genau zu einer bestehenden Gruppe und hat einen Namen mit 1 bis 80 Zeichen.
+- Eine Liste hat genau einen Status: `open`, `completed` oder `isPaid`. Der erlaubte Ablauf ist ausschließlich `open` → `completed` → `isPaid`; neu erstellte Listen sind `open`.
+- „Bezahlt“ ist ein Listenstatus und kein separates Ja/Nein-Feld. Eine Liste darf erst als `isPaid` markiert werden, wenn sie den Status `completed` hat.
+- Gruppenmitglieder können die Listen ihrer Gruppe sehen.
+- Offene Listen werden standardmäßig angezeigt. Ein Filter blendet erledigte Listen ein.
+- Gruppen-Admins können neue Listen erstellen.
+- Gruppen-Admins sowie Mitglieder mit der Berechtigung `can_close_lists` können Listen als erledigt und anschließend als bezahlt markieren.
+- Erstellungs-, Abschluss- und Bezahlzeitpunkt sowie der jeweils handelnde Nutzer werden zur Liste gespeichert.
+- Laden, Speichern und Statusänderungen zeigen verständliche Lade-, Fehler-, Leer- und Erfolgszustände.
+- Die Gruppen- und Rollenberechtigungen werden beim Datenzugriff serverseitig durchgesetzt; UI-Steuerelemente allein gelten nicht als Zugriffsschutz.
+
+**Nicht enthalten; wird in späteren Ausbaustufen behandelt:**
+
+- Positionen und Bons innerhalb einer Liste
+- Aufteilung von Kosten auf Gruppenmitglieder
+- Kassensturz, Salden und Erstattungen
+- Wiederkehrende Listen und automatische Erstellung neuer Perioden
+- Suche und Betragsfilter für Positionen
+- Löschen oder Umbenennen einer Liste
+
+**Abnahmekriterien für diese Ausbaustufe:**
+
+1. Ein berechtigter Admin kann in einer Gruppe eine benannte Liste erstellen und sie anschließend in der Liste der offenen Listen sehen.
+2. Ein Gruppenmitglied ohne Admin-Rolle kann Listen ansehen, aber keine Liste erstellen.
+3. Nur Admins und Mitglieder mit `can_close_lists` können eine Liste als erledigt markieren.
+4. Erledigte Listen sind zunächst ausgeblendet und nach Aktivierung des Filters sichtbar.
+5. Nur erledigte Listen können von Admins und Mitgliedern mit `can_close_lists` als bezahlt markiert werden.
+6. Nicht-Mitglieder können weder Gruppenlisten lesen noch verändern; Berechtigungen werden auch bei direkten Datenbankaufrufen geprüft.
+
 ```
 +---------------------------------------------------+
 |  [≡] Kostenteiler                          ( 👤 ) | <- Header mit Menü & Profil
