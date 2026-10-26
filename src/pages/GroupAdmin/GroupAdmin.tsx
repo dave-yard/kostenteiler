@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react"
 import {
   ArrowLeft,
+  Archive,
   Check,
   Clock3,
   Copy,
@@ -55,6 +56,7 @@ export function GroupAdmin({
     getMyContacts,
     createGroupInvitation,
     renameGroup,
+    archiveGroup,
     setGroupMemberAdmin,
     updateGroupMemberPermissions,
     removeGroupMember,
@@ -72,6 +74,7 @@ export function GroupAdmin({
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingContacts, setIsLoadingContacts] = useState(true)
   const [isSavingName, setIsSavingName] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null)
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -170,6 +173,32 @@ export function GroupAdmin({
       setErrorMessage(getErrorMessage(error))
     } finally {
       setIsSavingName(false)
+    }
+  }
+
+  async function handleArchiveGroup() {
+    const confirmed = window.confirm(
+      `Gruppe „${displayedName}“ für alle Mitglieder archivieren? Sie bleibt sechs Monate lesbar und wird danach endgültig gelöscht.`
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setErrorMessage(null)
+    setIsArchiving(true)
+
+    let archived = false
+    try {
+      await archiveGroup(group.id)
+      await refreshGroups()
+      archived = true
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsArchiving(false)
+    }
+    if (archived) {
+      onBack()
     }
   }
 
@@ -584,6 +613,28 @@ export function GroupAdmin({
             })}
           </div>
         )}
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-red-200 bg-white p-5 sm:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-red-900">Gruppe archivieren</h2>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-[#72766f]">
+              Die Gruppe bleibt für alle Mitglieder sechs Monate lesbar. Danach
+              werden die Gruppe und ihre zugehörigen Daten endgültig gelöscht.
+            </p>
+          </div>
+          <Button
+            className="shrink-0 rounded-xl"
+            disabled={isArchiving}
+            onClick={() => void handleArchiveGroup()}
+            type="button"
+            variant="destructive"
+          >
+            <Archive aria-hidden="true" className="size-4" />
+            {isArchiving ? "Wird archiviert ..." : "Gruppe archivieren"}
+          </Button>
+        </div>
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">

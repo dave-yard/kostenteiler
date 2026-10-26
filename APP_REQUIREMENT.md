@@ -44,6 +44,7 @@
   - **Einmalige Listen** (z. B. für spontane Einkäufe oder Urlaube).
   - **Wiederkehrende Listen** (z. B. für monatliche Miete und Nebenkosten, inkl. definierbarer Default-Aufteilungen). Unterstützte Intervalle sind monatlich an einem konfigurierbaren Kalendertag, quartalsweise und jährlich.
 - **FR-2.4 (Gruppenverwaltung und Mitgliederrechte):** Nur Gruppen-Admins dürfen Gruppendaten und Gruppenmitglieder verwalten. Neue Gruppen verwenden standardmäßig eine gleichmäßige Aufteilung auf alle Gruppenmitglieder. Admins können für normale Mitglieder separat freigeben, Positionen anzulegen, Positionen zu bearbeiten, Positionen zu löschen, Aufteilungen zu bearbeiten und einen Kassensturz durchzuführen. Nicht ausdrücklich freigegebene Aktionen bleiben Admins vorbehalten; der Kassensturz ist standardmäßig Admins vorbehalten.
+- **FR-2.4.1 (Gruppe archivieren):** Gruppen-Admins können eine Gruppe archivieren. Sie bleibt danach für alle bisherigen Mitglieder sechs Monate lesbar und ist nicht mehr bearbeitbar. Danach werden die Gruppe und alle zugehörigen Daten automatisch endgültig gelöscht.
 - **FR-2.5 (Suche und Betragsfilter):** Nutzer können Positionen nach Bezeichnung durchsuchen und nach Betrag filtern. Suchergebnisse für Unterpositionen zeigen zusätzlich den zugehörigen Bon/Positionsparent, damit die Herkunft der Position erkennbar bleibt.
 
 #### Umsetzungsumfang: Listen-Grundfunktion (MVP)

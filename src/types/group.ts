@@ -4,6 +4,7 @@ export interface Group {
   sortNr: number
   memberCount: number
   currentUserIsAdmin: boolean
+  archivedAt: string | null
 }
 
 export interface ExpenseList {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { getSupabaseClient } from "@/lib/supabase"
-import { getExpenseLists } from "./listService"
+import { createExpenseList, getExpenseLists } from "./listService"
 
 vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: vi.fn(),
@@ -12,6 +12,7 @@ const query = {
   order: vi.fn(),
   then: vi.fn(),
 }
+const rpc = vi.fn()
 
 const rows: Record<string, unknown>[] = [
   {
@@ -36,15 +37,41 @@ beforeEach(() => {
   )
   vi.mocked(getSupabaseClient).mockReturnValue({
     from: vi.fn().mockReturnValue(query),
+    rpc,
   } as never)
+  rpc.mockResolvedValue({ data: "list-id", error: null })
 })
 
 describe("listService", () => {
+  it("creates an expense list through the authorized database function", async () => {
+    const id = await createExpenseList("group-1", "Wocheneinkauf")
+
+    expect(rpc).toHaveBeenCalledWith("create_expense_list", {
+      p_group_id: "group-1",
+      p_name: "Wocheneinkauf",
+    })
+    expect(id).toBe("list-id")
+  })
+
+  it("surfaces errors returned by the expense list creation function", async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: new Error("Creation denied"),
+    })
+
+    await expect(createExpenseList("group-1", "Wocheneinkauf")).rejects.toThrow(
+      "Creation denied"
+    )
+  })
+
   it("loads only open lists by default and maps database fields", async () => {
     const lists = await getExpenseLists("group-1", false)
 
     expect(query.eq).toHaveBeenNthCalledWith(1, "group_id", "group-1")
     expect(query.eq).toHaveBeenNthCalledWith(2, "status", "open")
+    expect(query.order).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    })
     expect(lists).toEqual([
       {
         id: "list-1",

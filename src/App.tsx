@@ -1,5 +1,6 @@
 import { AuthScreen } from "@/components/AuthScreen"
 import { useAuth } from "@/components/contexts/AuthContext"
+import { ExpenseListProvider } from "@/components/contexts/ExpenseListContext"
 import { GroupOverviewProvider } from "@/components/contexts/GroupOverviewContext"
 import { GroupOverview } from "@/pages/GroupOverview/GroupOverview"
 import { PasswordRecovery } from "@/pages/PasswordRecovery/PasswordRecovery"
@@ -39,7 +40,9 @@ export function App() {
 
   return (
     <GroupOverviewProvider key={session.user.id}>
-      <GroupOverview />
+      <ExpenseListProvider>
+        <GroupOverview />
+      </ExpenseListProvider>
     </GroupOverviewProvider>
   )
 }

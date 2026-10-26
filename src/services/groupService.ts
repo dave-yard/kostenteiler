@@ -56,7 +56,20 @@ export async function getMyGroups(): Promise<Group[]> {
     throw error
   }
 
+  const { data: archivedData, error: archivedError } =
+    await getSupabaseClient().rpc("get_my_archived_groups")
+  if (archivedError) {
+    throw archivedError
+  }
+  const archivedAtByGroupId = new Map(
+    readRows(archivedData).map((row) => [
+      readString(row, "group_id"),
+      readString(row, "archived_at"),
+    ])
+  )
+
   return readRows(data).map((row) => {
+    const groupId = readString(row, "group_id")
     const memberCount = row.member_count
     const role = row.current_user_is_admin
     const sortNr = row.sort_nr
@@ -69,11 +82,12 @@ export async function getMyGroups(): Promise<Group[]> {
     }
 
     return {
-      id: readString(row, "group_id"),
+      id: groupId,
       name: readString(row, "group_name"),
       sortNr,
       memberCount,
       currentUserIsAdmin: role,
+      archivedAt: archivedAtByGroupId.get(groupId) ?? null,
     }
   })
 }
@@ -215,6 +229,16 @@ export async function renameGroup(groupId: string, name: string) {
     .eq("id", groupId)
     .select("id")
     .single()
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function archiveGroup(groupId: string): Promise<void> {
+  const { error } = await getSupabaseClient().rpc("archive_group", {
+    p_group_id: groupId,
+  })
 
   if (error) {
     throw error

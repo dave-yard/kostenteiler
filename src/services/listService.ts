@@ -69,3 +69,22 @@ export async function getExpenseLists(
     }
   })
 }
+
+export async function createExpenseList(
+  groupId: string,
+  name: string
+): Promise<string> {
+  const { data, error } = await getSupabaseClient().rpc("create_expense_list", {
+    p_group_id: groupId,
+    p_name: name,
+  })
+
+  if (error) {
+    throw error
+  }
+  if (typeof data !== "string") {
+    throw new Error("Die Ausgabenliste wurde erstellt, aber ihre ID fehlt.")
+  }
+
+  return data
+}

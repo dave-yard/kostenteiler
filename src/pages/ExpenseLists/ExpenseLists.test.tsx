@@ -1,12 +1,12 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
+import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import type { ExpenseList, Group } from "@/types/group"
 import { ExpenseLists } from "./ExpenseLists"
 
-vi.mock("@/components/contexts/GroupOverviewContext", () => ({
-  useGroupOverview: vi.fn(),
+vi.mock("@/components/contexts/ExpenseListContext", () => ({
+  useExpenseLists: vi.fn(),
 }))
 
 const group: Group = {
@@ -15,6 +15,7 @@ const group: Group = {
   sortNr: 0,
   memberCount: 2,
   currentUserIsAdmin: true,
+  archivedAt: null,
 }
 
 const openList: ExpenseList = {
@@ -37,18 +38,21 @@ const paidList: ExpenseList = {
 }
 
 const getExpenseLists = vi.fn()
+const createExpenseList = vi.fn()
 
 afterEach(() => {
   cleanup()
-  vi.clearAllMocks()
+  getExpenseLists.mockReset()
+  createExpenseList.mockReset()
 })
 
-function renderExpenseLists() {
-  vi.mocked(useGroupOverview).mockReturnValue({
+function renderExpenseLists(selectedGroup = group) {
+  vi.mocked(useExpenseLists).mockReturnValue({
     getExpenseLists,
+    createExpenseList,
   } as never)
 
-  return render(<ExpenseLists group={group} onBack={vi.fn()} />)
+  return render(<ExpenseLists group={selectedGroup} onBack={vi.fn()} />)
 }
 
 describe("ExpenseLists", () => {
@@ -95,5 +99,113 @@ describe("ExpenseLists", () => {
     expect(
       await screen.findByRole("heading", { name: "Wocheneinkauf" })
     ).toBeTruthy()
+  })
+
+  it("allows admins to create an expense list and shows it after reloading", async () => {
+    const user = userEvent.setup()
+    getExpenseLists.mockResolvedValueOnce([]).mockResolvedValueOnce([openList])
+    createExpenseList.mockResolvedValue("list-open")
+    renderExpenseLists()
+
+    await user.click(
+      screen.getByRole("button", { name: "Neue Ausgabenliste hinzufügen" })
+    )
+    await user.type(
+      screen.getByRole("textbox", { name: "Name der neuen Ausgabenliste" }),
+      "  Wocheneinkauf  "
+    )
+    await user.click(screen.getByRole("button", { name: "Erstellen" }))
+
+    expect(createExpenseList).toHaveBeenCalledWith("group-1", "Wocheneinkauf")
+    expect(
+      await screen.findByRole("heading", { name: "Wocheneinkauf" })
+    ).toBeTruthy()
+    expect((await screen.findByRole("status")).textContent).toContain(
+      "Die Ausgabenliste wurde erstellt."
+    )
+  })
+
+  it("does not offer list creation to non-admin members", async () => {
+    const memberGroup = { ...group, currentUserIsAdmin: false }
+    getExpenseLists.mockResolvedValue([])
+    renderExpenseLists(memberGroup)
+
+    expect(await screen.findByText("Keine offenen Listen")).toBeTruthy()
+    expect(
+      screen.queryByRole("textbox", {
+        name: "Name der neuen Ausgabenliste",
+      })
+    ).toBeNull()
+  })
+
+  it("keeps archived lists readable and hides list creation", async () => {
+    getExpenseLists.mockResolvedValue([openList])
+    renderExpenseLists({
+      ...group,
+      archivedAt: "2026-10-26T12:00:00.000Z",
+    })
+
+    expect(
+      await screen.findByText(/archiviert und kann nur noch gelesen/i)
+    ).toBeTruthy()
+    expect(
+      await screen.findByRole("heading", { name: "Wocheneinkauf" })
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole("button", {
+        name: "Neue Ausgabenliste hinzufügen",
+      })
+    ).toBeNull()
+  })
+
+  it("shows database errors when list creation fails", async () => {
+    const user = userEvent.setup()
+    getExpenseLists.mockResolvedValue([])
+    createExpenseList.mockRejectedValue({
+      message: "Nur Gruppen-Admins dürfen Listen erstellen.",
+    })
+    renderExpenseLists()
+
+    await user.click(
+      screen.getByRole("button", { name: "Neue Ausgabenliste hinzufügen" })
+    )
+    await user.type(
+      screen.getByRole("textbox", { name: "Name der neuen Ausgabenliste" }),
+      "Urlaub"
+    )
+    await user.click(screen.getByRole("button", { name: "Erstellen" }))
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Nur Gruppen-Admins dürfen Listen erstellen."
+    )
+  })
+
+  it("shows the filter, open-list title, and add button in one row", () => {
+    getExpenseLists.mockResolvedValue([])
+    renderExpenseLists()
+
+    expect(
+      screen.getByRole("checkbox", { name: "Erledigte anzeigen" })
+    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Offene Listen" })).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: "Neue Ausgabenliste hinzufügen" })
+    ).toBeTruthy()
+  })
+
+  it("opens list creation in a dialog without inserting a form into the list", async () => {
+    const user = userEvent.setup()
+    getExpenseLists.mockResolvedValue([openList])
+    renderExpenseLists()
+
+    await screen.findByRole("heading", { name: "Wocheneinkauf" })
+    await user.click(
+      screen.getByRole("button", { name: "Neue Ausgabenliste hinzufügen" })
+    )
+
+    expect(
+      screen.getByRole("dialog", { name: "Neue Ausgabenliste" })
+    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Wocheneinkauf" })).toBeTruthy()
   })
 })

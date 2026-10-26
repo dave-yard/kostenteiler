@@ -89,6 +89,11 @@ function SortableGroupCard({
                   Admin
                 </span>
               )}
+              {group.archivedAt && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-[#f1f1ee] px-2 py-0.5 text-xs font-medium text-[#656960]">
+                  Archiviert · nur lesbar
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -118,7 +123,7 @@ function SortableGroupCard({
           Gruppe öffnen
           <ArrowRight aria-hidden="true" className="size-4" />
         </Button>
-        {group.currentUserIsAdmin && (
+        {group.currentUserIsAdmin && !group.archivedAt && (
           <Button
             className="h-10 justify-start gap-2 rounded-xl text-[#405b47]"
             onClick={onManage}
@@ -206,6 +211,7 @@ export function GroupOverview() {
           sortNr: groups.length,
           memberCount: 1,
           currentUserIsAdmin: true,
+          archivedAt: null,
         }
       )
       setAdminGroupId(groupId)
