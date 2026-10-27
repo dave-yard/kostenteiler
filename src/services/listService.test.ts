@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { getSupabaseClient } from "@/lib/supabase"
-import { createExpenseList, getExpenseLists } from "./listService"
+import {
+  completeExpenseList,
+  createExpenseList,
+  getExpenseLists,
+  markExpenseListPaid,
+} from "./listService"
 
 vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: vi.fn(),
@@ -62,6 +67,27 @@ describe("listService", () => {
     await expect(createExpenseList("group-1", "Wocheneinkauf")).rejects.toThrow(
       "Creation denied"
     )
+  })
+
+  it("completes and marks lists as paid through authorized functions", async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await completeExpenseList("list-1")
+    await markExpenseListPaid("list-1")
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "complete_expense_list", {
+      p_list_id: "list-1",
+    })
+    expect(rpc).toHaveBeenNthCalledWith(2, "mark_expense_list_paid", {
+      p_list_id: "list-1",
+    })
+  })
+
+  it("surfaces errors from the status functions", async () => {
+    rpc.mockResolvedValue({ data: null, error: new Error("Denied") })
+
+    await expect(completeExpenseList("list-1")).rejects.toThrow("Denied")
+    await expect(markExpenseListPaid("list-1")).rejects.toThrow("Denied")
   })
 
   it("loads only open lists by default and maps database fields", async () => {

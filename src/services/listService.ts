@@ -70,6 +70,26 @@ export async function getExpenseLists(
   })
 }
 
+export async function completeExpenseList(listId: string): Promise<void> {
+  const { error } = await getSupabaseClient().rpc("complete_expense_list", {
+    p_list_id: listId,
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function markExpenseListPaid(listId: string): Promise<void> {
+  const { error } = await getSupabaseClient().rpc("mark_expense_list_paid", {
+    p_list_id: listId,
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
 export async function createExpenseList(
   groupId: string,
   name: string

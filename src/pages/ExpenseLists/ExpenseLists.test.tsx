@@ -39,17 +39,28 @@ const paidList: ExpenseList = {
 
 const getExpenseLists = vi.fn()
 const createExpenseList = vi.fn()
+const completeExpenseList = vi.fn()
+const markExpenseListPaid = vi.fn()
+const canCloseExpenseLists = vi.fn()
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   getExpenseLists.mockReset()
   createExpenseList.mockReset()
+  completeExpenseList.mockReset()
+  markExpenseListPaid.mockReset()
+  canCloseExpenseLists.mockReset()
 })
 
 function renderExpenseLists(selectedGroup = group) {
+  canCloseExpenseLists.mockResolvedValue(selectedGroup.currentUserIsAdmin)
   vi.mocked(useExpenseLists).mockReturnValue({
     getExpenseLists,
     createExpenseList,
+    completeExpenseList,
+    markExpenseListPaid,
+    canCloseExpenseLists,
   } as never)
 
   return render(<ExpenseLists group={selectedGroup} onBack={vi.fn()} />)
@@ -125,6 +136,80 @@ describe("ExpenseLists", () => {
       "Die Ausgabenliste wurde erstellt."
     )
     expect(successToast.className).toContain("fixed")
+  })
+
+  it("completes an open list after confirmation and reloads", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    getExpenseLists.mockResolvedValueOnce([openList]).mockResolvedValueOnce([])
+    completeExpenseList.mockResolvedValue(undefined)
+    renderExpenseLists()
+
+    await user.click(await screen.findByRole("button", { name: "Abschließen" }))
+
+    expect(completeExpenseList).toHaveBeenCalledWith("list-open")
+    expect((await screen.findByRole("status")).textContent).toContain(
+      "Die Ausgabenliste wurde abgeschlossen."
+    )
+    expect(getExpenseLists).toHaveBeenCalledTimes(2)
+  })
+
+  it("does nothing when the confirmation is declined", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, "confirm").mockReturnValue(false)
+    getExpenseLists.mockResolvedValue([openList])
+    renderExpenseLists()
+
+    await user.click(await screen.findByRole("button", { name: "Abschließen" }))
+
+    expect(completeExpenseList).not.toHaveBeenCalled()
+  })
+
+  it("marks a completed list as paid and offers no action for paid lists", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    const completedList: ExpenseList = {
+      ...openList,
+      id: "list-completed",
+      name: "Erledigt",
+      status: "completed",
+      completedAt: "2026-10-26T11:00:00.000Z",
+    }
+    getExpenseLists.mockResolvedValue([completedList, paidList])
+    markExpenseListPaid.mockResolvedValue(undefined)
+    renderExpenseLists()
+
+    const buttons = await screen.findAllByRole("button", {
+      name: "Als bezahlt markieren",
+    })
+    expect(buttons).toHaveLength(1)
+    await user.click(buttons[0])
+
+    expect(markExpenseListPaid).toHaveBeenCalledWith("list-completed")
+  })
+
+  it("shows status errors as an error toast", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    getExpenseLists.mockResolvedValue([openList])
+    completeExpenseList.mockRejectedValue({
+      message: "You are not allowed to complete this expense list.",
+    })
+    renderExpenseLists()
+
+    await user.click(await screen.findByRole("button", { name: "Abschließen" }))
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "You are not allowed to complete this expense list."
+    )
+  })
+
+  it("hides status actions without the close permission", async () => {
+    getExpenseLists.mockResolvedValue([openList])
+    renderExpenseLists({ ...group, currentUserIsAdmin: false })
+
+    await screen.findByRole("heading", { name: "Wocheneinkauf" })
+    expect(screen.queryByRole("button", { name: "Abschließen" })).toBeNull()
   })
 
   it("does not offer list creation to non-admin members", async () => {

@@ -35,7 +35,19 @@ function getErrorMessage(error: unknown) {
   return "Die Aktion konnte nicht ausgeführt werden."
 }
 
-function ExpenseListCard({ list }: { list: ExpenseList }) {
+function ExpenseListCard({
+  list,
+  canClose,
+  isBusy,
+  onComplete,
+  onMarkPaid,
+}: {
+  list: ExpenseList
+  canClose: boolean
+  isBusy: boolean
+  onComplete: () => void
+  onMarkPaid: () => void
+}) {
   return (
     <article className="rounded-2xl border border-[#e8ebe5] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
@@ -64,6 +76,26 @@ function ExpenseListCard({ list }: { list: ExpenseList }) {
           </span>
         </div>
       </div>
+      {canClose && list.status !== "isPaid" && (
+        <div className="mt-3 flex justify-end">
+          <Button
+            className="rounded-xl"
+            disabled={isBusy}
+            onClick={list.status === "open" ? onComplete : onMarkPaid}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {isBusy ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
+            ) : null}
+            {list.status === "open" ? "Abschließen" : "Als bezahlt markieren"}
+          </Button>
+        </div>
+      )}
     </article>
   )
 }
@@ -75,7 +107,13 @@ export function ExpenseLists({
   group: Group
   onBack: () => void
 }) {
-  const { getExpenseLists, createExpenseList } = useExpenseLists()
+  const {
+    getExpenseLists,
+    createExpenseList,
+    completeExpenseList,
+    markExpenseListPaid,
+    canCloseExpenseLists,
+  } = useExpenseLists()
   const [includeCompleted, setIncludeCompleted] = useState(false)
   const [reloadNumber, setReloadNumber] = useState(0)
   const [result, setResult] = useState<ExpenseListsResult | null>(null)
@@ -84,7 +122,30 @@ export function ExpenseLists({
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [busyListId, setBusyListId] = useState<string | null>(null)
+  const [canClose, setCanClose] = useState(false)
   const requestKey = `${group.id}:${includeCompleted}:${reloadNumber}`
+
+  useEffect(() => {
+    let isCurrent = true
+
+    canCloseExpenseLists(group)
+      .then((allowed) => {
+        if (isCurrent) {
+          setCanClose(allowed && !group.archivedAt)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setCanClose(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [canCloseExpenseLists, group])
 
   useEffect(() => {
     let isCurrent = true
@@ -117,6 +178,40 @@ export function ExpenseLists({
   const isLoading = result?.requestKey !== requestKey
   const errorMessage = isLoading ? null : (result?.errorMessage ?? null)
   const lists = isLoading ? [] : (result?.lists ?? [])
+
+  async function handleStatusChange(list: ExpenseList) {
+    const isCompleting = list.status === "open"
+    const confirmed = window.confirm(
+      isCompleting
+        ? `Liste „${list.name}“ abschließen? Danach kann sie nicht mehr als offen geführt werden.`
+        : `Liste „${list.name}“ als bezahlt markieren?`
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setActionError(null)
+    setCreateSuccess(null)
+    setBusyListId(list.id)
+
+    try {
+      if (isCompleting) {
+        await completeExpenseList(list.id)
+      } else {
+        await markExpenseListPaid(list.id)
+      }
+      setCreateSuccess(
+        isCompleting
+          ? "Die Ausgabenliste wurde abgeschlossen."
+          : "Die Ausgabenliste wurde als bezahlt markiert."
+      )
+      setReloadNumber((current) => current + 1)
+    } catch (error) {
+      setActionError(getErrorMessage(error))
+    } finally {
+      setBusyListId(null)
+    }
+  }
 
   async function handleCreateExpenseList(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -299,6 +394,11 @@ export function ExpenseLists({
         </div>
       )}
       <Toast message={createSuccess} onClose={() => setCreateSuccess(null)} />
+      <Toast
+        message={actionError}
+        onClose={() => setActionError(null)}
+        variant="error"
+      />
 
       <div className="mt-4 min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-y-contain">
         {isLoading ? (
@@ -324,7 +424,16 @@ export function ExpenseLists({
             </Button>
           </div>
         ) : lists.length > 0 ? (
-          lists.map((list) => <ExpenseListCard key={list.id} list={list} />)
+          lists.map((list) => (
+            <ExpenseListCard
+              canClose={canClose}
+              isBusy={busyListId === list.id}
+              key={list.id}
+              list={list}
+              onComplete={() => void handleStatusChange(list)}
+              onMarkPaid={() => void handleStatusChange(list)}
+            />
+          ))
         ) : (
           <div className="rounded-2xl border border-dashed border-[#d7ded3] bg-[#fafbf9] px-5 py-10 text-center">
             <p className="font-medium">
