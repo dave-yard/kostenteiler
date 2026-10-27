@@ -16,8 +16,8 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import {
-  ArrowRight,
   Check,
+  ChevronRight,
   CircleDollarSign,
   ContactRound,
   GripVertical,
@@ -31,11 +31,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GroupAdmin } from "@/pages/GroupAdmin/GroupAdmin"
 import { GroupInvitation } from "@/pages/GroupInvitation/GroupInvitation"
+import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import { ExpenseLists } from "@/pages/ExpenseLists/ExpenseLists"
 import { PersonalContacts } from "@/pages/PersonalContacts/PersonalContacts"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import { useAuth } from "@/components/contexts/AuthContext"
-import type { Group } from "@/types/group"
+import type { ExpenseList, Group } from "@/types/group"
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error
@@ -78,8 +79,18 @@ function SortableGroupCard({
             <UsersRound aria-hidden="true" className="size-5" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold tracking-tight">
-              {group.name}
+            <h2 className="text-xl font-semibold tracking-tight">
+              <button
+                className="group inline-flex max-w-full items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+                onClick={onOpen}
+                type="button"
+              >
+                <span className="truncate">{group.name}</span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-5 shrink-0 text-[#72766f] group-hover:text-[#31563e]"
+                />
+              </button>
             </h2>
             <p className="mt-1 text-sm text-[#72766f]">
               {group.memberCount}{" "}
@@ -115,15 +126,8 @@ function SortableGroupCard({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-2 border-t border-[#eef0eb] pt-4 sm:flex-row sm:items-center">
-        <Button
-          className="h-10 justify-between rounded-xl bg-[#1f3b2d] px-4 text-white hover:bg-[#294b38] sm:min-w-40"
-          onClick={onOpen}
-        >
-          Gruppe öffnen
-          <ArrowRight aria-hidden="true" className="size-4" />
-        </Button>
-        {group.currentUserIsAdmin && !group.archivedAt && (
+      {group.currentUserIsAdmin && !group.archivedAt && (
+        <div className="mt-5 flex border-t border-[#eef0eb] pt-4">
           <Button
             className="h-10 justify-start gap-2 rounded-xl text-[#405b47]"
             onClick={onManage}
@@ -132,8 +136,8 @@ function SortableGroupCard({
             <Settings2 aria-hidden="true" className="size-4" />
             Admin-Einstellungen
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </article>
   )
 }
@@ -149,6 +153,7 @@ export function GroupOverview() {
     saveGroupOrder,
   } = useGroupOverview()
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
+  const [selectedList, setSelectedList] = useState<ExpenseList | null>(null)
   const [adminGroupId, setAdminGroupId] = useState<string | null>(null)
   const [invitationToken, setInvitationToken] = useState(() =>
     new URLSearchParams(window.location.search).get("invite")
@@ -306,11 +311,25 @@ export function GroupOverview() {
       return <PersonalContacts />
     }
 
+    if (selectedGroup && selectedList?.groupId === selectedGroup.id) {
+      return (
+        <ExpenseListDetail
+          group={selectedGroup}
+          list={selectedList}
+          onBack={() => setSelectedList(null)}
+        />
+      )
+    }
+
     if (selectedGroup) {
       return (
         <ExpenseLists
           group={selectedGroup}
-          onBack={() => setSelectedGroup(null)}
+          onBack={() => {
+            setSelectedList(null)
+            setSelectedGroup(null)
+          }}
+          onOpenList={setSelectedList}
         />
       )
     }
@@ -387,6 +406,7 @@ export function GroupOverview() {
                       }}
                       onOpen={() => {
                         setAdminGroupId(null)
+                        setSelectedList(null)
                         setSelectedGroup(group)
                       }}
                     />
@@ -538,7 +558,9 @@ export function GroupOverview() {
 
       <div
         className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-8 ${
-          (adminGroupId && selectedGroup) || isShowingContacts || invitationToken
+          (adminGroupId && selectedGroup) ||
+          isShowingContacts ||
+          invitationToken
             ? "overflow-y-auto overscroll-y-contain"
             : ""
         }`}

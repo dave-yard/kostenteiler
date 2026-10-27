@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react"
 import {
   ArrowLeft,
+  ChevronRight,
   CircleDollarSign,
   LoaderCircle,
   Plus,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ExpenseListStatusBadge } from "@/components/ExpenseListStatusBadge"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { Input } from "@/components/ui/input"
 import { Toast } from "@/components/ui/toast"
@@ -39,20 +41,34 @@ function ExpenseListCard({
   list,
   canClose,
   isBusy,
+  onOpen,
   onComplete,
   onMarkPaid,
 }: {
   list: ExpenseList
   canClose: boolean
   isBusy: boolean
+  onOpen: () => void
   onComplete: () => void
   onMarkPaid: () => void
 }) {
   return (
     <article className="rounded-2xl border border-[#e8ebe5] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="font-semibold">{list.name}</h2>
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold">
+            <button
+              className="group inline-flex max-w-full items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+              onClick={onOpen}
+              type="button"
+            >
+              {list.name}
+              <ChevronRight
+                aria-hidden="true"
+                className="size-5 shrink-0 text-[#72766f] group-hover:text-[#31563e]"
+              />
+            </button>
+          </h2>
           <p className="mt-1 text-xs text-[#72766f]">
             Erstellt am{" "}
             {new Intl.DateTimeFormat("de-DE", {
@@ -61,19 +77,7 @@ function ExpenseListCard({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-              list.status === "open" || list.status === "isPaid"
-                ? "bg-[#edf3e9] text-[#31563e]"
-                : "bg-[#f1f1ee] text-[#656960]"
-            }`}
-          >
-            {list.status === "open"
-              ? "Offen"
-              : list.status === "completed"
-                ? "Erledigt"
-                : "Bezahlt"}
-          </span>
+          <ExpenseListStatusBadge status={list.status} />
         </div>
       </div>
       {canClose && list.status !== "isPaid" && (
@@ -103,9 +107,11 @@ function ExpenseListCard({
 export function ExpenseLists({
   group,
   onBack,
+  onOpenList,
 }: {
   group: Group
   onBack: () => void
+  onOpenList: (list: ExpenseList) => void
 }) {
   const {
     getExpenseLists,
@@ -432,6 +438,7 @@ export function ExpenseLists({
               list={list}
               onComplete={() => void handleStatusChange(list)}
               onMarkPaid={() => void handleStatusChange(list)}
+              onOpen={() => onOpenList(list)}
             />
           ))
         ) : (

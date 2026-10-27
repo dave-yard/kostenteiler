@@ -63,7 +63,9 @@ function renderExpenseLists(selectedGroup = group) {
     canCloseExpenseLists,
   } as never)
 
-  return render(<ExpenseLists group={selectedGroup} onBack={vi.fn()} />)
+  return render(
+    <ExpenseLists group={selectedGroup} onBack={vi.fn()} onOpenList={vi.fn()} />
+  )
 }
 
 describe("ExpenseLists", () => {
