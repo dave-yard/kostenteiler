@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import type { ExpenseList, Group } from "@/types/group"
@@ -31,7 +32,7 @@ const openList: ExpenseList = {
 const paidList: ExpenseList = {
   ...openList,
   id: "list-paid",
-  name: "Bezahlt",
+  name: "Urlaub",
   status: "isPaid",
   completedAt: "2026-10-25T10:00:00.000Z",
   paidAt: "2026-10-26T10:00:00.000Z",
@@ -53,6 +54,20 @@ afterEach(() => {
   canCloseExpenseLists.mockReset()
 })
 
+function ExpenseListsHarness({ group: selectedGroup }: { group: Group }) {
+  const [includeCompleted, setIncludeCompleted] = useState(false)
+
+  return (
+    <ExpenseLists
+      group={selectedGroup}
+      includeCompleted={includeCompleted}
+      onBack={vi.fn()}
+      onIncludeCompletedChange={setIncludeCompleted}
+      onOpenList={vi.fn()}
+    />
+  )
+}
+
 function renderExpenseLists(selectedGroup = group) {
   canCloseExpenseLists.mockResolvedValue(selectedGroup.currentUserIsAdmin)
   vi.mocked(useExpenseLists).mockReturnValue({
@@ -63,9 +78,7 @@ function renderExpenseLists(selectedGroup = group) {
     canCloseExpenseLists,
   } as never)
 
-  return render(
-    <ExpenseLists group={selectedGroup} onBack={vi.fn()} onOpenList={vi.fn()} />
-  )
+  return render(<ExpenseListsHarness group={selectedGroup} />)
 }
 
 describe("ExpenseLists", () => {
@@ -91,7 +104,7 @@ describe("ExpenseLists", () => {
       screen.getByRole("checkbox", { name: "Erledigte anzeigen" })
     )
 
-    expect(await screen.findByRole("heading", { name: "Bezahlt" })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: "Urlaub" })).toBeTruthy()
     expect(screen.getByText("Bezahlt", { selector: "span" })).toBeTruthy()
     expect(getExpenseLists).toHaveBeenLastCalledWith("group-1", true)
   })

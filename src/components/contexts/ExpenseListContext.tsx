@@ -8,12 +8,32 @@ import {
 import { useAuth } from "@/components/contexts/AuthContext"
 import { getGroupMembers } from "@/services/groupService"
 import {
+  createExpenseItem as createExpenseItemRecord,
+  deleteExpenseItem as deleteExpenseItemRecord,
+  getExpenseItems as getExpenseItemsRecord,
+  updateExpenseItem as updateExpenseItemRecord,
+  type ExpenseItemInput,
+} from "@/services/itemService"
+import {
   completeExpenseList as completeExpenseListRecord,
   createExpenseList as createExpenseListRecord,
   getExpenseLists as getExpenseListsRecord,
   markExpenseListPaid as markExpenseListPaidRecord,
 } from "@/services/listService"
-import type { ExpenseList, Group } from "@/types/group"
+import type {
+  ExpenseItem,
+  ExpenseList,
+  Group,
+  GroupMember,
+} from "@/types/group"
+
+export interface ExpenseItemAccess {
+  members: GroupMember[]
+  currentMemberId: string | null
+  canCreate: boolean
+  canEdit: boolean
+  canDelete: boolean
+}
 
 interface ExpenseListContextValue {
   getExpenseLists: (
@@ -24,6 +44,14 @@ interface ExpenseListContextValue {
   completeExpenseList: (listId: string) => Promise<void>
   markExpenseListPaid: (listId: string) => Promise<void>
   canCloseExpenseLists: (group: Group) => Promise<boolean>
+  getExpenseItems: (listId: string) => Promise<ExpenseItem[]>
+  createExpenseItem: (
+    listId: string,
+    input: ExpenseItemInput
+  ) => Promise<string>
+  updateExpenseItem: (itemId: string, input: ExpenseItemInput) => Promise<void>
+  deleteExpenseItem: (itemId: string) => Promise<void>
+  getItemAccess: (group: Group) => Promise<ExpenseItemAccess>
 }
 
 const ExpenseListContext = createContext<ExpenseListContextValue | undefined>(
@@ -69,6 +97,45 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     [userId]
   )
 
+  const getExpenseItems = useCallback(
+    (listId: string) => getExpenseItemsRecord(listId),
+    []
+  )
+
+  const createExpenseItem = useCallback(
+    (listId: string, input: ExpenseItemInput) =>
+      createExpenseItemRecord(listId, input),
+    []
+  )
+
+  const updateExpenseItem = useCallback(
+    (itemId: string, input: ExpenseItemInput) =>
+      updateExpenseItemRecord(itemId, input),
+    []
+  )
+
+  const deleteExpenseItem = useCallback(
+    (itemId: string) => deleteExpenseItemRecord(itemId),
+    []
+  )
+
+  const getItemAccess = useCallback(
+    async (group: Group): Promise<ExpenseItemAccess> => {
+      const members = await getGroupMembers(group.id)
+      const me = members.find((member) => member.userId === userId)
+      const isAdmin = group.currentUserIsAdmin
+
+      return {
+        members,
+        currentMemberId: me?.id ?? null,
+        canCreate: isAdmin || Boolean(me?.canCreateItems),
+        canEdit: isAdmin || Boolean(me?.canEditItems),
+        canDelete: isAdmin || Boolean(me?.canDeleteItems),
+      }
+    },
+    [userId]
+  )
+
   const value = useMemo(
     () => ({
       getExpenseLists,
@@ -76,6 +143,11 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       completeExpenseList,
       markExpenseListPaid,
       canCloseExpenseLists,
+      getExpenseItems,
+      createExpenseItem,
+      updateExpenseItem,
+      deleteExpenseItem,
+      getItemAccess,
     }),
     [
       getExpenseLists,
@@ -83,6 +155,11 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       completeExpenseList,
       markExpenseListPaid,
       canCloseExpenseLists,
+      getExpenseItems,
+      createExpenseItem,
+      updateExpenseItem,
+      deleteExpenseItem,
+      getItemAccess,
     ]
   )
 

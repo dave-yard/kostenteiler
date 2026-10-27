@@ -13,28 +13,13 @@ import { ExpenseListStatusBadge } from "@/components/ExpenseListStatusBadge"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { Input } from "@/components/ui/input"
 import { Toast } from "@/components/ui/toast"
+import { getActionErrorMessage } from "@/lib/errorMessage"
 import type { ExpenseList, Group } from "@/types/group"
 
 interface ExpenseListsResult {
   requestKey: string
   lists: ExpenseList[] | null
   errorMessage: string | null
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message
-  }
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message
-  }
-
-  return "Die Aktion konnte nicht ausgeführt werden."
 }
 
 function ExpenseListCard({
@@ -58,11 +43,11 @@ function ExpenseListCard({
         <div className="min-w-0">
           <h2 className="text-xl font-semibold">
             <button
-              className="group inline-flex max-w-full items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+              className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
               onClick={onOpen}
               type="button"
             >
-              {list.name}
+              <span className="truncate">{list.name}</span>
               <ChevronRight
                 aria-hidden="true"
                 className="size-5 shrink-0 text-[#72766f] group-hover:text-[#31563e]"
@@ -106,10 +91,14 @@ function ExpenseListCard({
 
 export function ExpenseLists({
   group,
+  includeCompleted,
+  onIncludeCompletedChange: setIncludeCompleted,
   onBack,
   onOpenList,
 }: {
   group: Group
+  includeCompleted: boolean
+  onIncludeCompletedChange: (value: boolean) => void
   onBack: () => void
   onOpenList: (list: ExpenseList) => void
 }) {
@@ -120,7 +109,6 @@ export function ExpenseLists({
     markExpenseListPaid,
     canCloseExpenseLists,
   } = useExpenseLists()
-  const [includeCompleted, setIncludeCompleted] = useState(false)
   const [reloadNumber, setReloadNumber] = useState(0)
   const [result, setResult] = useState<ExpenseListsResult | null>(null)
   const [listName, setListName] = useState("")
@@ -171,7 +159,7 @@ export function ExpenseLists({
           setResult({
             requestKey,
             lists: null,
-            errorMessage: getErrorMessage(error),
+            errorMessage: getActionErrorMessage(error),
           })
         }
       })
@@ -213,7 +201,7 @@ export function ExpenseLists({
       )
       setReloadNumber((current) => current + 1)
     } catch (error) {
-      setActionError(getErrorMessage(error))
+      setActionError(getActionErrorMessage(error))
     } finally {
       setBusyListId(null)
     }
@@ -233,7 +221,7 @@ export function ExpenseLists({
       setIncludeCompleted(false)
       setReloadNumber((current) => current + 1)
     } catch (error) {
-      setCreateError(getErrorMessage(error))
+      setCreateError(getActionErrorMessage(error))
     } finally {
       setIsCreating(false)
     }

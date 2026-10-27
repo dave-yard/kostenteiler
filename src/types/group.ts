@@ -17,6 +17,15 @@ export interface ExpenseList {
   paidAt: string | null
 }
 
+export interface ExpenseItem {
+  id: string
+  listId: string
+  name: string
+  amountCents: number
+  paidByMemberId: string
+  createdAt: string
+}
+
 export interface GroupMemberPermissions {
   canCreateItems: boolean
   canEditItems: boolean

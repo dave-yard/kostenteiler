@@ -81,7 +81,7 @@ function SortableGroupCard({
           <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">
               <button
-                className="group inline-flex max-w-full items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+                className="group inline-flex min-w-0 max-w-full items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
                 onClick={onOpen}
                 type="button"
               >
@@ -154,6 +154,7 @@ export function GroupOverview() {
   } = useGroupOverview()
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [selectedList, setSelectedList] = useState<ExpenseList | null>(null)
+  const [includeCompleted, setIncludeCompleted] = useState(false)
   const [adminGroupId, setAdminGroupId] = useState<string | null>(null)
   const [invitationToken, setInvitationToken] = useState(() =>
     new URLSearchParams(window.location.search).get("invite")
@@ -325,6 +326,8 @@ export function GroupOverview() {
       return (
         <ExpenseLists
           group={selectedGroup}
+          includeCompleted={includeCompleted}
+          onIncludeCompletedChange={setIncludeCompleted}
           onBack={() => {
             setSelectedList(null)
             setSelectedGroup(null)
@@ -407,6 +410,7 @@ export function GroupOverview() {
                       onOpen={() => {
                         setAdminGroupId(null)
                         setSelectedList(null)
+                        setIncludeCompleted(false)
                         setSelectedGroup(group)
                       }}
                     />

@@ -16,44 +16,56 @@ vi.mock("@/components/contexts/GroupOverviewContext", () => ({
 
 afterEach(cleanup)
 
+function setupMocks() {
+  vi.mocked(useAuth).mockReturnValue({
+    session: { user: { email: "a@b.de" } },
+    signOut: vi.fn(),
+  } as never)
+  vi.mocked(useGroupOverview).mockReturnValue({
+    groups: [
+      {
+        id: "g1",
+        name: "WG Berlin",
+        sortNr: 0,
+        memberCount: 2,
+        currentUserIsAdmin: false,
+        archivedAt: null,
+      },
+    ],
+    isLoading: false,
+    loadError: null,
+    refreshGroups: vi.fn(),
+    createGroup: vi.fn(),
+    saveGroupOrder: vi.fn(),
+  } as never)
+  vi.mocked(useExpenseLists).mockReturnValue({
+    getExpenseLists: vi.fn().mockResolvedValue([
+      {
+        id: "l1",
+        groupId: "g1",
+        name: "Urlaub",
+        status: "open",
+        createdAt: "2026-10-26T10:00:00.000Z",
+        completedAt: null,
+        paidAt: null,
+      },
+    ]),
+    canCloseExpenseLists: vi.fn().mockResolvedValue(false),
+    getExpenseItems: vi.fn().mockResolvedValue([]),
+    getItemAccess: vi.fn().mockResolvedValue({
+      members: [],
+      currentMemberId: null,
+      canCreate: false,
+      canEdit: false,
+      canDelete: false,
+    }),
+  } as never)
+}
+
 describe("GroupOverview Navigation", () => {
   it("öffnet Gruppe, dann Liste und geht zurück", async () => {
     const user = userEvent.setup()
-    vi.mocked(useAuth).mockReturnValue({
-      session: { user: { email: "a@b.de" } },
-      signOut: vi.fn(),
-    } as never)
-    vi.mocked(useGroupOverview).mockReturnValue({
-      groups: [
-        {
-          id: "g1",
-          name: "WG Berlin",
-          sortNr: 0,
-          memberCount: 2,
-          currentUserIsAdmin: false,
-          archivedAt: null,
-        },
-      ],
-      isLoading: false,
-      loadError: null,
-      refreshGroups: vi.fn(),
-      createGroup: vi.fn(),
-      saveGroupOrder: vi.fn(),
-    } as never)
-    vi.mocked(useExpenseLists).mockReturnValue({
-      getExpenseLists: vi.fn().mockResolvedValue([
-        {
-          id: "l1",
-          groupId: "g1",
-          name: "Urlaub",
-          status: "open",
-          createdAt: "2026-10-26T10:00:00.000Z",
-          completedAt: null,
-          paidAt: null,
-        },
-      ]),
-      canCloseExpenseLists: vi.fn().mockResolvedValue(false),
-    } as never)
+    setupMocks()
 
     render(<GroupOverview />)
 
@@ -66,5 +78,26 @@ describe("GroupOverview Navigation", () => {
       screen.getByRole("button", { name: /Zu den Ausgabenlisten/ })
     )
     expect(await screen.findByRole("button", { name: /Urlaub/ })).toBeTruthy()
+  })
+
+  it("behält den Filter „Erledigte anzeigen“ nach der Rückkehr aus der Detailansicht", async () => {
+    const user = userEvent.setup()
+    setupMocks()
+
+    render(<GroupOverview />)
+
+    await user.click(screen.getByRole("button", { name: "WG Berlin" }))
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Erledigte anzeigen" })
+    )
+    await user.click(await screen.findByRole("button", { name: /Urlaub/ }))
+    await user.click(
+      screen.getByRole("button", { name: /Zu den Ausgabenlisten/ })
+    )
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Erledigte anzeigen",
+    })
+    expect(checkbox.getAttribute("aria-checked")).toBe("true")
   })
 })
