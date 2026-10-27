@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react"
 import { ContactRound, Mail, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Toast } from "@/components/ui/toast"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import type { PersonalContact } from "@/types/group"
 
@@ -21,14 +22,17 @@ export function PersonalContacts() {
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [hasLoadError, setHasLoadError] = useState(false)
 
   const loadContacts = useCallback(async () => {
     setErrorMessage(null)
     try {
       setContacts(await getMyContacts())
+      setHasLoadError(false)
       return true
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
+      setHasLoadError(true)
       return false
     } finally {
       setIsLoading(false)
@@ -47,6 +51,7 @@ export function PersonalContacts() {
       .catch((error: unknown) => {
         if (isCurrent) {
           setErrorMessage(getErrorMessage(error))
+          setHasLoadError(true)
         }
       })
       .finally(() => {
@@ -168,19 +173,12 @@ export function PersonalContacts() {
         </Button>
       </form>
 
-      {errorMessage && (
-        <p
-          className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-          role="alert"
-        >
-          {errorMessage}
-        </p>
-      )}
-      {successMessage && (
-        <p className="mt-4 text-sm text-[#31563e]" role="status">
-          {successMessage}
-        </p>
-      )}
+      <Toast
+        message={errorMessage}
+        onClose={() => setErrorMessage(null)}
+        variant="error"
+      />
+      <Toast message={successMessage} onClose={() => setSuccessMessage(null)} />
 
       {isLoading ? (
         <p className="mt-5 text-sm text-[#72766f]" role="status">
@@ -216,7 +214,7 @@ export function PersonalContacts() {
           ))}
         </ul>
       ) : (
-        !errorMessage && (
+        !hasLoadError && (
           <p className="mt-5 text-sm text-[#72766f]">
             Du hast noch keine Kontakte gespeichert.
           </p>

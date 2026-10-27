@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { Input } from "@/components/ui/input"
+import { Toast } from "@/components/ui/toast"
 import type { ExpenseList, Group } from "@/types/group"
 
 interface ExpenseListsResult {
@@ -138,65 +139,69 @@ export function ExpenseLists({
   }
 
   return (
-    <section className="rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
-      <Button
-        className="mb-8 h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
-        onClick={onBack}
-        type="button"
-        variant="ghost"
-      >
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        Zur Gruppenübersicht
-      </Button>
-
-      <div className="flex items-center gap-3">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
-          <CircleDollarSign aria-hidden="true" className="size-6" />
-        </div>
-        <div>
-          <p className="text-sm text-[#72766f]">Ausgabenlisten</p>
-          <h1 className="text-2xl font-semibold tracking-[-0.04em]">
-            {group.name}
-          </h1>
-        </div>
-      </div>
-
-      {group.archivedAt && (
-        <p
-          className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-          role="status"
+    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
+      <div className="shrink-0">
+        <Button
+          className="mb-8 h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+          onClick={onBack}
+          type="button"
+          variant="ghost"
         >
-          Diese Gruppe ist archiviert und kann nur noch gelesen werden. Sie wird
-          nach sechs Monaten endgültig gelöscht.
-        </p>
-      )}
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          Zur Gruppenübersicht
+        </Button>
 
-      <div className="mt-7 flex items-center gap-3 border-b border-[#eef0eb] pb-4">
-        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-[#555b53]">
-          <Checkbox
-            checked={includeCompleted}
-            onCheckedChange={(checked) => setIncludeCompleted(checked === true)}
-          />
-          Erledigte anzeigen
-        </label>
-        <h2 className="min-w-0 flex-1 font-semibold">
-          {includeCompleted ? "Alle Listen" : "Offene Listen"}
-        </h2>
-        {group.currentUserIsAdmin && !group.archivedAt && (
-          <Button
-            aria-label="Neue Ausgabenliste hinzufügen"
-            className="size-9 shrink-0 rounded-xl bg-[#1f3b2d] p-0 text-white hover:bg-[#294b38]"
-            disabled={isCreating}
-            onClick={() => {
-              setIsCreateModalOpen(true)
-              setCreateError(null)
-              setCreateSuccess(null)
-            }}
-            type="button"
+        <div className="flex items-center gap-3">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+            <CircleDollarSign aria-hidden="true" className="size-6" />
+          </div>
+          <div>
+            <p className="text-sm text-[#72766f]">Ausgabenlisten</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.04em]">
+              {group.name}
+            </h1>
+          </div>
+        </div>
+
+        {group.archivedAt && (
+          <p
+            className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
           >
-            <Plus aria-hidden="true" className="size-4" />
-          </Button>
+            Diese Gruppe ist archiviert und kann nur noch gelesen werden. Sie
+            wird nach sechs Monaten endgültig gelöscht.
+          </p>
         )}
+
+        <div className="mt-7 flex items-center gap-3 border-b border-[#eef0eb] pb-4">
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-[#555b53]">
+            <Checkbox
+              checked={includeCompleted}
+              onCheckedChange={(checked) =>
+                setIncludeCompleted(checked === true)
+              }
+            />
+            Erledigte anzeigen
+          </label>
+          <h2 className="min-w-0 flex-1 font-semibold">
+            {includeCompleted ? "Alle Listen" : "Offene Listen"}
+          </h2>
+          {group.currentUserIsAdmin && !group.archivedAt && (
+            <Button
+              aria-label="Neue Ausgabenliste hinzufügen"
+              className="size-9 shrink-0 rounded-xl bg-[#1f3b2d] p-0 text-white hover:bg-[#294b38]"
+              disabled={isCreating}
+              onClick={() => {
+                setIsCreateModalOpen(true)
+                setCreateError(null)
+                setCreateSuccess(null)
+              }}
+              type="button"
+            >
+              <Plus aria-hidden="true" className="size-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {group.currentUserIsAdmin && !group.archivedAt && isCreateModalOpen && (
@@ -293,16 +298,9 @@ export function ExpenseLists({
           </div>
         </div>
       )}
-      {createSuccess && (
-        <p
-          className="mt-3 rounded-xl border border-[#d9e8d6] bg-[#f0f7ed] px-4 py-3 text-sm text-[#355b3b]"
-          role="status"
-        >
-          {createSuccess}
-        </p>
-      )}
+      <Toast message={createSuccess} onClose={() => setCreateSuccess(null)} />
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-y-contain">
         {isLoading ? (
           <p
             className="flex items-center justify-center gap-2 py-10 text-sm text-[#72766f]"

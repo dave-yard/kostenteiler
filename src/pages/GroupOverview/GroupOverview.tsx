@@ -538,7 +538,7 @@ export function GroupOverview() {
 
       <div
         className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-8 ${
-          selectedGroup || isShowingContacts || invitationToken
+          (adminGroupId && selectedGroup) || isShowingContacts || invitationToken
             ? "overflow-y-auto overscroll-y-contain"
             : ""
         }`}

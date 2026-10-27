@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Toast } from "@/components/ui/toast"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import type {
   Group,
@@ -376,18 +377,12 @@ export function GroupAdmin({
         </div>
       </div>
 
-      {(errorMessage || successMessage) && (
-        <div
-          className={`mb-5 rounded-2xl border px-4 py-3 text-sm leading-6 ${
-            errorMessage
-              ? "border-red-200 bg-red-50 text-red-800"
-              : "border-[#d9e8d6] bg-[#f0f7ed] text-[#355b3b]"
-          }`}
-          role={errorMessage ? "alert" : "status"}
-        >
-          {errorMessage ?? successMessage}
-        </div>
-      )}
+      <Toast
+        message={errorMessage}
+        onClose={() => setErrorMessage(null)}
+        variant="error"
+      />
+      <Toast message={successMessage} onClose={() => setSuccessMessage(null)} />
       {loadError && (
         <p
           className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"

@@ -120,9 +120,11 @@ describe("ExpenseLists", () => {
     expect(
       await screen.findByRole("heading", { name: "Wocheneinkauf" })
     ).toBeTruthy()
-    expect((await screen.findByRole("status")).textContent).toContain(
+    const successToast = await screen.findByRole("status")
+    expect(successToast.textContent).toContain(
       "Die Ausgabenliste wurde erstellt."
     )
+    expect(successToast.className).toContain("fixed")
   })
 
   it("does not offer list creation to non-admin members", async () => {
