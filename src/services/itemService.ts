@@ -122,6 +122,31 @@ export async function getExpenseItemSplitRule(
   return parseExpenseSplitRule(data)
 }
 
+export async function getExpenseListMemberNames(
+  listId: string
+): Promise<Record<string, string>> {
+  const { data, error } = await getSupabaseClient().rpc(
+    "get_list_member_names",
+    { p_list_id: listId }
+  )
+
+  if (error) {
+    throw error
+  }
+  if (!Array.isArray(data) || !data.every(isRecord)) {
+    throw new Error(
+      "Supabase hat Mitgliedsnamen in einem unerwarteten Format geliefert."
+    )
+  }
+
+  return Object.fromEntries(
+    data.map((row) => [
+      readString(row, "member_id"),
+      readString(row, "display_name"),
+    ])
+  )
+}
+
 export async function getExpenseListSplitRules(
   listId: string
 ): Promise<Record<string, ExpenseSplitRule>> {

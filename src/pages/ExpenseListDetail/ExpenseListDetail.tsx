@@ -150,7 +150,7 @@ export function ExpenseListDetail({
 
     Promise.all([
       getExpenseItems(list.id),
-      getItemAccess(group),
+      getItemAccess(group, list),
       // Ein Fehler hier soll die Positionsliste nicht blockieren.
       getExpenseListSplitRules(list.id).then(
         (rules) => ({ rules, rulesErrorMessage: null }),
@@ -194,7 +194,7 @@ export function ExpenseListDetail({
     getExpenseListSplitRules,
     getItemAccess,
     group,
-    list.id,
+    list,
     reloadNumber,
   ])
 

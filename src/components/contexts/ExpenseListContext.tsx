@@ -12,6 +12,7 @@ import {
   deleteExpenseItem as deleteExpenseItemRecord,
   getExpenseItemSplitRule as getExpenseItemSplitRuleRecord,
   getExpenseItems as getExpenseItemsRecord,
+  getExpenseListMemberNames as getExpenseListMemberNamesRecord,
   getExpenseListSplitRules as getExpenseListSplitRulesRecord,
   updateExpenseItem as updateExpenseItemRecord,
   type ExpenseItemInput,
@@ -61,7 +62,10 @@ interface ExpenseListContextValue {
   getExpenseListSplitRules: (
     listId: string
   ) => Promise<Record<string, ExpenseSplitRule>>
-  getItemAccess: (group: Group) => Promise<ExpenseItemAccess>
+  getItemAccess: (
+    group: Group,
+    list?: ExpenseList
+  ) => Promise<ExpenseItemAccess>
 }
 
 const ExpenseListContext = createContext<ExpenseListContextValue | undefined>(
@@ -71,6 +75,11 @@ const ExpenseListContext = createContext<ExpenseListContextValue | undefined>(
 export function ExpenseListProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const userId = session?.user.id
+  const metadataName: unknown = session?.user.user_metadata?.display_name
+  const ownName =
+    typeof metadataName === "string" && metadataName.trim()
+      ? metadataName.trim()
+      : null
 
   const getExpenseLists = useCallback(
     (groupId: string, includeCompleted: boolean) =>
@@ -140,11 +149,32 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
   )
 
   const getItemAccess = useCallback(
-    async (group: Group): Promise<ExpenseItemAccess> => {
-      const [members, groupDefaultSplitRule] = await Promise.all([
+    async (group: Group, list?: ExpenseList): Promise<ExpenseItemAccess> => {
+      // Abgeschlossene Listen zeigen die Namen zum Zeitpunkt des Abschlusses.
+      const frozenNames =
+        list && list.status !== "open"
+          ? getExpenseListMemberNamesRecord(list.id).catch(() => null)
+          : Promise.resolve(null)
+      const [loadedMembers, groupDefaultSplitRule, names] = await Promise.all([
         getGroupMembers(group.id),
         getGroupSplitDefault(group.id),
+        frozenNames,
       ])
+      const frozenMembers = names
+        ? loadedMembers.map((member) => ({
+            ...member,
+            displayName: names[member.id] ?? member.displayName,
+          }))
+        : loadedMembers
+      // Den eigenen Anzeigenamen sieht man in offenen Listen immer selbst.
+      const members =
+        ownName && !names && !group.archivedAt
+          ? frozenMembers.map((member) =>
+              member.userId === userId
+                ? { ...member, displayName: ownName }
+                : member
+            )
+          : frozenMembers
       const me = members.find((member) => member.userId === userId)
       const isAdmin = group.currentUserIsAdmin
 
@@ -159,7 +189,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
         groupDefaultSplitRule,
       }
     },
-    [userId]
+    [userId, ownName]
   )
 
   const value = useMemo(

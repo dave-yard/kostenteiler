@@ -139,10 +139,10 @@ export async function renamePersonalContact(
   contactId: string,
   displayName: string
 ): Promise<void> {
-  const { error } = await getSupabaseClient()
-    .from("personal_contacts")
-    .update({ display_name: displayName })
-    .eq("id", contactId)
+  const { error } = await getSupabaseClient().rpc("rename_personal_contact", {
+    p_contact_id: contactId,
+    p_display_name: displayName,
+  })
 
   if (error) {
     throw error
