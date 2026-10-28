@@ -47,13 +47,13 @@
 - **FR-2.4.1 (Gruppe archivieren):** Gruppen-Admins können eine Gruppe archivieren. Sie bleibt danach für alle bisherigen Mitglieder sechs Monate lesbar und ist nicht mehr bearbeitbar. Danach werden die Gruppe und alle zugehörigen Daten automatisch endgültig gelöscht.
 - **FR-2.5 (Suche und Betragsfilter):** Nutzer können Positionen nach Bezeichnung durchsuchen und nach Betrag filtern. Suchergebnisse für Unterpositionen zeigen zusätzlich den zugehörigen Bon/Positionsparent, damit die Herkunft der Position erkennbar bleibt.
 
-#### Umsetzungsumfang: Listen-Grundfunktion (MVP)
+#### Umsetzungsumfang: Funktionaler MVP
 
-Die Listenverwaltung wird in kleinen Ausbaustufen umgesetzt. Die erste Ausbaustufe umfasst ausschließlich einmalige Listen und schafft die Grundlage für spätere Positionen und Aufteilungen.
+Alle in den funktionalen Anforderungen FR-1 bis FR-5 beschriebenen Funktionen gehören zum MVP. Dazu zählen Listen, manuell erfasste Positionen, deren Aufteilung auf Gruppenmitglieder sowie Kassensturz und Abrechnung. Nicht zum MVP gehören ausschließlich das Hochladen, Scannen und automatische Erkennen von Bons. Ein Bon und seine Positionen können manuell erfasst und aufgeteilt werden.
 
 **Enthalten:**
 
-- Eine Liste gehört genau zu einer bestehenden Gruppe und hat einen Namen mit 1 bis 80 Zeichen.
+- Eine Liste gehört genau zu einer bestehenden Gruppe und hat einen Namen mit 1 bis 80 Zeichen. Sie kann einmalig oder wiederkehrend sein; wiederkehrende Listen unterstützen die in FR-2.3 definierten Intervalle.
 - Eine Liste hat genau einen Status: `open`, `completed` oder `isPaid`. Der erlaubte Ablauf ist ausschließlich `open` → `completed` → `isPaid`; neu erstellte Listen sind `open`.
 - „Bezahlt“ ist ein Listenstatus und kein separates Ja/Nein-Feld. Eine Liste darf erst als `isPaid` markiert werden, wenn sie den Status `completed` hat.
 - Gruppenmitglieder können die Listen ihrer Gruppe sehen.
@@ -61,17 +61,15 @@ Die Listenverwaltung wird in kleinen Ausbaustufen umgesetzt. Die erste Ausbaustu
 - Gruppen-Admins können neue Listen erstellen.
 - Gruppen-Admins sowie Mitglieder mit der Berechtigung `can_close_lists` können Listen als erledigt und anschließend als bezahlt markieren.
 - Erstellungs-, Abschluss- und Bezahlzeitpunkt sowie der jeweils handelnde Nutzer werden zur Liste gespeichert.
-- Laden, Speichern und Statusänderungen zeigen verständliche Lade-, Fehler-, Leer- und Erfolgszustände.
+- Einzelpositionen können in offenen Listen angelegt, bearbeitet und gelöscht werden. Dafür gelten die in FR-2.4 beschriebenen Rechte für das jeweilige Anlegen, Bearbeiten und Löschen.
+- Eine Einzelposition enthält eine Bezeichnung, einen positiven Betrag in ganzen Cent und ein Gruppenmitglied als Zahler. Beim Anlegen ist der aktuelle Benutzer vorausgewählt, sofern er Gruppenmitglied ist; die Auswahl kann geändert werden.
+- Beträge akzeptieren die in FR-3.1 beschriebenen Komma- und Punktschreibweisen. Ungültige oder mehrdeutige Beträge werden vor dem Speichern abgelehnt.
+- Eine Position kann nur geändert werden, solange ihre Liste offen und ihre Gruppe nicht archiviert ist. Die Datenbank setzt diese Regeln und Rechte unabhängig von der Oberfläche durch.
+- Einzelpositionen können gemäß FR-4 aufgeteilt werden. Unterstützt werden die Modi „Komplett“, „Prozentual“ und „Fester Betrag“, einschließlich der jeweils beschriebenen Validierung und des Gruppen- bzw. Parent-Standards.
+- Manuell erfasste Bons/Positionsparents und ihre Positionen folgen den in FR-3 beschriebenen Regeln. Die Positionen eines Bons können manuell erfasst werden; Foto-Upload, Scan und automatische Erkennung sind davon ausgenommen.
+- Suche, Betragsfilter, Kassensturz, Salden, Erstattungen und wiederkehrende Listen gehören zum MVP, soweit sie in den funktionalen Anforderungen beschrieben sind.
+- Laden, Speichern und Statusänderungen von Listen und Positionen zeigen verständliche Lade-, Fehler-, Leer- und Erfolgszustände.
 - Die Gruppen- und Rollenberechtigungen werden beim Datenzugriff serverseitig durchgesetzt; UI-Steuerelemente allein gelten nicht als Zugriffsschutz.
-
-**Nicht enthalten; wird in späteren Ausbaustufen behandelt:**
-
-- Positionen und Bons innerhalb einer Liste
-- Aufteilung von Kosten auf Gruppenmitglieder
-- Kassensturz, Salden und Erstattungen
-- Wiederkehrende Listen und automatische Erstellung neuer Perioden
-- Suche und Betragsfilter für Positionen
-- Löschen oder Umbenennen einer Liste
 
 **Abnahmekriterien für diese Ausbaustufe:**
 
@@ -81,6 +79,10 @@ Die Listenverwaltung wird in kleinen Ausbaustufen umgesetzt. Die erste Ausbaustu
 4. Erledigte Listen sind zunächst ausgeblendet und nach Aktivierung des Filters sichtbar.
 5. Nur erledigte Listen können von Admins und Mitgliedern mit `can_close_lists` als bezahlt markiert werden.
 6. Nicht-Mitglieder können weder Gruppenlisten lesen noch verändern; Berechtigungen werden auch bei direkten Datenbankaufrufen geprüft.
+7. Admins und Mitglieder mit `can_create_items` können in einer offenen Liste Positionen erfassen; Bezeichnung, Betrag und Zahler werden korrekt gespeichert, der aktuelle Benutzer ist standardmäßig als Zahler ausgewählt.
+8. Admins und Mitglieder mit `can_edit_items` können Bezeichnung, Betrag und Zahler einer Position in einer offenen Liste ändern.
+9. Admins und Mitglieder mit `can_delete_items` können eine Position nach Bestätigung löschen.
+10. In erledigten Listen und archivierten Gruppen sind Positionsänderungen nicht möglich; die Datenbank weist unberechtigte direkte Aufrufe ebenfalls zurück.
 
 ```
 +---------------------------------------------------+
@@ -163,11 +165,10 @@ Nach click auf Bearbeiten
 - **FR-3.1 (Einzelpositionen):** Benutzer können manuell Einzelpositionen zu einer Liste hinzufügen. Dabei wird standardmäßig der Ersteller als „Bereits bezahlt von“ eingetragen, was jedoch manuell geändert werden kann. Unterpositionen eines Bons haben jeweils einen eigenen Zahler. Der Zahler des Parent-Bons gilt für den nicht durch Unterpositionen belegten Restbetrag; er wird nicht zusätzlich für die Unterpositionen angerechnet.
   - **Umsetzungsstand (Einzelpositionen):** Eine Position hat Bezeichnung (1–120 Zeichen), Betrag (größer 0, intern in ganzen Cent) und einen Zahler aus den Mitgliedern der Gruppe. Positionen lassen sich nur in offenen Listen und nicht in archivierten Gruppen ändern. Anlegen, Bearbeiten und Löschen sind Admins und Mitgliedern mit der jeweiligen Freigabe aus FR-2.4 erlaubt; die Prüfung erfolgt in der Datenbank. Ein Mitglied, das als Zahler einer Position eingetragen ist, kann nicht entfernt werden, solange die Position existiert.
   - **Betragseingabe:** Das Komma ist der Dezimaltrenner. Ein Punkt wird als Dezimaltrenner gelesen, wenn er allein steht und 1–2 Ziffern folgen (`12.5`, `1234.50`), sonst als Tausendertrenner in Dreiergruppen (`1.234`, `1.234.567`, `1.234,50`). Mehrdeutige oder fehlerhafte Eingaben (`1,234.50`, `1.23,50`, mehr als zwei Nachkommastellen, höchstens sieben Ziffern vor dem Dezimaltrenner) werden mit einer Meldung abgelehnt.
-- **FR-3.2 (Bon-Upload / Positionsparent):** Ein hochgeladener Kassenbon erzeugt immer einen „Positionsparent“ mit Name des Geschäfts, Datum und Gesamtsumme. Das Originalbild wird im Supabase Storage abgelegt und dem Positionsparent zugeordnet. Beim Einlesen wählt der Nutzer zwischen zwei Modi:
-  - **Nur Summe einlesen:** Name des Geschäfts, Datum und Gesamtsumme werden erfasst; der Parent wird als Summen-Bon gekennzeichnet. Es werden keine Unterpositionen angelegt und daher keine Positionssummenprüfung durchgeführt.
-  - **Positionen einlesen:** Das System liest die einzelnen Positionen möglichst vollständig aus und ordnet sie dem Positionsparent zu. Der Parent wird als Positions-Bon gekennzeichnet. Der Nutzer muss die erkannten Bezeichnungen und Beträge mit dem Originalbon prüfen und bestätigen. Zusätzlich wird die erkannte Positionssumme mit der Parent-Gesamtsumme verglichen. Bei einer Abweichung wird der Nutzer deutlich gewarnt und aufgefordert, Bon und Einträge zu prüfen und fehlerhafte Erkennungen zu korrigieren. Nach der Warnung darf der Nutzer die abweichende Erfassung ausdrücklich bestätigen.
+- **FR-3.2 (Bon / Positionsparent):** Im MVP kann ein Bon/Positionsparent manuell mit Geschäftsname, Datum und Gesamtsumme erfasst werden. Einzelpositionen können manuell zugeordnet werden. Der Parent wird als Summen-Bon oder Positions-Bon gekennzeichnet. Beim Summen-Bon werden keine Unterpositionen angelegt; beim Positions-Bon werden die Positionen manuell erfasst und ihre Summe mit der Parent-Gesamtsumme verglichen.
+  - Bonbild-Upload, Scannen und automatische Erkennung sind nicht Bestandteil des MVP; siehe „Nice to Have“.
 - **FR-3.3 (Unterpositionen & Rekursive Ansicht):** Ein Bon („Positionparent“) kann Unterpositionen (Einzelposten des Bons) beinhalten. Die Benutzeroberfläche stellt dies als aufklappbare, hierarchische Struktur (Accordion / Card-In-Card) dar.
-- **FR-3.4.1 (Summen-Kumulierung):** Bei einer vollständig erfassten Positions-Bon-Erkennung wird eine Abweichung zwischen Unterpositionssumme und Parent-Gesamtsumme angezeigt. Liegt die Unterpositionssumme darunter, kann der Nutzer die Abweichung nach Warnung ausdrücklich bestätigen; der positive Restbetrag wird gemäß FR-3.4.2 über den Parent-Aufteilungsschlüssel verrechnet. Liegt die Unterpositionssumme darüber, fragt die App, ob die Parent-Gesamtsumme auf die erkannte Positionssumme erhöht werden soll. Wird dies abgelehnt, bleibt die Abweichung sichtbar und der Kassensturz ist blockiert, bis die Positionen oder die Parent-Summe korrigiert sind. Bei manuell nur teilweise erfassten Unterpositionen wird ein positiver Restbetrag ausgewiesen und gemäß FR-3.4.2 verteilt.
+- **FR-3.4.1 (Summen-Kumulierung):** Bei vollständig erfassten Positionen eines Positions-Bons wird eine Abweichung zwischen Unterpositionssumme und Parent-Gesamtsumme angezeigt. Liegt die Unterpositionssumme darunter, kann der Nutzer die Abweichung nach Warnung ausdrücklich bestätigen; der positive Restbetrag wird gemäß FR-3.4.2 über den Parent-Aufteilungsschlüssel verrechnet. Liegt die Unterpositionssumme darüber, fragt die App, ob die Parent-Gesamtsumme auf die Positionssumme erhöht werden soll. Wird dies abgelehnt, bleibt die Abweichung sichtbar und der Kassensturz ist blockiert, bis die Positionen oder die Parent-Summe korrigiert sind. Bei manuell nur teilweise erfassten Unterpositionen wird ein positiver Restbetrag ausgewiesen und gemäß FR-3.4.2 verteilt.
 - **FR-3.4.2 (Differenzierung / Manuelle Restwerterfassung):**
   Wird ein Bon mit einer Gesamtsumme erfasst, ohne alle Einzelpositionen aufzulisten, darf der Nutzer nicht gezwungen werden, jede einzelne Position manuell hinzuzufügen. Fügt der Nutzer eine spezifische Position hinzu und stellt deren Verteilungsschlüssel ein, muss der Rest des Bons automatisch nach dem Standard-Schlüssel des „Positionsparents“ verrechnet werden.
 
@@ -258,10 +259,10 @@ Popup Anpassen , nach click auf [✏️ Edit]
 - **FR-4.2 (Zahlungsquelle):** Das Pop-up enthält ein Select-Feld („Bereits bezahlt von“), um den tatsächlichen Zahler anzupassen.
 - **FR-4.3 (Aufteilungsmodi):** Für die Schuldenverteilung stehen drei flexible Modi zur Verfügung:
   - **Komplett:** Ein ausgewählter Nutzer übernimmt den gesamten Betrag der Position; alle anderen Nutzer tragen 0 € bei.
-  - **Prozentual:** Manuelle Anpassung von Prozentwerten pro Person. Die Anteile müssen zusammen genau 100 % ergeben.
+  - **Prozentual:** Manuelle Anpassung von Prozentwerten pro Person mit bis zu zwei Nachkommastellen (0,01 %). Die Anteile müssen zusammen genau 100 % ergeben. Cent-Rundungsreste werden so verteilt, dass die Anteile zusammen exakt dem Positionsbetrag entsprechen.
   - **Fester Betrag:** Zuweisung fester Euro-Beträge an Personen. Die Summe der zugewiesenen Beträge darf den Positionsbetrag nicht überschreiten; ein verbleibender Rest wird entsprechend dem geltenden Standard-Aufteilungsschlüssel verteilt.
 - **FR-4.4 (Zuordnungstabelle `item_split`):** Jede Position speichert die individuellen Anteile und die Aufteilungsart in einer separaten Zuordnungstabelle in der Datenbank.
-- **FR-4.5 (Standard-Aufteilungsschlüssel):** Jede Gruppe besitzt einen konfigurierbaren Standard-Aufteilungsschlüssel für Einzelpositionen ohne Parent. Ein Bon/Positionsparent kann einen eigenen Schlüssel festlegen. Dieser Parent-Schlüssel wird ausschließlich auf den nicht durch Unterpositionen belegten Restbetrag angewandt; der Parent selbst wird nicht zusätzlich als Kostenposition abgerechnet.
+- **FR-4.5 (Standard-Aufteilungsschlüssel):** Jede Gruppe kann optional einen Standard-Aufteilungsschlüssel für Einzelpositionen ohne Parent festlegen. Ist keiner konfiguriert, wird der Betrag gleichmäßig auf alle Gruppenmitglieder verteilt. Als Gruppenstandard sind dieselben Modi wie bei Einzelpositionen verfügbar: „Komplett“ für eine ausgewählte Person, „Prozentual“ mit zusammen genau 100 % sowie „Fester Betrag“ mit gleichmäßiger Verteilung des Restes. Neue Gruppen starten ohne benutzerdefinierten Schlüssel und verteilen daher gleichmäßig. Ein Bon/Positionsparent kann einen eigenen Schlüssel festlegen. Dieser Parent-Schlüssel wird ausschließlich auf den nicht durch Unterpositionen belegten Restbetrag angewandt; der Parent selbst wird nicht zusätzlich als Kostenposition abgerechnet. Einzelpositionen können den jeweils geltenden Standardschlüssel überschreiben. Die Positionsoberfläche zeigt dabei ohne separate Umschaltung an, ob die aktuelle Regel dem Gruppenstandard entspricht oder individuell davon abweicht; sobald die Regel wieder dem Standard entspricht, zeigt sie wieder „Gruppenverteilung“ an.
 
 Popup nach click auf [ [👥 Aufteilung] ]
 
@@ -307,7 +308,7 @@ Rest-Kontrolle: Die Live-Anzeige des Restbetrags stellt sicher, dass die Summe d
 
 ### 2.5 Kassensturz und Automatisierung
 
-- **FR-5.1 (Kassenabschluss und Ausgleich):** Ein Kassenabschluss („Kassensturz“) darf von Admins und von Mitgliedern mit der dafür freigegebenen Berechtigung durchgeführt werden. Das System berechnet pro Mitglied den Nettosaldo aus geleisteten Zahlungen und dem persönlichen Kostenanteil. Anschließend werden die Salden so miteinander verrechnet, dass die Anzahl der nötigen Erstattungszahlungen möglichst gering ist. Beispiel: A hat 100 € und B 30 € für eine gleichmäßig zwischen zwei Personen geteilte Liste bezahlt. Bei 65 € Kostenanteil pro Person hat A einen Nettosaldo von +35 €, B von -35 €; B erstattet A 35 €. Die daraus resultierenden Zahlungen („wer zahlt wem wie viel“) sind für alle Gruppenmitglieder ersichtlich.
+- **FR-5.1 (Kassenabschluss und Ausgleich):** Ein Kassenabschluss („Kassensturz“) darf von Admins und von Mitgliedern mit der dafür freigegebenen Berechtigung durchgeführt werden. Das System berechnet pro Mitglied den Nettosaldo aus geleisteten Zahlungen und dem persönlichen Kostenanteil. Anschließend werden die Salden so miteinander verrechnet, dass die Anzahl der nötigen Erstattungszahlungen möglichst gering ist. Beispiel: A hat 100 € und B 30 € für eine gleichmäßig zwischen zwei Personen geteilte Liste bezahlt. Bei 65 € Kostenanteil pro Person hat A einen Nettosaldo von +35 €, B von -35 €; B erstattet A 35 €. Die daraus resultierenden Zahlungen („wer zahlt wem wie viel“) sind für alle Gruppenmitglieder ersichtlich. In der Listendetailansicht erscheint dafür unten ein ausklappbarer Bereich: eingeklappt steht in der ersten Zeile, wer das meiste Geld zurückbekommt und wie viel; ausgeklappt steht, wer von wem wie viel zurückbekommt, und berechtigte Nutzer finden dort den Button „Abschluss“.
 - **FR-5.2 (Wiederkehrende Automatisierung):** Wiederkehrende Listen werden monatlich an einem konfigurierbaren Tag, quartalsweise (alle drei Monate) oder jährlich (alle zwölf Monate) automatisch neu generiert. Quartals- und Jahresintervalle orientieren sich am Startdatum der wiederkehrenden Liste. Fällt ein Stichtag im Zielmonat weg (z. B. der 31. oder bei einem Jahresintervall der 29. Februar), wird die Liste am letzten Kalendertag dieses Monats erzeugt. Eine neue Periode übernimmt die Positionen, Beträge und Aufteilungsschlüssel der letzten Periode als Ausgangswerte; die Inhalte können vor dem Abschluss angepasst werden. Die Abrechnung verwendet dieselbe Nettosaldo- und Zahlungskonsolidierung wie bei einmaligen Listen.
 - **FR-5.3 (Abschluss-Modus für Intervalle):** Für wiederkehrende Listen kann konfiguriert werden, ob ein Zeitraum automatisch oder manuell abgeschlossen wird. Beim automatischen Abschluss werden Nettosalden und Erstattungsvorschläge automatisch berechnet; die tatsächlichen Erstattungen bleiben offen, bis sie gemäß FR-5.4 bestätigt werden. Für den manuellen Kassensturz gelten zusätzlich die in FR-2.4 konfigurierten Mitgliederrechte.
 
@@ -332,3 +333,9 @@ Rest-Kontrolle: Die Live-Anzeige des Restbetrags stellt sicher, dass die Summe d
 
 - **NFR-3.1 (Mobile First / Responsive Design):** Da die Anwendung direkt vor Ort (z. B. beim Einkaufen oder im Restaurant auf dem Smartphone) bedient wird, müssen alle Ansichten, insbesondere Listen, Eingabemasken und Pop-ups/Sheets, kompromisslos für mobile Endgeräte optimiert sein.
 - **NFR-3.2 (Initial Load):** Durch das standardmäßige Laden ausschließlich offener Listen wird die Datenmenge beim Aufrufen einer Gruppe gering gehalten, was die Performance spürbar verbessert.
+
+## 4. Nice to Have
+
+- Bonbilder hochladen, Bons scannen und Name, Datum, Gesamtsumme oder Einzelpositionen automatisch erkennen.
+- In der Mitgliederverwaltung verständlich anzeigen, wenn ein Mitglied wegen bestehender Positionen nicht entfernt werden kann.
+- Die deutsche Übersetzung von Datenbankfehlern schrittweise auch auf bislang nicht betroffene Bereiche der Anwendung vereinheitlichen.

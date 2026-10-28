@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { getSupabaseClient } from "@/lib/supabase"
-import { archiveGroup, getMyGroups } from "./groupService"
+import {
+  archiveGroup,
+  getGroupSplitDefault,
+  getMyGroups,
+  setGroupSplitDefault,
+} from "./groupService"
 
 vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: vi.fn(),
@@ -14,6 +19,32 @@ beforeEach(() => {
 })
 
 describe("groupService", () => {
+  it("uses an equal split when a group has no configured default", async () => {
+    rpc.mockResolvedValue({ data: { mode: "equal" }, error: null })
+
+    await expect(getGroupSplitDefault("group-1")).resolves.toEqual({
+      mode: "equal",
+    })
+    expect(rpc).toHaveBeenCalledWith("get_group_split_default", {
+      p_group_id: "group-1",
+    })
+  })
+
+  it("saves an optional custom group split default", async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    const rule = {
+      mode: "percentage" as const,
+      shares: [{ memberId: "member-1", basisPoints: 10000 }],
+    }
+
+    await setGroupSplitDefault("group-1", rule)
+
+    expect(rpc).toHaveBeenCalledWith("set_group_split_default", {
+      p_group_id: "group-1",
+      p_split_rule: rule,
+    })
+  })
+
   it("maps archive timestamps to groups while preserving active groups", async () => {
     rpc
       .mockResolvedValueOnce({

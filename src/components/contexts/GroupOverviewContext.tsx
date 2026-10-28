@@ -15,13 +15,17 @@ import {
   createGroupInvitation as createGroupInvitationRecord,
   getGroupInvitation as getGroupInvitationRecord,
   getGroupMembers as getGroupMembersRecord,
+  getGroupSplitDefault as getGroupSplitDefaultRecord,
   getMyGroups,
   getMyContacts as getMyContactsRecord,
   removePersonalContact as removePersonalContactRecord,
+  renamePersonalContact as renamePersonalContactRecord,
+  setMyDisplayName as setMyDisplayNameRecord,
   removeGroupMember as removeGroupMemberRecord,
   renameGroup as renameGroupRecord,
   saveMyGroupOrder as saveMyGroupOrderRecord,
   setGroupMemberAdmin as setGroupMemberAdminRecord,
+  setGroupSplitDefault as setGroupSplitDefaultRecord,
   updateGroupMemberPermissions as updateGroupMemberPermissionsRecord,
 } from "@/services/groupService"
 import type {
@@ -31,6 +35,7 @@ import type {
   GroupMemberPermissions,
   PersonalContact,
 } from "@/types/group"
+import type { ExpenseSplitRule } from "@/lib/expenseSplit"
 
 interface GroupOverviewContextValue {
   groups: Group[]
@@ -42,12 +47,22 @@ interface GroupOverviewContextValue {
   getMyContacts: () => Promise<PersonalContact[]>
   createPersonalContact: (displayName: string, email: string) => Promise<void>
   removePersonalContact: (contactId: string) => Promise<void>
+  renamePersonalContact: (
+    contactId: string,
+    displayName: string
+  ) => Promise<void>
+  setMyDisplayName: (displayName: string) => Promise<void>
   createGroupInvitation: (groupId: string, contactId: string) => Promise<string>
   getGroupInvitation: (token: string) => Promise<GroupInvitation>
   acceptGroupInvitation: (token: string) => Promise<string>
   renameGroup: (groupId: string, name: string) => Promise<void>
   archiveGroup: (groupId: string) => Promise<void>
   getGroupMembers: (groupId: string) => Promise<GroupMember[]>
+  getGroupSplitDefault: (groupId: string) => Promise<ExpenseSplitRule>
+  setGroupSplitDefault: (
+    groupId: string,
+    rule: ExpenseSplitRule | null
+  ) => Promise<void>
   setGroupMemberAdmin: (memberId: string, isAdmin: boolean) => Promise<void>
   updateGroupMemberPermissions: (
     memberId: string,
@@ -127,6 +142,15 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
     (contactId: string) => removePersonalContactRecord(contactId),
     []
   )
+  const renamePersonalContact = useCallback(
+    (contactId: string, displayName: string) =>
+      renamePersonalContactRecord(contactId, displayName),
+    []
+  )
+  const setMyDisplayName = useCallback(
+    (displayName: string) => setMyDisplayNameRecord(displayName),
+    []
+  )
   const createGroupInvitation = useCallback(
     (groupId: string, contactId: string) =>
       createGroupInvitationRecord(groupId, contactId),
@@ -182,6 +206,15 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
     (groupId: string) => getGroupMembersRecord(groupId),
     []
   )
+  const getGroupSplitDefault = useCallback(
+    (groupId: string) => getGroupSplitDefaultRecord(groupId),
+    []
+  )
+  const setGroupSplitDefault = useCallback(
+    (groupId: string, rule: ExpenseSplitRule | null) =>
+      setGroupSplitDefaultRecord(groupId, rule),
+    []
+  )
   const setGroupMemberAdmin = useCallback(
     (memberId: string, isAdmin: boolean) =>
       setGroupMemberAdminRecord(memberId, isAdmin),
@@ -208,12 +241,16 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       getMyContacts,
       createPersonalContact,
       removePersonalContact,
+      renamePersonalContact,
+      setMyDisplayName,
       createGroupInvitation,
       getGroupInvitation,
       acceptGroupInvitation,
       renameGroup,
       archiveGroup,
       getGroupMembers,
+      getGroupSplitDefault,
+      setGroupSplitDefault,
       setGroupMemberAdmin,
       updateGroupMemberPermissions,
       removeGroupMember,
@@ -228,12 +265,16 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       getMyContacts,
       createPersonalContact,
       removePersonalContact,
+      renamePersonalContact,
+      setMyDisplayName,
       createGroupInvitation,
       getGroupInvitation,
       acceptGroupInvitation,
       renameGroup,
       archiveGroup,
       getGroupMembers,
+      getGroupSplitDefault,
+      setGroupSplitDefault,
       setGroupMemberAdmin,
       updateGroupMemberPermissions,
       removeGroupMember,

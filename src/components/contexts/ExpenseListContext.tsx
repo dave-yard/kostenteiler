@@ -6,11 +6,13 @@ import {
   type ReactNode,
 } from "react"
 import { useAuth } from "@/components/contexts/AuthContext"
-import { getGroupMembers } from "@/services/groupService"
+import { getGroupMembers, getGroupSplitDefault } from "@/services/groupService"
 import {
   createExpenseItem as createExpenseItemRecord,
   deleteExpenseItem as deleteExpenseItemRecord,
+  getExpenseItemSplitRule as getExpenseItemSplitRuleRecord,
   getExpenseItems as getExpenseItemsRecord,
+  getExpenseListSplitRules as getExpenseListSplitRulesRecord,
   updateExpenseItem as updateExpenseItemRecord,
   type ExpenseItemInput,
 } from "@/services/itemService"
@@ -26,13 +28,17 @@ import type {
   Group,
   GroupMember,
 } from "@/types/group"
+import type { ExpenseSplitRule } from "@/lib/expenseSplit"
 
 export interface ExpenseItemAccess {
   members: GroupMember[]
   currentMemberId: string | null
   canCreate: boolean
   canEdit: boolean
+  canEditSplits: boolean
   canDelete: boolean
+  canCloseLists: boolean
+  groupDefaultSplitRule: ExpenseSplitRule
 }
 
 interface ExpenseListContextValue {
@@ -51,6 +57,10 @@ interface ExpenseListContextValue {
   ) => Promise<string>
   updateExpenseItem: (itemId: string, input: ExpenseItemInput) => Promise<void>
   deleteExpenseItem: (itemId: string) => Promise<void>
+  getExpenseItemSplitRule: (itemId: string) => Promise<ExpenseSplitRule>
+  getExpenseListSplitRules: (
+    listId: string
+  ) => Promise<Record<string, ExpenseSplitRule>>
   getItemAccess: (group: Group) => Promise<ExpenseItemAccess>
 }
 
@@ -119,9 +129,22 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const getExpenseItemSplitRule = useCallback(
+    (itemId: string) => getExpenseItemSplitRuleRecord(itemId),
+    []
+  )
+
+  const getExpenseListSplitRules = useCallback(
+    (listId: string) => getExpenseListSplitRulesRecord(listId),
+    []
+  )
+
   const getItemAccess = useCallback(
     async (group: Group): Promise<ExpenseItemAccess> => {
-      const members = await getGroupMembers(group.id)
+      const [members, groupDefaultSplitRule] = await Promise.all([
+        getGroupMembers(group.id),
+        getGroupSplitDefault(group.id),
+      ])
       const me = members.find((member) => member.userId === userId)
       const isAdmin = group.currentUserIsAdmin
 
@@ -130,7 +153,10 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
         currentMemberId: me?.id ?? null,
         canCreate: isAdmin || Boolean(me?.canCreateItems),
         canEdit: isAdmin || Boolean(me?.canEditItems),
+        canEditSplits: isAdmin || Boolean(me?.canEditSplits),
         canDelete: isAdmin || Boolean(me?.canDeleteItems),
+        canCloseLists: isAdmin || Boolean(me?.canCloseLists),
+        groupDefaultSplitRule,
       }
     },
     [userId]
@@ -147,6 +173,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       createExpenseItem,
       updateExpenseItem,
       deleteExpenseItem,
+      getExpenseItemSplitRule,
+      getExpenseListSplitRules,
       getItemAccess,
     }),
     [
@@ -159,6 +187,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       createExpenseItem,
       updateExpenseItem,
       deleteExpenseItem,
+      getExpenseItemSplitRule,
+      getExpenseListSplitRules,
       getItemAccess,
     ]
   )

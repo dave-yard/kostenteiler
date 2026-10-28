@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
@@ -48,26 +48,54 @@ const items: ExpenseItem[] = [
 ]
 
 const getExpenseItems = vi.fn()
+const getExpenseItemSplitRule = vi.fn()
+const getExpenseListSplitRules = vi.fn()
 const getItemAccess = vi.fn()
+const completeExpenseList = vi.fn()
 const createExpenseItem = vi.fn()
+const updateExpenseItem = vi.fn()
+const deleteExpenseItem = vi.fn()
 
-function renderDetail(onBack = vi.fn(), currentList: ExpenseList = list) {
+function renderDetail(
+  onBack = vi.fn(),
+  currentList: ExpenseList = list,
+  onListChange = vi.fn()
+) {
   vi.mocked(useExpenseLists).mockReturnValue({
     getExpenseItems,
+    getExpenseItemSplitRule,
+    getExpenseListSplitRules,
     getItemAccess,
+    completeExpenseList,
     createExpenseItem,
+    updateExpenseItem,
+    deleteExpenseItem,
   } as never)
 
   return render(
-    <ExpenseListDetail group={group} list={currentList} onBack={onBack} />
+    <ExpenseListDetail
+      group={group}
+      list={currentList}
+      onBack={onBack}
+      onListChange={onListChange}
+    />
   )
 }
+
+beforeEach(() => {
+  getExpenseListSplitRules.mockResolvedValue({})
+})
 
 afterEach(() => {
   cleanup()
   getExpenseItems.mockReset()
+  getExpenseItemSplitRule.mockReset()
+  getExpenseListSplitRules.mockReset()
   getItemAccess.mockReset()
+  completeExpenseList.mockReset()
   createExpenseItem.mockReset()
+  updateExpenseItem.mockReset()
+  deleteExpenseItem.mockReset()
 })
 
 function mockAccess() {
@@ -79,11 +107,84 @@ function mockAccess() {
     currentMemberId: "m1",
     canCreate: true,
     canEdit: true,
+    canEditSplits: true,
     canDelete: true,
+    canCloseLists: true,
+    groupDefaultSplitRule: { mode: "equal" },
   })
 }
 
 describe("ExpenseListDetail", () => {
+  it("zeigt die Abrechnung ein- und ausgeklappt und schließt die Liste ab", async () => {
+    const user = userEvent.setup()
+    const onListChange = vi.fn()
+    getExpenseItems.mockResolvedValue(items)
+    completeExpenseList.mockResolvedValue(undefined)
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    mockAccess()
+    renderDetail(
+      vi.fn(),
+      { ...list, status: "open", completedAt: null },
+      onListChange
+    )
+
+    const toggle = await screen.findByRole("button", {
+      name: /Ben bekommt am meisten zurück: 3,75\s€/,
+    })
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(screen.queryByRole("button", { name: "Abschluss" })).toBeNull()
+
+    await user.click(toggle)
+    expect(
+      screen.getByRole("list", { name: "Erstattungen" }).textContent
+    ).toMatch(/Ben bekommt 3,75\s€ von Anna zurück/)
+
+    await user.click(screen.getByRole("button", { name: "Abschluss" }))
+
+    expect(completeExpenseList).toHaveBeenCalledWith("l1")
+    expect(onListChange).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "l1", status: "completed" })
+    )
+  })
+
+  it("zeigt den Abschluss-Button ohne Berechtigung nicht", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getItemAccess.mockResolvedValue({
+      members: [
+        { id: "m1", displayName: "Anna" },
+        { id: "m2", displayName: "Ben" },
+      ],
+      currentMemberId: "m1",
+      canCreate: false,
+      canEdit: false,
+      canEditSplits: false,
+      canDelete: false,
+      canCloseLists: false,
+      groupDefaultSplitRule: { mode: "equal" },
+    })
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: /bekommt am meisten/ })
+    )
+
+    expect(screen.queryByRole("button", { name: "Abschluss" })).toBeNull()
+  })
+
+  it("meldet ausgeglichene Salden", async () => {
+    getExpenseItems.mockResolvedValue([items[0]])
+    getExpenseListSplitRules.mockResolvedValue({
+      i1: { mode: "complete", memberId: "m1" },
+    })
+    mockAccess()
+    renderDetail()
+
+    expect(
+      await screen.findByRole("button", { name: "Alles ausgeglichen" })
+    ).toBeTruthy()
+  })
+
   it("zeigt Liste, Status und leeren Zustand", async () => {
     getExpenseItems.mockResolvedValue([])
     mockAccess()
@@ -166,6 +267,24 @@ describe("ExpenseListDetail", () => {
     await user.click(
       await screen.findByRole("button", { name: "Position hinzufügen" })
     )
+    expect(
+      (await screen.findByRole("status")).textContent?.includes(
+        "Gruppenverteilung"
+      )
+    ).toBeTruthy()
+    expect(
+      screen
+        .getByRole("status")
+        .textContent?.includes(
+          "Gruppenstandard: Gleichmäßig auf alle Gruppenmitglieder"
+        )
+    ).toBeTruthy()
+    expect(
+      screen
+        .getByLabelText("Bezeichnung")
+        .compareDocumentPosition(screen.getByLabelText("Betrag in Euro")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
     await user.type(screen.getByLabelText("Bezeichnung"), "  Brot ")
     await user.type(screen.getByLabelText("Betrag in Euro"), "1.234,50")
     await user.selectOptions(screen.getByLabelText("Bezahlt von"), "m2")
@@ -175,11 +294,56 @@ describe("ExpenseListDetail", () => {
       name: "Brot",
       amountCents: 123450,
       paidByMemberId: "m2",
+      splitRule: null,
     })
     expect(
       await screen.findByText("Die Position wurde hinzugefügt.")
     ).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("speichert eine benutzerdefinierte Prozentverteilung", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([])
+    createExpenseItem.mockResolvedValue("i3")
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position hinzufügen" })
+    )
+    await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
+    await user.type(screen.getByLabelText("Betrag in Euro"), "10,00")
+    const splitMode = screen.getByLabelText("Aufteilungsmodus")
+    await user.selectOptions(splitMode, "percentage")
+    expect(
+      screen
+        .getByRole("status")
+        .textContent?.includes("Individuelle Verteilung")
+    ).toBeTruthy()
+    await user.selectOptions(splitMode, "equal")
+    expect(
+      screen.getByRole("status").textContent?.includes("Gruppenverteilung")
+    ).toBeTruthy()
+    await user.selectOptions(splitMode, "percentage")
+    await user.clear(screen.getByLabelText("Anna"))
+    await user.type(screen.getByLabelText("Anna"), "100")
+    await user.clear(screen.getByLabelText("Ben"))
+    await user.type(screen.getByLabelText("Ben"), "0")
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
+
+    expect(createExpenseItem).toHaveBeenCalledWith("l1", {
+      name: "Brot",
+      amountCents: 1000,
+      paidByMemberId: "m1",
+      splitRule: {
+        mode: "percentage",
+        shares: [
+          { memberId: "m1", basisPoints: 10000 },
+          { memberId: "m2", basisPoints: 0 },
+        ],
+      },
+    })
   })
 
   it("meldet einen ungültigen Betrag, ohne zu speichern", async () => {
@@ -197,5 +361,67 @@ describe("ExpenseListDetail", () => {
 
     expect(await screen.findByRole("alert")).toBeTruthy()
     expect(createExpenseItem).not.toHaveBeenCalled()
+  })
+
+  it("bearbeitet eine Position mit bestehenden Werten", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position bearbeiten: Socken" })
+    )
+    expect(
+      (screen.getByLabelText("Bezeichnung") as HTMLInputElement).value
+    ).toBe("Socken")
+    expect(
+      (screen.getByLabelText("Betrag in Euro") as HTMLInputElement).value
+    ).toBe("5,00")
+    expect(
+      (screen.getByLabelText("Bezahlt von") as HTMLSelectElement).value
+    ).toBe("m1")
+
+    await user.clear(screen.getByLabelText("Bezeichnung"))
+    await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
+    await user.clear(screen.getByLabelText("Betrag in Euro"))
+    await user.type(screen.getByLabelText("Betrag in Euro"), "12.5")
+    await user.click(screen.getByRole("button", { name: "Speichern" }))
+
+    expect(updateExpenseItem).toHaveBeenCalledWith("i1", {
+      name: "Brot",
+      amountCents: 1250,
+      paidByMemberId: "m1",
+      splitRule: { mode: "equal" },
+    })
+    expect(
+      await screen.findByText("Die Position wurde aktualisiert.")
+    ).toBeTruthy()
+    expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("löscht eine Position erst nach Bestätigung", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    deleteExpenseItem.mockResolvedValue(undefined)
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    expect(screen.queryByRole("button", { name: /Position löschen/ })).toBeNull()
+    await user.click(
+      await screen.findByRole("button", { name: "Löschen aktivieren" }),
+    )
+    await user.click(
+      await screen.findByRole("button", { name: "Position löschen: Socken" })
+    )
+    expect(screen.getByRole("alertdialog")).toBeTruthy()
+    expect(deleteExpenseItem).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("button", { name: "Löschen" }))
+
+    expect(deleteExpenseItem).toHaveBeenCalledWith("i1")
+    expect(await screen.findByText("Die Position wurde gelöscht.")).toBeTruthy()
+    expect(getExpenseItems).toHaveBeenCalledTimes(2)
   })
 })

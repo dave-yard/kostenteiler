@@ -52,6 +52,7 @@ function setupMocks() {
     ]),
     canCloseExpenseLists: vi.fn().mockResolvedValue(false),
     getExpenseItems: vi.fn().mockResolvedValue([]),
+    getExpenseListSplitRules: vi.fn().mockResolvedValue({}),
     getItemAccess: vi.fn().mockResolvedValue({
       members: [],
       currentMemberId: null,

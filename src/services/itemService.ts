@@ -1,10 +1,15 @@
 import { getSupabaseClient } from "@/lib/supabase"
+import {
+  parseExpenseSplitRule,
+  type ExpenseSplitRule,
+} from "@/lib/expenseSplit"
 import type { ExpenseItem } from "@/types/group"
 
 export interface ExpenseItemInput {
   name: string
   amountCents: number
   paidByMemberId: string
+  splitRule?: ExpenseSplitRule | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,12 +67,16 @@ export async function createExpenseItem(
   listId: string,
   input: ExpenseItemInput
 ): Promise<string> {
-  const { data, error } = await getSupabaseClient().rpc("create_expense_item", {
-    p_list_id: listId,
-    p_name: input.name,
-    p_amount_cents: input.amountCents,
-    p_paid_by_member_id: input.paidByMemberId,
-  })
+  const { data, error } = await getSupabaseClient().rpc(
+    "create_expense_item_with_split",
+    {
+      p_list_id: listId,
+      p_name: input.name,
+      p_amount_cents: input.amountCents,
+      p_paid_by_member_id: input.paidByMemberId,
+      p_split_rule: input.splitRule ?? null,
+    }
+  )
 
   if (error) {
     throw error
@@ -83,16 +92,61 @@ export async function updateExpenseItem(
   itemId: string,
   input: ExpenseItemInput
 ): Promise<void> {
-  const { error } = await getSupabaseClient().rpc("update_expense_item", {
+  const { error } = await getSupabaseClient().rpc(
+    "update_expense_item_with_split",
+    {
+      p_item_id: itemId,
+      p_name: input.name,
+      p_amount_cents: input.amountCents,
+      p_paid_by_member_id: input.paidByMemberId,
+      p_split_rule: input.splitRule ?? null,
+    }
+  )
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function getExpenseItemSplitRule(
+  itemId: string
+): Promise<ExpenseSplitRule> {
+  const { data, error } = await getSupabaseClient().rpc("get_item_split_rule", {
     p_item_id: itemId,
-    p_name: input.name,
-    p_amount_cents: input.amountCents,
-    p_paid_by_member_id: input.paidByMemberId,
   })
 
   if (error) {
     throw error
   }
+
+  return parseExpenseSplitRule(data)
+}
+
+export async function getExpenseListSplitRules(
+  listId: string
+): Promise<Record<string, ExpenseSplitRule>> {
+  const { data, error } = await getSupabaseClient().rpc(
+    "get_list_split_rules",
+    {
+      p_list_id: listId,
+    }
+  )
+
+  if (error) {
+    throw error
+  }
+  if (!Array.isArray(data) || !data.every(isRecord)) {
+    throw new Error(
+      "Supabase hat Aufteilungen in einem unerwarteten Format geliefert."
+    )
+  }
+
+  return Object.fromEntries(
+    data.map((row) => [
+      readString(row, "item_id"),
+      parseExpenseSplitRule(row.split_rule),
+    ])
+  )
 }
 
 export async function deleteExpenseItem(itemId: string): Promise<void> {

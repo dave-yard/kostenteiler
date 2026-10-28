@@ -4,6 +4,8 @@ import {
   createExpenseItem,
   deleteExpenseItem,
   getExpenseItems,
+  getExpenseItemSplitRule,
+  getExpenseListSplitRules,
   updateExpenseItem,
 } from "./itemService"
 
@@ -90,11 +92,12 @@ describe("itemService", () => {
   it("creates an item through the authorized database function", async () => {
     const id = await createExpenseItem("list-1", input)
 
-    expect(rpc).toHaveBeenCalledWith("create_expense_item", {
+    expect(rpc).toHaveBeenCalledWith("create_expense_item_with_split", {
       p_list_id: "list-1",
       p_name: "Socken",
       p_amount_cents: 500,
       p_paid_by_member_id: "member-1",
+      p_split_rule: null,
     })
     expect(id).toBe("item-id")
   })
@@ -110,11 +113,44 @@ describe("itemService", () => {
 
     await updateExpenseItem("item-1", input)
 
-    expect(rpc).toHaveBeenCalledWith("update_expense_item", {
+    expect(rpc).toHaveBeenCalledWith("update_expense_item_with_split", {
       p_item_id: "item-1",
       p_name: "Socken",
       p_amount_cents: 500,
       p_paid_by_member_id: "member-1",
+      p_split_rule: null,
+    })
+  })
+
+  it("loads an item split rule through the authorized database function", async () => {
+    rpc.mockResolvedValue({ data: { mode: "equal" }, error: null })
+
+    await expect(getExpenseItemSplitRule("item-1")).resolves.toEqual({
+      mode: "equal",
+    })
+    expect(rpc).toHaveBeenCalledWith("get_item_split_rule", {
+      p_item_id: "item-1",
+    })
+  })
+
+  it("loads all split rules of a list in one call", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { item_id: "item-1", split_rule: { mode: "equal" } },
+        {
+          item_id: "item-2",
+          split_rule: { mode: "complete", memberId: "member-1" },
+        },
+      ],
+      error: null,
+    })
+
+    await expect(getExpenseListSplitRules("list-1")).resolves.toEqual({
+      "item-1": { mode: "equal" },
+      "item-2": { mode: "complete", memberId: "member-1" },
+    })
+    expect(rpc).toHaveBeenCalledWith("get_list_split_rules", {
+      p_list_id: "list-1",
     })
   })
 

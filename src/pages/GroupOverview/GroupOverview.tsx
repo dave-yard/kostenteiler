@@ -81,7 +81,7 @@ function SortableGroupCard({
           <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">
               <button
-                className="group inline-flex min-w-0 max-w-full items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+                className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
                 onClick={onOpen}
                 type="button"
               >
@@ -318,6 +318,7 @@ export function GroupOverview() {
           group={selectedGroup}
           list={selectedList}
           onBack={() => setSelectedList(null)}
+          onListChange={setSelectedList}
         />
       )
     }

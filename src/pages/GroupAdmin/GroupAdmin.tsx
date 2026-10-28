@@ -19,6 +19,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Toast } from "@/components/ui/toast"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
+import {
+  createEqualPercentageDrafts,
+  parseNonNegativeCents,
+  parsePercentageToBasisPoints,
+  type ExpenseSplitRule,
+} from "@/lib/expenseSplit"
+import { getActionErrorMessage } from "@/lib/errorMessage"
 import type {
   Group,
   GroupMember,
@@ -54,12 +61,14 @@ export function GroupAdmin({
     groups,
     loadError,
     getGroupMembers,
+    getGroupSplitDefault,
     getMyContacts,
     createGroupInvitation,
     renameGroup,
     archiveGroup,
     setGroupMemberAdmin,
     updateGroupMemberPermissions,
+    setGroupSplitDefault,
     removeGroupMember,
     refreshGroups,
   } = useGroupOverview()
@@ -73,6 +82,7 @@ export function GroupAdmin({
   const [selectedContactId, setSelectedContactId] = useState("")
   const [invitationLink, setInvitationLink] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [deleteMode, setDeleteMode] = useState(false)
   const [isLoadingContacts, setIsLoadingContacts] = useState(true)
   const [isSavingName, setIsSavingName] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
@@ -80,6 +90,13 @@ export function GroupAdmin({
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [groupSplitMode, setGroupSplitMode] =
+    useState<ExpenseSplitRule["mode"]>("equal")
+  const [groupSplitMemberId, setGroupSplitMemberId] = useState("")
+  const [groupSplitValues, setGroupSplitValues] = useState<
+    Record<string, string>
+  >({})
+  const [isSavingSplitDefault, setIsSavingSplitDefault] = useState(false)
 
   const applyMembers = useCallback((nextMembers: GroupMember[]) => {
     setMembers(nextMembers)
@@ -150,10 +167,50 @@ export function GroupAdmin({
         }
       })
 
+    getGroupSplitDefault(group.id)
+      .then((rule) => {
+        if (!isCurrent) {
+          return
+        }
+        setGroupSplitMode(rule.mode)
+        if (rule.mode === "complete") {
+          setGroupSplitMemberId(rule.memberId)
+        } else if (rule.mode === "percentage") {
+          setGroupSplitValues(
+            Object.fromEntries(
+              rule.shares.map((share) => [
+                share.memberId,
+                (share.basisPoints / 100).toFixed(2).replace(".", ","),
+              ])
+            )
+          )
+        } else if (rule.mode === "fixed") {
+          setGroupSplitValues(
+            Object.fromEntries(
+              rule.shares.map((share) => [
+                share.memberId,
+                (share.amountCents / 100).toFixed(2).replace(".", ","),
+              ])
+            )
+          )
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setErrorMessage(getErrorMessage(error))
+        }
+      })
+
     return () => {
       isCurrent = false
     }
-  }, [applyMembers, getGroupMembers, getMyContacts, group.id])
+  }, [
+    applyMembers,
+    getGroupMembers,
+    getGroupSplitDefault,
+    getMyContacts,
+    group.id,
+  ])
 
   async function handleSaveGroupName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -174,6 +231,99 @@ export function GroupAdmin({
       setErrorMessage(getErrorMessage(error))
     } finally {
       setIsSavingName(false)
+    }
+  }
+
+  async function handleSaveGroupSplitDefault(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault()
+    let rule: ExpenseSplitRule | null = null
+
+    if (groupSplitMode === "complete") {
+      if (!members.some((member) => member.id === groupSplitMemberId)) {
+        setErrorMessage("Bitte eine Person aus der Gruppe auswählen.")
+        return
+      }
+      rule = { mode: "complete", memberId: groupSplitMemberId }
+    } else if (groupSplitMode === "percentage") {
+      const shares = members.map((member) => ({
+        memberId: member.id,
+        basisPoints: parsePercentageToBasisPoints(
+          groupSplitValues[member.id] ?? "0,00"
+        ),
+      }))
+      if (shares.some((share) => share.basisPoints === null)) {
+        setErrorMessage(
+          "Bitte gültige Prozentanteile mit höchstens zwei Nachkommastellen eingeben."
+        )
+        return
+      }
+      const validShares = shares.filter(
+        (share): share is { memberId: string; basisPoints: number } =>
+          share.basisPoints !== null
+      )
+      if (
+        validShares.reduce((sum, share) => sum + share.basisPoints, 0) !==
+        10_000
+      ) {
+        setErrorMessage(
+          "Die Prozentanteile müssen zusammen genau 100 % ergeben."
+        )
+        return
+      }
+      rule = { mode: "percentage", shares: validShares }
+    } else if (groupSplitMode === "fixed") {
+      const shares = members.map((member) => ({
+        memberId: member.id,
+        amountCents: parseNonNegativeCents(
+          groupSplitValues[member.id] ?? "0,00"
+        ),
+      }))
+      if (shares.some((share) => share.amountCents === null)) {
+        setErrorMessage("Bitte gültige Festbeträge in Euro eingeben.")
+        return
+      }
+      rule = {
+        mode: "fixed",
+        shares: shares.filter(
+          (share): share is { memberId: string; amountCents: number } =>
+            share.amountCents !== null
+        ),
+      }
+    }
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setIsSavingSplitDefault(true)
+    try {
+      await setGroupSplitDefault(group.id, rule)
+      setSuccessMessage(
+        rule
+          ? "Der Gruppenstandard für Verteilungen wurde gespeichert."
+          : "Der Gruppenstandard verteilt wieder gleichmäßig."
+      )
+    } catch (error) {
+      setErrorMessage(getActionErrorMessage(error))
+    } finally {
+      setIsSavingSplitDefault(false)
+    }
+  }
+
+  function changeGroupSplitMode(mode: ExpenseSplitRule["mode"]) {
+    setGroupSplitMode(mode)
+    if (mode === "complete") {
+      setGroupSplitMemberId((current) => current || members[0]?.id || "")
+    } else if (mode === "percentage" && members.length > 0) {
+      setGroupSplitValues((current) => ({
+        ...current,
+        ...createEqualPercentageDrafts(members.map((member) => member.id)),
+      }))
+    } else if (mode === "fixed") {
+      setGroupSplitValues((current) => ({
+        ...current,
+        ...Object.fromEntries(members.map((member) => [member.id, "0,00"])),
+      }))
     }
   }
 
@@ -435,6 +585,114 @@ export function GroupAdmin({
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
+        <div className="mb-5">
+          <h2 className="font-semibold">Standardverteilung der Gruppe</h2>
+          <p className="mt-1 text-sm text-[#72766f]">
+            Ohne eigene Einstellung werden Kosten gleichmäßig auf alle
+            Gruppenmitglieder verteilt. Einzelne Positionen können einen eigenen
+            Schlüssel verwenden.
+          </p>
+        </div>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => void handleSaveGroupSplitDefault(event)}
+        >
+          <label className="sr-only" htmlFor="group-split-mode">
+            Standard-Aufteilungsmodus
+          </label>
+          <select
+            className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+            id="group-split-mode"
+            onChange={(event) =>
+              changeGroupSplitMode(
+                event.target.value as ExpenseSplitRule["mode"]
+              )
+            }
+            value={groupSplitMode}
+          >
+            <option value="equal">Gleichmäßig auf alle Mitglieder</option>
+            <option value="complete">Komplett für eine Person</option>
+            <option value="percentage">Prozentual</option>
+            <option value="fixed">Fester Betrag</option>
+          </select>
+
+          {groupSplitMode === "complete" && (
+            <div className="space-y-1.5">
+              <label
+                className="text-sm font-medium"
+                htmlFor="group-split-member"
+              >
+                Übernimmt den gesamten Betrag
+              </label>
+              <select
+                className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                id="group-split-member"
+                onChange={(event) => setGroupSplitMemberId(event.target.value)}
+                value={groupSplitMemberId}
+              >
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.displayName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(groupSplitMode === "percentage" || groupSplitMode === "fixed") && (
+            <div className="space-y-2">
+              {members.map((member) => (
+                <div
+                  className="flex items-center justify-between gap-3"
+                  key={member.id}
+                >
+                  <label
+                    className="min-w-0 flex-1 truncate text-sm"
+                    htmlFor={`group-split-${member.id}`}
+                  >
+                    {member.displayName}
+                  </label>
+                  <div className="flex w-36 shrink-0 items-center gap-2">
+                    <Input
+                      className="h-10 rounded-xl border-[#e4e7e1] px-3 text-right text-sm"
+                      id={`group-split-${member.id}`}
+                      inputMode="decimal"
+                      onChange={(event) =>
+                        setGroupSplitValues((current) => ({
+                          ...current,
+                          [member.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="0,00"
+                      value={groupSplitValues[member.id] ?? ""}
+                    />
+                    <span className="text-sm text-[#72766f]">
+                      {groupSplitMode === "percentage" ? "%" : "€"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {groupSplitMode === "fixed" && (
+                <p className="text-xs text-[#72766f]">
+                  Nicht verteilte Restbeträge werden je Position gleichmäßig
+                  verteilt.
+                </p>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button
+              className="rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+              disabled={isSavingSplitDefault || members.length === 0}
+              type="submit"
+            >
+              {isSavingSplitDefault ? "Speichert ..." : "Standard speichern"}
+            </Button>
+          </div>
+        </form>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-[#edf3e9] text-[#31563e]">
@@ -448,18 +706,31 @@ export function GroupAdmin({
               </p>
             </div>
           </div>
-          <Button
-            aria-label="Mitgliederliste neu laden"
-            className="rounded-xl"
-            disabled={isLoading}
-            onClick={() => void loadMembers()}
-            variant="outline"
-          >
-            <LoaderCircle
-              aria-hidden="true"
-              className={`size-4 ${isLoading ? "animate-spin" : ""}`}
-            />
-          </Button>
+          <div className="flex gap-2">
+            {members.length > 0 && (
+              <Button
+                aria-label="Löschen aktivieren"
+                aria-pressed={deleteMode}
+                className={`rounded-xl ${deleteMode ? "bg-red-700 text-white hover:bg-red-800" : "text-red-700"}`}
+                onClick={() => setDeleteMode((current) => !current)}
+                variant={deleteMode ? "default" : "outline"}
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+              </Button>
+            )}
+            <Button
+              aria-label="Mitgliederliste neu laden"
+              className="rounded-xl"
+              disabled={isLoading}
+              onClick={() => void loadMembers()}
+              variant="outline"
+            >
+              <LoaderCircle
+                aria-hidden="true"
+                className={`size-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -480,10 +751,12 @@ export function GroupAdmin({
 
               return (
                 <article
-                  className="rounded-2xl border border-[#e8ebe5] p-4 sm:p-5"
+                  className="relative rounded-2xl border border-[#e8ebe5] p-4 sm:p-5"
                   key={member.id}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div
+                    className={`flex flex-wrap items-start justify-between gap-3 ${deleteMode ? "pr-10" : ""}`}
+                  >
                     <div className="flex min-w-0 items-start gap-3">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f1f3ef] text-[#5d6f60]">
                         {member.role === "admin" ? (
@@ -557,15 +830,17 @@ export function GroupAdmin({
                             : "Zum Admin machen"}
                         </Button>
                       )}
-                      <Button
-                        aria-label={`${member.displayName} aus Gruppe entfernen`}
-                        className="h-9 rounded-xl"
-                        disabled={savingMemberId === member.id}
-                        onClick={() => void handleRemoveMember(member)}
-                        variant="destructive"
-                      >
-                        <Trash2 aria-hidden="true" className="size-4" />
-                      </Button>
+                      {deleteMode && (
+                        <Button
+                          aria-label={`${member.displayName} aus Gruppe entfernen`}
+                          className="absolute top-3 right-3 size-8 rounded-xl p-0"
+                          disabled={savingMemberId === member.id}
+                          onClick={() => void handleRemoveMember(member)}
+                          variant="destructive"
+                        >
+                          <Trash2 aria-hidden="true" className="size-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
 

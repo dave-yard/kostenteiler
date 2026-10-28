@@ -1,4 +1,8 @@
 import { getSupabaseClient } from "@/lib/supabase"
+import {
+  parseExpenseSplitRule,
+  type ExpenseSplitRule,
+} from "@/lib/expenseSplit"
 import type {
   Group,
   GroupInvitation,
@@ -126,6 +130,37 @@ export async function createPersonalContact(
     .from("personal_contacts")
     .insert({ display_name: displayName, email: email.toLowerCase() })
 
+  if (error) {
+    throw error
+  }
+}
+
+export async function renamePersonalContact(
+  contactId: string,
+  displayName: string
+): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from("personal_contacts")
+    .update({ display_name: displayName })
+    .eq("id", contactId)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function setMyDisplayName(displayName: string): Promise<void> {
+  const client = getSupabaseClient()
+  const { error: profileError } = await client.auth.updateUser({
+    data: { display_name: displayName },
+  })
+  if (profileError) {
+    throw profileError
+  }
+
+  const { error } = await client.rpc("set_my_display_name", {
+    p_display_name: displayName,
+  })
   if (error) {
     throw error
   }
@@ -285,6 +320,35 @@ function readMembershipStatus(
   }
 
   return value
+}
+
+export async function getGroupSplitDefault(
+  groupId: string
+): Promise<ExpenseSplitRule> {
+  const { data, error } = await getSupabaseClient().rpc(
+    "get_group_split_default",
+    { p_group_id: groupId }
+  )
+
+  if (error) {
+    throw error
+  }
+
+  return parseExpenseSplitRule(data)
+}
+
+export async function setGroupSplitDefault(
+  groupId: string,
+  rule: ExpenseSplitRule | null
+): Promise<void> {
+  const { error } = await getSupabaseClient().rpc("set_group_split_default", {
+    p_group_id: groupId,
+    p_split_rule: rule,
+  })
+
+  if (error) {
+    throw error
+  }
 }
 
 export async function setGroupMemberAdmin(memberId: string, isAdmin: boolean) {

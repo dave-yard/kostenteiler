@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react"
-import { ContactRound, Mail, Plus, Trash2 } from "lucide-react"
+import {
+  Check,
+  ContactRound,
+  Mail,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Toast } from "@/components/ui/toast"
+import { useAuth } from "@/components/contexts/AuthContext"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import type { PersonalContact } from "@/types/group"
 
@@ -13,8 +22,20 @@ function getErrorMessage(error: unknown) {
 }
 
 export function PersonalContacts() {
-  const { getMyContacts, createPersonalContact, removePersonalContact } =
-    useGroupOverview()
+  const {
+    getMyContacts,
+    createPersonalContact,
+    removePersonalContact,
+    renamePersonalContact,
+    setMyDisplayName,
+  } = useGroupOverview()
+  const { session } = useAuth()
+  const metadataName: unknown = session?.user.user_metadata?.display_name
+  const [ownName, setOwnName] = useState(
+    typeof metadataName === "string" ? metadataName : ""
+  )
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
   const [contacts, setContacts] = useState<PersonalContact[]>([])
   const [contactName, setContactName] = useState("")
   const [contactEmail, setContactEmail] = useState("")
@@ -93,6 +114,54 @@ export function PersonalContacts() {
     }
   }
 
+  async function handleSaveOwnName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const trimmedName = ownName.trim()
+    if (!trimmedName) {
+      return
+    }
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setIsSaving(true)
+    try {
+      await setMyDisplayName(trimmedName)
+      setOwnName(trimmedName)
+      setSuccessMessage("Dein Anzeigename wurde gespeichert.")
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleRenameContact(contact: PersonalContact) {
+    const trimmedName = editingName.trim()
+    if (!trimmedName) {
+      return
+    }
+    if (trimmedName === contact.displayName) {
+      setEditingContactId(null)
+      return
+    }
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setIsSaving(true)
+    try {
+      await renamePersonalContact(contact.id, trimmedName)
+      setEditingContactId(null)
+      if (!(await loadContacts())) {
+        return
+      }
+      setSuccessMessage("Der Anzeigename wurde geändert.")
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function handleRemoveContact(contact: PersonalContact) {
     const confirmed = window.confirm(
       `${contact.displayName} aus deiner persönlichen Freundesliste entfernen? Bereits angelegte Gruppenmitglieder bleiben erhalten.`
@@ -132,6 +201,31 @@ export function PersonalContacts() {
           </p>
         </div>
       </div>
+
+      <form
+        className="mb-6 flex flex-col gap-3 border-b border-[#eef0eb] pb-6 sm:flex-row"
+        onSubmit={handleSaveOwnName}
+      >
+        <label className="sr-only" htmlFor="own-display-name">
+          Mein Anzeigename
+        </label>
+        <Input
+          className="h-11 min-w-0 flex-1 rounded-xl px-3.5"
+          id="own-display-name"
+          maxLength={80}
+          onChange={(event) => setOwnName(event.target.value)}
+          placeholder="Mein Anzeigename"
+          value={ownName}
+        />
+        <Button
+          className="h-11 rounded-xl"
+          disabled={isSaving || !ownName.trim()}
+          type="submit"
+          variant="outline"
+        >
+          Anzeigenamen speichern
+        </Button>
+      </form>
 
       <form
         className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
@@ -191,25 +285,81 @@ export function PersonalContacts() {
               className="flex items-center justify-between gap-3 py-3"
               key={contact.id}
             >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">
-                  {contact.displayName}
-                </p>
-                <p className="flex items-center gap-1.5 truncate text-xs text-[#72766f]">
-                  <Mail aria-hidden="true" className="size-3.5 shrink-0" />
-                  {contact.email}
-                </p>
-              </div>
-              <Button
-                aria-label={`${contact.displayName} aus Freundesliste entfernen`}
-                className="size-9 shrink-0 rounded-lg"
-                disabled={isSaving}
-                onClick={() => void handleRemoveContact(contact)}
-                size="icon"
-                variant="ghost"
-              >
-                <Trash2 aria-hidden="true" className="size-4" />
-              </Button>
+              {editingContactId === contact.id ? (
+                <form
+                  className="flex min-w-0 flex-1 items-center gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void handleRenameContact(contact)
+                  }}
+                >
+                  <Input
+                    aria-label="Anzeigename"
+                    autoFocus
+                    className="h-9 min-w-0 flex-1 rounded-lg px-3"
+                    maxLength={80}
+                    onChange={(event) => setEditingName(event.target.value)}
+                    value={editingName}
+                  />
+                  <Button
+                    aria-label="Anzeigenamen speichern"
+                    className="size-9 shrink-0 rounded-lg"
+                    disabled={isSaving || !editingName.trim()}
+                    size="icon"
+                    type="submit"
+                    variant="ghost"
+                  >
+                    <Check aria-hidden="true" className="size-4" />
+                  </Button>
+                  <Button
+                    aria-label="Abbrechen"
+                    className="size-9 shrink-0 rounded-lg"
+                    onClick={() => setEditingContactId(null)}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <X aria-hidden="true" className="size-4" />
+                  </Button>
+                </form>
+              ) : (
+                <>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {contact.displayName}
+                    </p>
+                    <p className="flex items-center gap-1.5 truncate text-xs text-[#72766f]">
+                      <Mail aria-hidden="true" className="size-3.5 shrink-0" />
+                      {contact.email}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      aria-label={`${contact.displayName} umbenennen`}
+                      className="size-9 rounded-lg"
+                      disabled={isSaving}
+                      onClick={() => {
+                        setEditingContactId(contact.id)
+                        setEditingName(contact.displayName)
+                      }}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Pencil aria-hidden="true" className="size-4" />
+                    </Button>
+                    <Button
+                      aria-label={`${contact.displayName} aus Freundesliste entfernen`}
+                      className="size-9 rounded-lg"
+                      disabled={isSaving}
+                      onClick={() => void handleRemoveContact(contact)}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Trash2 aria-hidden="true" className="size-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>

@@ -10,6 +10,14 @@ describe("getActionErrorMessage", () => {
     ).toBe("Positionen können nur bei offenen Ausgabenlisten geändert werden.")
   })
 
+  it("übersetzt neue Aufteilungsfehler", () => {
+    expect(
+      getActionErrorMessage({
+        message: "Percentage shares must total exactly 100 percent.",
+      })
+    ).toBe("Die Prozentanteile müssen zusammen genau 100 % ergeben.")
+  })
+
   it("lässt unbekannte Meldungen unverändert durch", () => {
     expect(getActionErrorMessage(new Error("Verbindung fehlgeschlagen"))).toBe(
       "Verbindung fehlgeschlagen"

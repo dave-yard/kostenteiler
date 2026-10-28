@@ -10,6 +10,24 @@ const databaseMessages: Record<string, string> = {
   "The amount must be greater than zero.": "Der Betrag muss größer als 0 sein.",
   "The payer must be a member of this group.":
     "Die zahlende Person muss Mitglied dieser Gruppe sein.",
+  "The selected person must be a member of this group.":
+    "Die ausgewählte Person muss Mitglied dieser Gruppe sein.",
+  "You are not a member of this group.": "Du bist kein Mitglied dieser Gruppe.",
+  "You are not allowed to edit item splits.":
+    "Du darfst die Verteilung dieser Position nicht bearbeiten.",
+  "Only group admins can change the group split default.":
+    "Nur Gruppen-Admins dürfen den Verteilungsstandard der Gruppe ändern.",
+  "The split rule is invalid.": "Die Verteilungseinstellungen sind ungültig.",
+  "The split mode is invalid.":
+    "Bitte einen gültigen Verteilungsmodus auswählen.",
+  "The split shares are invalid.":
+    "Die eingetragenen Verteilungswerte sind ungültig.",
+  "The split contains an unknown or duplicate group member.":
+    "Die Verteilung enthält ein unbekanntes oder doppeltes Gruppenmitglied.",
+  "Percentage shares must total exactly 100 percent.":
+    "Die Prozentanteile müssen zusammen genau 100 % ergeben.",
+  "Fixed split amounts cannot exceed the item amount.":
+    "Die festen Beträge dürfen den Positionsbetrag nicht überschreiten.",
   "The expense list does not exist.": "Die Ausgabenliste gibt es nicht mehr.",
   "The item does not exist.": "Die Position gibt es nicht mehr.",
   "You are not allowed to mark this expense list as paid.":
