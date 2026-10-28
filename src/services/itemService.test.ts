@@ -69,6 +69,8 @@ describe("itemService", () => {
         name: "Socken",
         amountCents: 500,
         paidByMemberId: "member-1",
+        isReceipt: false,
+        parentItemId: null,
         createdAt: "2026-10-26T10:00:00.000Z",
       },
     ])
@@ -92,12 +94,14 @@ describe("itemService", () => {
   it("creates an item through the authorized database function", async () => {
     const id = await createExpenseItem("list-1", input)
 
-    expect(rpc).toHaveBeenCalledWith("create_expense_item_with_split", {
+    expect(rpc).toHaveBeenCalledWith("create_expense_item_hierarchical", {
       p_list_id: "list-1",
       p_name: "Socken",
       p_amount_cents: 500,
       p_paid_by_member_id: "member-1",
       p_split_rule: null,
+      p_is_receipt: false,
+      p_parent_item_id: null,
     })
     expect(id).toBe("item-id")
   })
@@ -113,12 +117,13 @@ describe("itemService", () => {
 
     await updateExpenseItem("item-1", input)
 
-    expect(rpc).toHaveBeenCalledWith("update_expense_item_with_split", {
+    expect(rpc).toHaveBeenCalledWith("update_expense_item_hierarchical", {
       p_item_id: "item-1",
       p_name: "Socken",
       p_amount_cents: 500,
       p_paid_by_member_id: "member-1",
       p_split_rule: null,
+      p_is_receipt: false,
     })
   })
 

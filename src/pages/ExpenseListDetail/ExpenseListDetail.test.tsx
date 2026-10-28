@@ -35,6 +35,8 @@ const items: ExpenseItem[] = [
     name: "Socken",
     amountCents: 500,
     paidByMemberId: "m1",
+    isReceipt: false,
+    parentItemId: null,
     createdAt: "2026-01-03T10:00:00Z",
   },
   {
@@ -43,6 +45,8 @@ const items: ExpenseItem[] = [
     name: "Pizza",
     amountCents: 1250,
     paidByMemberId: "m2",
+    isReceipt: false,
+    parentItemId: null,
     createdAt: "2026-01-03T11:00:00Z",
   },
 ]
@@ -295,6 +299,8 @@ describe("ExpenseListDetail", () => {
       amountCents: 123450,
       paidByMemberId: "m2",
       splitRule: null,
+      isReceipt: false,
+      parentItemId: null,
     })
     expect(
       await screen.findByText("Die Position wurde hinzugefügt.")
@@ -336,6 +342,8 @@ describe("ExpenseListDetail", () => {
       name: "Brot",
       amountCents: 1000,
       paidByMemberId: "m1",
+      isReceipt: false,
+      parentItemId: null,
       splitRule: {
         mode: "percentage",
         shares: [
@@ -394,11 +402,83 @@ describe("ExpenseListDetail", () => {
       amountCents: 1250,
       paidByMemberId: "m1",
       splitRule: { mode: "equal" },
+      isReceipt: false,
     })
     expect(
       await screen.findByText("Die Position wurde aktualisiert.")
     ).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("legt einen Bon an und klappt seine Unterpositionen auf", async () => {
+    const user = userEvent.setup()
+    const receipt = {
+      ...items[0],
+      id: "bon",
+      name: "REWE",
+      amountCents: 5000,
+      isReceipt: true,
+    }
+    const child = {
+      ...items[1],
+      id: "kind",
+      name: "Milch",
+      amountCents: 250,
+      parentItemId: "bon",
+    }
+    getExpenseItems.mockResolvedValue([receipt, child])
+    createExpenseItem.mockResolvedValue("i9")
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    expect(await screen.findByText("REWE")).toBeTruthy()
+    expect(screen.queryByText("Milch")).toBeNull()
+    await user.click(
+      screen.getByRole("button", { name: /Unterpositionen von REWE anzeigen/ })
+    )
+    expect(screen.getByText("Milch")).toBeTruthy()
+
+    await user.click(
+      screen.getByRole("button", { name: "Unterposition hinzufügen" })
+    )
+    expect(screen.queryByLabelText("Art der Position")).toBeNull()
+    await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
+    await user.type(screen.getByLabelText("Betrag in Euro"), "2")
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
+
+    expect(createExpenseItem).toHaveBeenCalledWith(
+      "l1",
+      expect.objectContaining({
+        name: "Brot",
+        amountCents: 200,
+        isReceipt: false,
+        parentItemId: "bon",
+      })
+    )
+  })
+
+  it("wählt beim Anlegen zwischen Einzelposition und Bon", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([])
+    createExpenseItem.mockResolvedValue("i3")
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position hinzufügen" })
+    )
+    await user.selectOptions(
+      screen.getByLabelText("Art der Position"),
+      "receipt"
+    )
+    await user.type(screen.getByLabelText("Bezeichnung"), "REWE")
+    await user.type(screen.getByLabelText("Betrag in Euro"), "50")
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
+
+    expect(createExpenseItem).toHaveBeenCalledWith(
+      "l1",
+      expect.objectContaining({ isReceipt: true, parentItemId: null })
+    )
   })
 
   it("löscht eine Position erst nach Bestätigung", async () => {
@@ -408,9 +488,11 @@ describe("ExpenseListDetail", () => {
     mockAccess()
     renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
 
-    expect(screen.queryByRole("button", { name: /Position löschen/ })).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: /Position löschen/ })
+    ).toBeNull()
     await user.click(
-      await screen.findByRole("button", { name: "Löschen aktivieren" }),
+      await screen.findByRole("button", { name: "Löschen aktivieren" })
     )
     await user.click(
       await screen.findByRole("button", { name: "Position löschen: Socken" })

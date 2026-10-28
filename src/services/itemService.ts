@@ -10,6 +10,8 @@ export interface ExpenseItemInput {
   amountCents: number
   paidByMemberId: string
   splitRule?: ExpenseSplitRule | null
+  isReceipt?: boolean
+  parentItemId?: string | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -39,7 +41,9 @@ function readInteger(row: Record<string, unknown>, key: string) {
 export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   const { data, error } = await getSupabaseClient()
     .from("expense_items")
-    .select("id, list_id, name, amount_cents, paid_by_member_id, created_at")
+    .select(
+      "id, list_id, name, amount_cents, paid_by_member_id, is_receipt, parent_item_id, created_at"
+    )
     .eq("list_id", listId)
     .order("created_at", { ascending: true })
 
@@ -59,6 +63,9 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     name: readString(row, "name"),
     amountCents: readInteger(row, "amount_cents"),
     paidByMemberId: readString(row, "paid_by_member_id"),
+    isReceipt: row.is_receipt === true,
+    parentItemId:
+      typeof row.parent_item_id === "string" ? row.parent_item_id : null,
     createdAt: readString(row, "created_at"),
   }))
 }
@@ -68,13 +75,15 @@ export async function createExpenseItem(
   input: ExpenseItemInput
 ): Promise<string> {
   const { data, error } = await getSupabaseClient().rpc(
-    "create_expense_item_with_split",
+    "create_expense_item_hierarchical",
     {
       p_list_id: listId,
       p_name: input.name,
       p_amount_cents: input.amountCents,
       p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
+      p_is_receipt: input.isReceipt ?? false,
+      p_parent_item_id: input.parentItemId ?? null,
     }
   )
 
@@ -93,13 +102,14 @@ export async function updateExpenseItem(
   input: ExpenseItemInput
 ): Promise<void> {
   const { error } = await getSupabaseClient().rpc(
-    "update_expense_item_with_split",
+    "update_expense_item_hierarchical",
     {
       p_item_id: itemId,
       p_name: input.name,
       p_amount_cents: input.amountCents,
       p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
+      p_is_receipt: input.isReceipt ?? false,
     }
   )
 

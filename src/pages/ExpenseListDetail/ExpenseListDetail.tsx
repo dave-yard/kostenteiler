@@ -27,6 +27,11 @@ import {
 } from "@/lib/expenseSplit"
 import { getActionErrorMessage } from "@/lib/errorMessage"
 import { formatCents, parseAmountToCents } from "@/lib/money"
+import {
+  buildItemNodes,
+  sumTopLevelCents,
+  toSettlementItems,
+} from "@/lib/itemHierarchy"
 import { calculateSettlement, type Settlement } from "@/lib/settlement"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
@@ -89,6 +94,30 @@ function splitRuleLabel(rule: ExpenseSplitRule) {
       return "Prozentual"
     case "fixed":
       return "Fester Betrag"
+  }
+}
+
+// Kurzinfo zur Verteilung: bei gleichmäßiger Verteilung nichts, bei „komplett“ den Namen,
+// sonst den eigenen Anteil.
+function getSplitHint(
+  rule: ExpenseSplitRule,
+  currentMemberId: string | null,
+  memberNames: Map<string, string>
+) {
+  switch (rule.mode) {
+    case "equal":
+      return null
+    case "complete":
+      return memberNames.get(rule.memberId) ?? "Unbekannt"
+    case "percentage": {
+      const share = rule.shares.find((entry) => entry.memberId === currentMemberId)
+      const percent = (share?.basisPoints ?? 0) / 100
+      return `${percent.toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`
+    }
+    case "fixed": {
+      const share = rule.shares.find((entry) => entry.memberId === currentMemberId)
+      return formatCents(share?.amountCents ?? 0)
+    }
   }
 }
 
@@ -208,7 +237,6 @@ export function ExpenseListDetail({
       member.displayName,
     ])
   )
-  const totalCents = items.reduce((sum, item) => sum + item.amountCents, 0)
   const members = result?.access?.members ?? []
   // Nur zur Bequemlichkeit: Die Datenbank prüft Rechte, Status und Archiv erneut.
   const canAddItem =
@@ -224,6 +252,9 @@ export function ExpenseListDetail({
     list.status === "open" &&
     !group.archivedAt
   const [deleteMode, setDeleteMode] = useState(false)
+  const [isReceiptDraft, setIsReceiptDraft] = useState(false)
+  const [newParentId, setNewParentId] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const canDeleteItems =
     !isLoading &&
     !errorMessage &&
@@ -239,12 +270,84 @@ export function ExpenseListDetail({
   }
 
   const amountForPreview = parseAmountToCents(amountText)
+  const nodes = buildItemNodes(items)
+  const totalCents = sumTopLevelCents(nodes)
+  const dialogParentId = editingItem ? editingItem.parentItemId : newParentId
+  const dialogParent = items.find((item) => item.id === dialogParentId)
+  const editingHasChildren = editingItem
+    ? items.some((item) => item.parentItemId === editingItem.id)
+    : false
+
+  function renderItemRow(item: ExpenseItem) {
+    const splitHint = getSplitHint(
+      result?.rules?.[item.id] ?? groupDefaultSplitRule,
+      result?.access?.currentMemberId ?? null,
+      memberNames
+    )
+
+    return (
+      <div
+        className={`relative flex items-start justify-between gap-3 py-3 ${
+          canDeleteItems && deleteMode ? "pr-10" : ""
+        }`}
+      >
+        <div className="min-w-0">
+          <p className="font-medium break-words">
+            {item.name}
+            {item.isReceipt && (
+              <span className="ml-2 rounded-full bg-[#edf3e9] px-2 py-0.5 align-middle text-xs font-medium text-[#31563e]">
+                Bon
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 text-xs text-[#72766f]">
+            Bezahlt von {memberNames.get(item.paidByMemberId) ?? "Unbekannt"}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-start gap-2">
+          <div className="text-right">
+            <p className="font-semibold">{formatCents(item.amountCents)}</p>
+            {splitHint && (
+              <p className="mt-0.5 text-xs text-[#72766f]">{splitHint}</p>
+            )}
+          </div>
+          {canEditItems && (
+            <Button
+              aria-label={`Position bearbeiten: ${item.name}`}
+              className="size-8 p-0 text-[#555b53]"
+              onClick={() => void openDialog(item)}
+              type="button"
+              variant="ghost"
+            >
+              <Pencil aria-hidden="true" className="size-4" />
+            </Button>
+          )}
+          {canDeleteItems && deleteMode && (
+            <Button
+              aria-label={`Position löschen: ${item.name}`}
+              className="absolute top-2 right-0 size-8 p-0 text-red-700 hover:text-red-800"
+              onClick={(event) => {
+                event.stopPropagation()
+                setDeletingItem(item)
+                setDeleteError(null)
+              }}
+              type="button"
+              variant="ghost"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   let settlement: Settlement | null = null
   let settlementError: string | null = result?.rulesErrorMessage ?? null
   if (!isLoading && !errorMessage && result?.rules && !settlementError) {
     try {
       settlement = calculateSettlement(
-        items,
+        toSettlementItems(nodes),
         result.rules,
         members.map((member) => member.id),
         groupDefaultSplitRule
@@ -315,8 +418,13 @@ export function ExpenseListDetail({
     }
   }
 
-  async function openDialog(item: ExpenseItem | null = null) {
+  async function openDialog(
+    item: ExpenseItem | null = null,
+    parent: ExpenseItem | null = null
+  ) {
     setEditingItem(item)
+    setIsReceiptDraft(item?.isReceipt ?? false)
+    setNewParentId(parent?.id ?? null)
     setItemName(item?.name ?? "")
     setAmountText(
       item ? (item.amountCents / 100).toFixed(2).replace(".", ",") : ""
@@ -496,6 +604,7 @@ export function ExpenseListDetail({
           amountCents,
           paidByMemberId,
           splitRule,
+          isReceipt: dialogParentId ? false : isReceiptDraft,
         })
       } else {
         await createExpenseItem(list.id, {
@@ -503,10 +612,15 @@ export function ExpenseListDetail({
           amountCents,
           paidByMemberId,
           splitRule,
+          isReceipt: dialogParentId ? false : isReceiptDraft,
+          parentItemId: dialogParentId,
         })
       }
       setIsDialogOpen(false)
       setEditingItem(null)
+      if (dialogParentId) {
+        setExpandedIds((current) => new Set(current).add(dialogParentId))
+      }
       setSuccessMessage(
         editingItem
           ? "Die Position wurde aktualisiert."
@@ -610,7 +724,9 @@ export function ExpenseListDetail({
               aria-label="Löschen aktivieren"
               aria-pressed={deleteMode}
               className={`size-9 shrink-0 rounded-xl p-0 ${
-                deleteMode ? "bg-red-700 text-white hover:bg-red-800" : "text-red-700"
+                deleteMode
+                  ? "bg-red-700 text-white hover:bg-red-800"
+                  : "text-red-700"
               }`}
               onClick={() => setDeleteMode((current) => !current)}
               type="button"
@@ -654,7 +770,13 @@ export function ExpenseListDetail({
           >
             <div className="flex items-start justify-between gap-4">
               <h2 className="text-lg font-semibold" id="add-item-title">
-                {editingItem ? "Position bearbeiten" : "Position hinzufügen"}
+                {dialogParentId
+                  ? editingItem
+                    ? "Unterposition bearbeiten"
+                    : "Unterposition hinzufügen"
+                  : editingItem
+                    ? "Position bearbeiten"
+                    : "Position hinzufügen"}
               </h2>
               <Button
                 aria-label="Dialog schließen"
@@ -672,6 +794,39 @@ export function ExpenseListDetail({
               noValidate
               onSubmit={(event) => void handleSubmit(event)}
             >
+              {dialogParent ? (
+                <p className="text-sm text-[#72766f]">
+                  Teil des Bons „{dialogParent.name}“. Was nicht als
+                  Unterposition erfasst ist, wird nach Zahler und Verteilung des
+                  Bons verrechnet.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="item-type">
+                    Art der Position
+                  </label>
+                  <select
+                    className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                    disabled={editingHasChildren}
+                    id="item-type"
+                    onChange={(event) =>
+                      setIsReceiptDraft(event.target.value === "receipt")
+                    }
+                    value={isReceiptDraft ? "receipt" : "single"}
+                  >
+                    <option value="single">Einzelposition</option>
+                    <option value="receipt">
+                      Bon (Summe mit Unterpositionen)
+                    </option>
+                  </select>
+                  {editingHasChildren && (
+                    <p className="text-xs text-[#72766f]">
+                      Ein Bon mit Unterpositionen kann nicht zur Einzelposition
+                      werden.
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="item-name">
                   Bezeichnung
@@ -969,53 +1124,91 @@ export function ExpenseListDetail({
           </div>
         ) : items.length > 0 ? (
           <ul className="divide-y divide-[#eef0eb]">
-            {items.map((item) => (
-              <li
-                className={`relative flex items-start justify-between gap-3 py-3 ${
-                  canDeleteItems && deleteMode ? "pr-10" : ""
-                }`}
-                key={item.id}
-              >
-                <div className="min-w-0">
-                  <p className="font-medium break-words">{item.name}</p>
-                  <p className="mt-0.5 text-xs text-[#72766f]">
-                    Bezahlt von{" "}
-                    {memberNames.get(item.paidByMemberId) ?? "Unbekannt"}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-start gap-2">
-                  <p className="font-semibold">
-                    {formatCents(item.amountCents)}
-                  </p>
-                  {canEditItems && (
-                    <Button
-                      aria-label={`Position bearbeiten: ${item.name}`}
-                      className="size-8 p-0 text-[#555b53]"
-                      onClick={() => openDialog(item)}
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Pencil aria-hidden="true" className="size-4" />
-                    </Button>
+            {nodes.map((node) => {
+              const { item } = node
+              const isExpanded = expandedIds.has(item.id)
+
+              return (
+                <li key={item.id}>
+                  {renderItemRow(item)}
+                  {item.isReceipt && (
+                    <div className="pb-3">
+                      <button
+                        aria-expanded={isExpanded}
+                        aria-label={`Unterpositionen von ${item.name} ${
+                          isExpanded ? "ausblenden" : "anzeigen"
+                        }`}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg bg-[#fafbf9] px-3 py-2 text-left text-xs text-[#555b53]"
+                        onClick={() =>
+                          setExpandedIds((current) => {
+                            const next = new Set(current)
+                            if (next.has(item.id)) {
+                              next.delete(item.id)
+                            } else {
+                              next.add(item.id)
+                            }
+                            return next
+                          })
+                        }
+                        type="button"
+                      >
+                        <span>
+                          Bon · {node.children.length}{" "}
+                          {node.children.length === 1
+                            ? "Unterposition"
+                            : "Unterpositionen"}
+                          {" · "}
+                          {node.remainderCents < 0
+                            ? `${formatCents(-node.remainderCents)} über der Bon-Summe`
+                            : `Rest ${formatCents(node.remainderCents)}`}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp aria-hidden="true" className="size-4" />
+                        ) : (
+                          <ChevronDown aria-hidden="true" className="size-4" />
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-2 ml-3 border-l-2 border-[#e4e7e1] pl-3">
+                          <ul className="divide-y divide-[#eef0eb]">
+                            {node.children.map((child) => (
+                              <li key={child.id}>{renderItemRow(child)}</li>
+                            ))}
+                          </ul>
+                          {node.remainderCents > 0 && (
+                            <p className="py-2 text-xs text-[#72766f]">
+                              Rest {formatCents(node.remainderCents)} wird nach
+                              Zahler und Verteilung des Bons verrechnet.
+                            </p>
+                          )}
+                          {node.remainderCents < 0 && (
+                            <p
+                              className="py-2 text-xs text-red-800"
+                              role="alert"
+                            >
+                              Die Unterpositionen übersteigen die Bon-Summe um{" "}
+                              {formatCents(-node.remainderCents)}. Bitte
+                              Positionen oder Bon-Summe korrigieren.
+                            </p>
+                          )}
+                          {canAddItem && (
+                            <Button
+                              className="my-2 h-8 rounded-lg text-xs"
+                              onClick={() => void openDialog(null, item)}
+                              type="button"
+                              variant="outline"
+                            >
+                              <Plus aria-hidden="true" className="size-3.5" />
+                              Unterposition hinzufügen
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {canDeleteItems && deleteMode && (
-                    <Button
-                      aria-label={`Position löschen: ${item.name}`}
-                      className="absolute top-2 right-0 size-8 p-0 text-red-700 hover:text-red-800"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setDeletingItem(item)
-                        setDeleteError(null)
-                      }}
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Trash2 aria-hidden="true" className="size-4" />
-                    </Button>
-                  )}
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#d7ded3] bg-[#fafbf9] px-5 py-10 text-center">
