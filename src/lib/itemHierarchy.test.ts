@@ -14,6 +14,7 @@ function item(overrides: Partial<ExpenseItem> & { id: string }): ExpenseItem {
     paidByMemberId: "a",
     isReceipt: false,
     parentItemId: null,
+    itemDate: "2026-10-28",
     createdAt: "2026-10-28T10:00:00.000Z",
     ...overrides,
   }

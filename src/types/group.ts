@@ -25,6 +25,7 @@ export interface ExpenseItem {
   paidByMemberId: string
   isReceipt: boolean
   parentItemId: string | null
+  itemDate: string
   createdAt: string
 }
 

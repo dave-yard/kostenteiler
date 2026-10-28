@@ -37,6 +37,7 @@ const items: ExpenseItem[] = [
     paidByMemberId: "m1",
     isReceipt: false,
     parentItemId: null,
+    itemDate: "2026-01-03",
     createdAt: "2026-01-03T10:00:00Z",
   },
   {
@@ -47,6 +48,7 @@ const items: ExpenseItem[] = [
     paidByMemberId: "m2",
     isReceipt: false,
     parentItemId: null,
+    itemDate: "2026-01-03",
     createdAt: "2026-01-03T11:00:00Z",
   },
 ]
@@ -301,6 +303,7 @@ describe("ExpenseListDetail", () => {
       splitRule: null,
       isReceipt: false,
       parentItemId: null,
+      itemDate: expect.any(String),
     })
     expect(
       await screen.findByText("Die Position wurde hinzugefügt.")
@@ -344,6 +347,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       isReceipt: false,
       parentItemId: null,
+      itemDate: expect.any(String),
       splitRule: {
         mode: "percentage",
         shares: [
@@ -403,6 +407,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       splitRule: { mode: "equal" },
       isReceipt: false,
+      itemDate: "2026-01-03",
     })
     expect(
       await screen.findByText("Die Position wurde aktualisiert.")

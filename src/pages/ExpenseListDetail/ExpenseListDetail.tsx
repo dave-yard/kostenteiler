@@ -37,6 +37,45 @@ import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
 
+function todayIsoDate() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+function isoToGermanDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-")
+  return `${day}.${month}.${year}`
+}
+
+// Wandelt "TT.MM.JJJJ" in ISO um; null bei ungültigem Datum
+function germanToIsoDate(text: string) {
+  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text)
+  if (!match) {
+    return null
+  }
+  const [day, month, year] = [
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+  ]
+  const date = new Date(year, month - 1, day)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null
+  }
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+function formatItemDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-").map(Number)
+  return dateFormat.format(new Date(year, month - 1, day))
+}
+
 function areSplitRulesEqual(first: ExpenseSplitRule, second: ExpenseSplitRule) {
   if (first.mode !== second.mode) {
     return false
@@ -110,12 +149,16 @@ function getSplitHint(
     case "complete":
       return memberNames.get(rule.memberId) ?? "Unbekannt"
     case "percentage": {
-      const share = rule.shares.find((entry) => entry.memberId === currentMemberId)
+      const share = rule.shares.find(
+        (entry) => entry.memberId === currentMemberId
+      )
       const percent = (share?.basisPoints ?? 0) / 100
       return `${percent.toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`
     }
     case "fixed": {
-      const share = rule.shares.find((entry) => entry.memberId === currentMemberId)
+      const share = rule.shares.find(
+        (entry) => entry.memberId === currentMemberId
+      )
       return formatCents(share?.amountCents ?? 0)
     }
   }
@@ -158,6 +201,9 @@ export function ExpenseListDetail({
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null)
   const [itemName, setItemName] = useState("")
   const [amountText, setAmountText] = useState("")
+  const [itemDateText, setItemDateText] = useState(
+    isoToGermanDate(todayIsoDate())
+  )
   const [paidByMemberId, setPaidByMemberId] = useState("")
   const [customSplitMode, setCustomSplitMode] =
     useState<ExpenseSplitRule["mode"]>("equal")
@@ -294,6 +340,11 @@ export function ExpenseListDetail({
         <div className="min-w-0">
           <p className="font-medium break-words">
             {item.name}
+            {!item.parentItemId && item.itemDate && (
+              <span className="ml-1.5 text-xs font-normal text-[#72766f]">
+                • {formatItemDate(item.itemDate)}
+              </span>
+            )}
             {item.isReceipt && (
               <span className="ml-2 rounded-full bg-[#edf3e9] px-2 py-0.5 align-middle text-xs font-medium text-[#31563e]">
                 Bon
@@ -426,6 +477,7 @@ export function ExpenseListDetail({
     setIsReceiptDraft(item?.isReceipt ?? false)
     setNewParentId(parent?.id ?? null)
     setItemName(item?.name ?? "")
+    setItemDateText(isoToGermanDate(item?.itemDate ?? todayIsoDate()))
     setAmountText(
       item ? (item.amountCents / 100).toFixed(2).replace(".", ",") : ""
     )
@@ -449,6 +501,11 @@ export function ExpenseListDetail({
         setIsLoadingSplitRule(false)
       }
     }
+  }
+
+  function handlePositionDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const formatted = formatGermanDateInput(e.target.value)
+    setItemDateText(formatted)
   }
 
   function setSplitDraft(rule: ExpenseSplitRule) {
@@ -595,6 +652,12 @@ export function ExpenseListDetail({
       }
     }
 
+    const itemDateIso = itemDateText ? germanToIsoDate(itemDateText) : null
+    if (itemDateText && !itemDateIso) {
+      setDialogError("Bitte ein gültiges Datum im Format TT.MM.JJJJ eingeben.")
+      return
+    }
+
     setIsSaving(true)
     setDialogError(null)
     try {
@@ -605,6 +668,7 @@ export function ExpenseListDetail({
           paidByMemberId,
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
+          itemDate: itemDateIso,
         })
       } else {
         await createExpenseItem(list.id, {
@@ -614,6 +678,7 @@ export function ExpenseListDetail({
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           parentItemId: dialogParentId,
+          itemDate: itemDateIso,
         })
       }
       setIsDialogOpen(false)
@@ -841,19 +906,37 @@ export function ExpenseListDetail({
                   value={itemName}
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="item-amount">
-                  Betrag in Euro
-                </label>
-                <Input
-                  autoComplete="off"
-                  className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
-                  id="item-amount"
-                  inputMode="decimal"
-                  onChange={(event) => setAmountText(event.target.value)}
-                  placeholder="12,50"
-                  value={amountText}
-                />
+              <div className="flex flex-row gap-1">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="item-amount">
+                    Betrag in Euro
+                  </label>
+                  <Input
+                    autoComplete="off"
+                    className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
+                    id="item-amount"
+                    inputMode="decimal"
+                    onChange={(event) => setAmountText(event.target.value)}
+                    placeholder="12,50"
+                    value={amountText}
+                  />
+                </div>
+                {!dialogParentId && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="item-date">
+                      Datum
+                    </label>
+                    <Input
+                      className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
+                      id="item-date"
+                      onChange={handlePositionDateChange}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="TT.MM.JJJJ"
+                      value={itemDateText}
+                    />
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="item-payer">
@@ -1316,4 +1399,17 @@ export function ExpenseListDetail({
       )}
     </section>
   )
+}
+
+const formatGermanDateInput = (value: string) => {
+  // Nur Ziffern erlauben
+  const numbers = value.replace(/\D/g, "").slice(0, 8)
+
+  if (numbers.length <= 2) {
+    return numbers
+  } else if (numbers.length <= 4) {
+    return `${numbers.slice(0, 2)}.${numbers.slice(2)}`
+  } else {
+    return `${numbers.slice(0, 2)}.${numbers.slice(2, 4)}.${numbers.slice(4)}`
+  }
 }

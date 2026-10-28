@@ -12,6 +12,19 @@ export interface ExpenseItemInput {
   splitRule?: ExpenseSplitRule | null
   isReceipt?: boolean
   parentItemId?: string | null
+  // Format JJJJ-MM-TT
+  itemDate?: string | null
+}
+
+async function setExpenseItemDate(itemId: string, itemDate: string) {
+  const { error } = await getSupabaseClient().rpc("set_expense_item_date", {
+    p_item_id: itemId,
+    p_date: itemDate,
+  })
+
+  if (error) {
+    throw error
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,7 +55,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   const { data, error } = await getSupabaseClient()
     .from("expense_items")
     .select(
-      "id, list_id, name, amount_cents, paid_by_member_id, is_receipt, parent_item_id, created_at"
+      "id, list_id, name, amount_cents, paid_by_member_id, is_receipt, parent_item_id, item_date, created_at"
     )
     .eq("list_id", listId)
     .order("created_at", { ascending: true })
@@ -66,6 +79,10 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     isReceipt: row.is_receipt === true,
     parentItemId:
       typeof row.parent_item_id === "string" ? row.parent_item_id : null,
+    itemDate:
+      typeof row.item_date === "string"
+        ? row.item_date
+        : readString(row, "created_at").slice(0, 10),
     createdAt: readString(row, "created_at"),
   }))
 }
@@ -93,6 +110,9 @@ export async function createExpenseItem(
   if (typeof data !== "string") {
     throw new Error("Die Position wurde erstellt, aber ihre ID fehlt.")
   }
+  if (input.itemDate) {
+    await setExpenseItemDate(data, input.itemDate)
+  }
 
   return data
 }
@@ -115,6 +135,9 @@ export async function updateExpenseItem(
 
   if (error) {
     throw error
+  }
+  if (input.itemDate) {
+    await setExpenseItemDate(itemId, input.itemDate)
   }
 }
 
