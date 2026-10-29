@@ -216,6 +216,28 @@ describe("ExpenseListDetail", () => {
     expect(screen.getByText(/17,50\s€/)).toBeTruthy()
   })
 
+  it("markiert den passenden Text bei der Suche", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    mockAccess()
+    renderDetail()
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Ansichts- und Sortieroptionen",
+      })
+    )
+    await user.type(
+      screen.getByRole("textbox", { name: "Positionen durchsuchen" }),
+      "sock"
+    )
+
+    expect(screen.getByText("Sock", { selector: "mark" }).textContent).toBe(
+      "Sock"
+    )
+    expect(screen.queryByText("Pizza")).toBeNull()
+  })
+
   it("zeigt einen Ladefehler und lädt erneut", async () => {
     const user = userEvent.setup()
     getExpenseItems

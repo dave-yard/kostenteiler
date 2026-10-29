@@ -1,4 +1,10 @@
-import { useEffect, useState, useMemo, type FormEvent } from "react"
+import {
+  useEffect,
+  useState,
+  useMemo,
+  type FormEvent,
+  type ReactNode,
+} from "react"
 import { SlidersHorizontal } from "lucide-react"
 import {
   ArrowLeft,
@@ -144,6 +150,39 @@ function splitRuleLabel(rule: ExpenseSplitRule) {
     case "fixed":
       return "Fester Betrag"
   }
+}
+
+function highlightSearchMatch(text: string, searchQuery: string): ReactNode {
+  const query = searchQuery.trim()
+  if (!query) return text
+
+  const normalizedText = text.toLowerCase()
+  const normalizedQuery = query.toLowerCase()
+  const parts: ReactNode[] = []
+  let position = 0
+  let matchIndex = normalizedText.indexOf(normalizedQuery, position)
+
+  while (matchIndex !== -1) {
+    if (matchIndex > position) {
+      parts.push(text.slice(position, matchIndex))
+    }
+
+    const matchEnd = matchIndex + query.length
+    parts.push(
+      <mark
+        className="rounded-sm bg-amber-200 px-0.5 text-inherit"
+        key={matchIndex}
+      >
+        {text.slice(matchIndex, matchEnd)}
+      </mark>
+    )
+    position = matchEnd
+    matchIndex = normalizedText.indexOf(normalizedQuery, position)
+  }
+
+  if (parts.length === 0) return text
+  if (position < text.length) parts.push(text.slice(position))
+  return parts
 }
 
 // Kurzinfo zur Verteilung: bei gleichmäßiger Verteilung nichts, bei „komplett“ den Namen,
@@ -363,6 +402,8 @@ export function ExpenseListDetail({
       result?.access?.currentMemberId ?? null,
       memberNames
     )
+    const payerName = memberNames.get(item.paidByMemberId) ?? "Unbekannt"
+    const amount = formatCents(item.amountCents)
 
     return (
       <div
@@ -372,10 +413,14 @@ export function ExpenseListDetail({
       >
         <div className="min-w-0">
           <p className="font-medium break-words">
-            {item.name}
+            {highlightSearchMatch(item.name, searchQuery)}
             {!item.parentItemId && item.itemDate && (
               <span className="ml-1.5 text-xs font-normal text-[#72766f]">
-                • {formatItemDate(item.itemDate, item.createdAt, showTime)}
+                •{" "}
+                {highlightSearchMatch(
+                  formatItemDate(item.itemDate, item.createdAt, showTime),
+                  searchQuery
+                )}
               </span>
             )}
             {item.isReceipt && (
@@ -385,14 +430,18 @@ export function ExpenseListDetail({
             )}
           </p>
           <p className="mt-0.5 text-xs text-[#72766f]">
-            Bezahlt von {memberNames.get(item.paidByMemberId) ?? "Unbekannt"}
+            Bezahlt von {highlightSearchMatch(payerName, searchQuery)}
           </p>
         </div>
         <div className="flex shrink-0 items-start gap-2">
           <div className="text-right">
-            <p className="font-semibold">{formatCents(item.amountCents)}</p>
+            <p className="font-semibold">
+              {highlightSearchMatch(amount, searchQuery)}
+            </p>
             {splitHint && (
-              <p className="mt-0.5 text-xs text-[#72766f]">{splitHint}</p>
+              <p className="mt-0.5 text-xs text-[#72766f]">
+                {highlightSearchMatch(splitHint, searchQuery)}
+              </p>
             )}
           </div>
           {canEditItems && (
@@ -1596,6 +1645,59 @@ interface GetSortedNodesParams {
   groupDefaultSplitRule: ExpenseSplitRule
 }
 
+function matchesItem(
+  item: ExpenseItem,
+  query: string,
+  memberNames: Map<string, string>,
+  rules: Record<string, ExpenseSplitRule> | null | undefined,
+  groupDefaultSplitRule: ExpenseSplitRule
+): boolean {
+  if (!query) return false
+
+  // 1. Bezeichnung
+  if (item.name.toLowerCase().includes(query)) return true
+
+  // 2. Ausleger (sichtbar als: "Bezahlt von ...")
+  const payerName = (memberNames.get(item.paidByMemberId) ?? "").toLowerCase()
+  if (payerName.includes(query)) return true
+
+  // 3. Betrag
+  const euroString = (item.amountCents / 100).toFixed(2) // "12.50"
+  const euroStringGerman = euroString.replace(".", ",") // "12,50"
+
+  if (
+    item.amountCents.toString().includes(query) ||
+    euroString.includes(query) ||
+    euroStringGerman.includes(query)
+  ) {
+    return true
+  }
+
+  // 4. Nur wenn der Name sichtbar als Zuweisung ("Komplett") rechts steht
+  const rule = rules?.[item.id] ?? groupDefaultSplitRule
+  if (rule.mode === "complete") {
+    const assignedName = (memberNames.get(rule.memberId) ?? "").toLowerCase()
+    if (assignedName.includes(query)) return true
+  }
+
+  // 5. Datum
+  const isoDate = item.itemDate || ""
+
+  let germanDate = ""
+  if (isoDate.length >= 10) {
+    const [year, month, day] = isoDate.substring(0, 10).split("-")
+    if (year && month && day) {
+      germanDate = `${day}.${month}.${year}`
+    }
+  }
+
+  if (germanDate.includes(query)) {
+    return true
+  }
+
+  return false
+}
+
 function getSortedNodes({
   nodes,
   sortBy,
@@ -1618,54 +1720,17 @@ function getSortedNodes({
   const query = searchQuery.trim().toLowerCase()
   if (!query) return sorted
 
-  function matchesItem(item: ExpenseItem) {
-    // 1. Bezeichnung
-    if (item.name.toLowerCase().includes(query)) return true
-
-    // 2. Ausleger (sichtbar als: "Bezahlt von ...")
-    const payerName = (memberNames.get(item.paidByMemberId) ?? "").toLowerCase()
-    if (payerName.includes(query)) return true
-
-    // 3. Betrag
-    const euroString = (item.amountCents / 100).toFixed(2) // "12.50"
-    const euroStringGerman = euroString.replace(".", ",") // "12,50"
-
-    if (
-      item.amountCents.toString().includes(query) ||
-      euroString.includes(query) ||
-      euroStringGerman.includes(query)
-    ) {
-      return true
-    }
-
-    // 4. Nur wenn der Name sichtbar als Zuweisung ("Komplett") rechts steht
-    const rule = rules?.[item.id] ?? groupDefaultSplitRule
-    if (rule.mode === "complete") {
-      const assignedName = (memberNames.get(rule.memberId) ?? "").toLowerCase()
-      if (assignedName.includes(query)) return true
-    }
-
-    //5. datum
-    const isoDate = item.itemDate || ""
-
-    let germanDate = ""
-    if (isoDate.length >= 10) {
-      const [year, month, day] = isoDate.substring(0, 10).split("-")
-      if (year && month && day) {
-        germanDate = `${day}.${month}.${year}`
-      }
-    }
-
-    if (germanDate.includes(query)) {
-      return true
-    }
-
-    return false
-  }
-
   return sorted.filter((node) => {
-    const mainMatches = matchesItem(node.item)
-    const childMatches = node.children.some((child) => matchesItem(child))
+    const mainMatches = matchesItem(
+      node.item,
+      query,
+      memberNames,
+      rules,
+      groupDefaultSplitRule
+    )
+    const childMatches = node.children.some((child) =>
+      matchesItem(child, query, memberNames, rules, groupDefaultSplitRule)
+    )
     return mainMatches || childMatches
   })
 }
