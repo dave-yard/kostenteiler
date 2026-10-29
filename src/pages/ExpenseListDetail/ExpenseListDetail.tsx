@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState, useMemo, type FormEvent } from "react"
+import { SlidersHorizontal } from "lucide-react"
 import {
   ArrowLeft,
   ChevronDown,
@@ -31,11 +32,13 @@ import {
   buildItemNodes,
   sumTopLevelCents,
   toSettlementItems,
+  type ItemNode,
 } from "@/lib/itemHierarchy"
 import { calculateSettlement, type Settlement } from "@/lib/settlement"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
+const timeFormat = new Intl.DateTimeFormat("de-DE", { timeStyle: "short" })
 
 function todayIsoDate() {
   const now = new Date()
@@ -71,9 +74,16 @@ function germanToIsoDate(text: string) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
-function formatItemDate(isoDate: string) {
+function formatItemDate(isoDate: string, createdAt?: string, showTime = false) {
   const [year, month, day] = isoDate.split("-").map(Number)
-  return dateFormat.format(new Date(year, month - 1, day))
+  const formattedDate = dateFormat.format(new Date(year, month - 1, day))
+  if (showTime && createdAt) {
+    const createdDate = new Date(createdAt)
+    if (!Number.isNaN(createdDate.getTime())) {
+      return `${formattedDate}, ${timeFormat.format(createdDate)}`
+    }
+  }
+  return formattedDate
 }
 
 function areSplitRulesEqual(first: ExpenseSplitRule, second: ExpenseSplitRule) {
@@ -204,6 +214,10 @@ export function ExpenseListDetail({
   const [itemDateText, setItemDateText] = useState(
     isoToGermanDate(todayIsoDate())
   )
+  const [isViewSettingsOpen, setIsViewSettingsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showTime, setShowTime] = useState(false)
+  const [sortBy, setSortBy] = useState<"itemDate" | "createdAt">("itemDate")
   const [paidByMemberId, setPaidByMemberId] = useState("")
   const [customSplitMode, setCustomSplitMode] =
     useState<ExpenseSplitRule["mode"]>("equal")
@@ -317,6 +331,25 @@ export function ExpenseListDetail({
 
   const amountForPreview = parseAmountToCents(amountText)
   const nodes = buildItemNodes(items)
+
+  const sortedNodes = useMemo(() => {
+    return getSortedNodes({
+      nodes,
+      sortBy,
+      searchQuery,
+      memberNames,
+      rules: result?.rules,
+      groupDefaultSplitRule,
+    })
+  }, [
+    nodes,
+    sortBy,
+    searchQuery,
+    memberNames,
+    result?.rules,
+    groupDefaultSplitRule,
+  ])
+
   const totalCents = sumTopLevelCents(nodes)
   const dialogParentId = editingItem ? editingItem.parentItemId : newParentId
   const dialogParent = items.find((item) => item.id === dialogParentId)
@@ -342,7 +375,7 @@ export function ExpenseListDetail({
             {item.name}
             {!item.parentItemId && item.itemDate && (
               <span className="ml-1.5 text-xs font-normal text-[#72766f]">
-                • {formatItemDate(item.itemDate)}
+                • {formatItemDate(item.itemDate, item.createdAt, showTime)}
               </span>
             )}
             {item.isReceipt && (
@@ -757,59 +790,153 @@ export function ExpenseListDetail({
           Zu den Ausgabenlisten
         </Button>
 
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex w-full items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-[#72766f]">{group.name}</p>
             <h1 className="text-2xl font-semibold tracking-[-0.04em] break-words">
               {list.name}
             </h1>
-            <p className="mt-1 text-xs text-[#72766f]">
-              Erstellt am {dateFormat.format(new Date(list.createdAt))}
-              {list.completedAt &&
-                ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
-              {list.paidAt &&
-                ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
-            </p>
+            <div className="flex flex-row gap-1">
+              <p className="mt-1 text-xs text-[#72766f]">
+                Erstellt am {dateFormat.format(new Date(list.createdAt))}
+                {list.completedAt &&
+                  ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
+                {list.paidAt &&
+                  ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
+              </p>
+              <div className="relative">
+                <Button
+                  aria-label="Ansichts- und Sortieroptionen"
+                  className="size-8 rounded-lg border border-[#e4e7e1] p-0 text-[#72766f] hover:bg-[#fafbf9]"
+                  onClick={() => setIsViewSettingsOpen((prev) => !prev)}
+                  type="button"
+                  variant="outline"
+                >
+                  <SlidersHorizontal className="size-4" />
+                </Button>
+
+                {isViewSettingsOpen && (
+                  <div className="absolute top-full left-0 z-20 mt-1 w-64 rounded-xl border border-[#e4e7e1] bg-white p-3 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#20241f]">
+                        Ansicht & Filter
+                      </p>
+                      {searchQuery && (
+                        <span className="rounded-full bg-[#eef0eb] px-1.5 py-0.5 text-[10px] font-medium text-[#31563e]">
+                          Filter aktiv
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 space-y-2.5 text-xs">
+                      {/* Volltext-Suche ganz oben */}
+                      <div>
+                        <label className="text-[#72766f]" htmlFor="item-search">
+                          Positionen durchsuchen
+                        </label>
+                        <div className="relative mt-1">
+                          <Input
+                            id="item-search"
+                            placeholder="Name, Zahler, Bon-Posten..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-8 rounded-lg border-[#e4e7e1] bg-[#fafbf9] px-2.5 pr-7 text-xs"
+                            autoFocus
+                          />
+                          {searchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery("")}
+                              className="absolute top-1/2 right-2 -translate-y-1/2 text-[#72766f] hover:text-[#20241f]"
+                              aria-label="Suche zurücksetzen"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <hr className="border-[#eef0eb]" />
+
+                      {/* Uhrzeit-Umschalter */}
+                      <div>
+                        <label className="text-[#72766f]">
+                          Uhrzeit anzeigen
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowTime((prev) => !prev)}
+                          className="mt-1 w-full rounded-lg border border-[#e4e7e1] bg-[#fafbf9] py-1 text-center font-medium hover:bg-[#f3f5f1]"
+                        >
+                          {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
+                        </button>
+                      </div>
+
+                      {/* Sortierung */}
+                      <div>
+                        <label className="text-[#72766f]">Sortieren nach</label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSortBy((prev) =>
+                              prev === "itemDate" ? "createdAt" : "itemDate"
+                            )
+                          }
+                          className="mt-1 w-full rounded-lg border border-[#e4e7e1] bg-[#fafbf9] py-1 text-center font-medium hover:bg-[#f3f5f1]"
+                        >
+                          {sortBy === "itemDate"
+                            ? "📅 Belegdatum"
+                            : "🕒 Erfassungszeit"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <ExpenseListStatusBadge status={list.status} />
         </div>
 
-        <div className="mt-7 flex items-baseline justify-between gap-3 border-b border-[#eef0eb] pb-4">
-          <h2 className="font-semibold">Positionen</h2>
-          {items.length > 0 && (
-            <p className="text-sm text-[#72766f]">
-              Summe{" "}
-              <span className="font-semibold text-[#20241f]">
-                {formatCents(totalCents)}
-              </span>
-            </p>
-          )}
-          {canDeleteItems && items.length > 0 && (
-            <Button
-              aria-label="Löschen aktivieren"
-              aria-pressed={deleteMode}
-              className={`size-9 shrink-0 rounded-xl p-0 ${
-                deleteMode
-                  ? "bg-red-700 text-white hover:bg-red-800"
-                  : "text-red-700"
-              }`}
-              onClick={() => setDeleteMode((current) => !current)}
-              type="button"
-              variant={deleteMode ? "default" : "outline"}
-            >
-              <Trash2 aria-hidden="true" className="size-4" />
-            </Button>
-          )}
-          {canAddItem && (
-            <Button
-              aria-label="Position hinzufügen"
-              className="size-9 shrink-0 rounded-xl bg-[#1f3b2d] p-0 text-white hover:bg-[#294b38]"
-              onClick={() => openDialog()}
-              type="button"
-            >
-              <Plus aria-hidden="true" className="size-4" />
-            </Button>
-          )}
+        <div className="mt-1 flex items-center justify-between gap-3 border-b border-[#eef0eb] pb-4">
+          <div className="flex items-center gap-2.5">
+            <h2 className="font-semibold">Positionen</h2>
+            {items.length > 0 && (
+              <p className="text-sm text-[#72766f]">
+                <span className="font-semibold text-[#20241f]">
+                  {formatCents(totalCents)}
+                </span>{" "}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {canDeleteItems && items.length > 0 && (
+              <Button
+                aria-label="Löschen aktivieren"
+                aria-pressed={deleteMode}
+                className={`size-9 shrink-0 rounded-xl p-0 ${
+                  deleteMode
+                    ? "bg-red-700 text-white hover:bg-red-800"
+                    : "text-red-700"
+                }`}
+                onClick={() => setDeleteMode((current) => !current)}
+                type="button"
+                variant={deleteMode ? "default" : "outline"}
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+              </Button>
+            )}
+            {canAddItem && (
+              <Button
+                aria-label="Position hinzufügen"
+                className="size-9 shrink-0 rounded-xl bg-[#1f3b2d] p-0 text-white hover:bg-[#294b38]"
+                onClick={() => openDialog()}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -859,39 +986,6 @@ export function ExpenseListDetail({
               noValidate
               onSubmit={(event) => void handleSubmit(event)}
             >
-              {dialogParent ? (
-                <p className="text-sm text-[#72766f]">
-                  Teil des Bons „{dialogParent.name}“. Was nicht als
-                  Unterposition erfasst ist, wird nach Zahler und Verteilung des
-                  Bons verrechnet.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="item-type">
-                    Art der Position
-                  </label>
-                  <select
-                    className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
-                    disabled={editingHasChildren}
-                    id="item-type"
-                    onChange={(event) =>
-                      setIsReceiptDraft(event.target.value === "receipt")
-                    }
-                    value={isReceiptDraft ? "receipt" : "single"}
-                  >
-                    <option value="single">Einzelposition</option>
-                    <option value="receipt">
-                      Bon (Summe mit Unterpositionen)
-                    </option>
-                  </select>
-                  {editingHasChildren && (
-                    <p className="text-xs text-[#72766f]">
-                      Ein Bon mit Unterpositionen kann nicht zur Einzelposition
-                      werden.
-                    </p>
-                  )}
-                </div>
-              )}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="item-name">
                   Bezeichnung
@@ -907,9 +1001,9 @@ export function ExpenseListDetail({
                 />
               </div>
               <div className="flex flex-row gap-1">
-                <div className="space-y-1.5">
+                <div className="flex-1 space-y-1.5">
                   <label className="text-sm font-medium" htmlFor="item-amount">
-                    Betrag in Euro
+                    Betrag in €
                   </label>
                   <Input
                     autoComplete="off"
@@ -922,7 +1016,7 @@ export function ExpenseListDetail({
                   />
                 </div>
                 {!dialogParentId && (
-                  <div className="space-y-1.5">
+                  <div className="flex-1 space-y-1.5">
                     <label className="text-sm font-medium" htmlFor="item-date">
                       Datum
                     </label>
@@ -938,22 +1032,57 @@ export function ExpenseListDetail({
                   </div>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="item-payer">
-                  Bezahlt von
-                </label>
-                <select
-                  className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
-                  id="item-payer"
-                  onChange={(event) => setPaidByMemberId(event.target.value)}
-                  value={paidByMemberId}
-                >
-                  {members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.displayName}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex flex-row gap-1">
+                {dialogParent ? (
+                  <p className="text-sm text-[#72766f]">
+                    Teil des Bons „{dialogParent.name}“. Was nicht als
+                    Unterposition erfasst ist, wird nach Zahler und Verteilung
+                    des Bons verrechnet.
+                  </p>
+                ) : (
+                  <div className="w-1/2 space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="item-type">
+                      Art der Position
+                    </label>
+                    <select
+                      className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                      disabled={editingHasChildren}
+                      id="item-type"
+                      onChange={(event) =>
+                        setIsReceiptDraft(event.target.value === "receipt")
+                      }
+                      value={isReceiptDraft ? "receipt" : "single"}
+                    >
+                      <option value="single">Einzelposition</option>
+                      <option value="receipt">
+                        Bon (Summe mit Unterpositionen)
+                      </option>
+                    </select>
+                    {editingHasChildren && (
+                      <p className="text-xs text-[#72766f]">
+                        Ein Bon mit Unterpositionen kann nicht zur
+                        Einzelposition werden.
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="item-payer">
+                    Bezahlt von
+                  </label>
+                  <select
+                    className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                    id="item-payer"
+                    onChange={(event) => setPaidByMemberId(event.target.value)}
+                    value={paidByMemberId}
+                  >
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <hr className="border-[#e8ebe5]" />
               <section aria-labelledby="item-split-title" className="space-y-3">
@@ -996,29 +1125,73 @@ export function ExpenseListDetail({
                       <option value="percentage">Prozentual</option>
                       <option value="fixed">Fester Betrag</option>
                     </select>
-                    {customSplitMode === "complete" ? (
-                      <div className="space-y-1.5">
-                        <label
-                          className="text-sm font-medium"
-                          htmlFor="item-split-member"
-                        >
-                          Übernimmt den gesamten Betrag
-                        </label>
-                        <select
-                          className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
-                          id="item-split-member"
-                          onChange={(event) =>
-                            setCompleteMemberId(event.target.value)
-                          }
-                          value={completeMemberId}
-                        >
-                          {members.map((member) => (
-                            <option key={member.id} value={member.id}>
-                              {member.displayName}
+                    {customSplitMode === "equal" ||
+                    customSplitMode === "complete" ? (
+                      members.length <= 4 ? (
+                        <fieldset className="space-y-1.5">
+                          <legend className="text-sm font-medium">
+                            Übernimmt den gesamten Betrag
+                          </legend>
+                          <div className="grid grid-cols-2 gap-2">
+                            {members.map((member) => (
+                              <label
+                                className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-[#e4e7e1] bg-white px-3 py-2 text-sm"
+                                htmlFor={`item-split-member-${member.id}`}
+                                key={member.id}
+                              >
+                                <input
+                                  checked={
+                                    customSplitMode === "complete" &&
+                                    completeMemberId === member.id
+                                  }
+                                  id={`item-split-member-${member.id}`}
+                                  name="item-split-member"
+                                  onChange={() => {
+                                    changeCustomSplitMode("complete")
+                                    setCompleteMemberId(member.id)
+                                  }}
+                                  type="radio"
+                                  value={member.id}
+                                />
+                                <span className="truncate">
+                                  {member.displayName}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <label
+                            className="text-sm font-medium"
+                            htmlFor="item-split-member"
+                          >
+                            Übernimmt den gesamten Betrag
+                          </label>
+                          <select
+                            className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                            id="item-split-member"
+                            onChange={(event) => {
+                              changeCustomSplitMode("complete")
+                              setCompleteMemberId(event.target.value)
+                            }}
+                            value={
+                              customSplitMode === "complete"
+                                ? completeMemberId
+                                : ""
+                            }
+                          >
+                            <option disabled value="">
+                              Person wählen
                             </option>
-                          ))}
-                        </select>
-                      </div>
+                            {members.map((member) => (
+                              <option key={member.id} value={member.id}>
+                                {member.displayName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
                     ) : (
                       <div className="space-y-2">
                         {members.map((member) => (
@@ -1207,7 +1380,7 @@ export function ExpenseListDetail({
           </div>
         ) : items.length > 0 ? (
           <ul className="divide-y divide-[#eef0eb]">
-            {nodes.map((node) => {
+            {sortedNodes.map((node) => {
               const { item } = node
               const isExpanded = expandedIds.has(item.id)
 
@@ -1412,4 +1585,87 @@ const formatGermanDateInput = (value: string) => {
   } else {
     return `${numbers.slice(0, 2)}.${numbers.slice(2, 4)}.${numbers.slice(4)}`
   }
+}
+
+interface GetSortedNodesParams {
+  nodes: ItemNode[]
+  sortBy: "itemDate" | "createdAt"
+  searchQuery: string
+  memberNames: Map<string, string>
+  rules: Record<string, ExpenseSplitRule> | null | undefined
+  groupDefaultSplitRule: ExpenseSplitRule
+}
+
+function getSortedNodes({
+  nodes,
+  sortBy,
+  searchQuery,
+  memberNames,
+  rules,
+  groupDefaultSplitRule,
+}: GetSortedNodesParams): ItemNode[] {
+  // 1. Sortieren
+  const sorted = [...nodes].sort((a, b) => {
+    if (sortBy === "itemDate") {
+      if (a.item.itemDate !== b.item.itemDate) {
+        return b.item.itemDate.localeCompare(a.item.itemDate)
+      }
+    }
+    return b.item.createdAt.localeCompare(a.item.createdAt)
+  })
+
+  // 2. Volltext-Filter
+  const query = searchQuery.trim().toLowerCase()
+  if (!query) return sorted
+
+  function matchesItem(item: ExpenseItem) {
+    // 1. Bezeichnung
+    if (item.name.toLowerCase().includes(query)) return true
+
+    // 2. Ausleger (sichtbar als: "Bezahlt von ...")
+    const payerName = (memberNames.get(item.paidByMemberId) ?? "").toLowerCase()
+    if (payerName.includes(query)) return true
+
+    // 3. Betrag
+    const euroString = (item.amountCents / 100).toFixed(2) // "12.50"
+    const euroStringGerman = euroString.replace(".", ",") // "12,50"
+
+    if (
+      item.amountCents.toString().includes(query) ||
+      euroString.includes(query) ||
+      euroStringGerman.includes(query)
+    ) {
+      return true
+    }
+
+    // 4. Nur wenn der Name sichtbar als Zuweisung ("Komplett") rechts steht
+    const rule = rules?.[item.id] ?? groupDefaultSplitRule
+    if (rule.mode === "complete") {
+      const assignedName = (memberNames.get(rule.memberId) ?? "").toLowerCase()
+      if (assignedName.includes(query)) return true
+    }
+
+    //5. datum
+    const isoDate = item.itemDate || ""
+
+    let germanDate = ""
+    if (isoDate.length >= 10) {
+      const [year, month, day] = isoDate.substring(0, 10).split("-")
+      if (year && month && day) {
+        germanDate = `${day}.${month}.${year}`
+      }
+    }
+
+    if (germanDate.includes(query)) {
+      return true
+    }
+
+    return false
+  }
+
+  return sorted.filter((node) => {
+    const mainMatches = matchesItem(node.item)
+    const childMatches = node.children.some((child) => matchesItem(child))
+    return mainMatches || childMatches
+  })
 }

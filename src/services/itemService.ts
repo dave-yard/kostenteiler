@@ -58,7 +58,6 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
       "id, list_id, name, amount_cents, paid_by_member_id, is_receipt, parent_item_id, item_date, created_at"
     )
     .eq("list_id", listId)
-    .order("created_at", { ascending: true })
 
   if (error) {
     throw error
@@ -70,7 +69,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     )
   }
 
-  return data.map((row) => ({
+  const items = data.map((row) => ({
     id: readString(row, "id"),
     listId: readString(row, "list_id"),
     name: readString(row, "name"),
@@ -82,9 +81,76 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     itemDate:
       typeof row.item_date === "string"
         ? row.item_date
-        : readString(row, "created_at").slice(0, 10),
+        : readString(row, "created_at"),
     createdAt: readString(row, "created_at"),
   }))
+
+  let rules: Record<string, ExpenseSplitRule> = {}
+  try {
+    rules = await getExpenseListSplitRules(listId)
+  } catch {
+    // Bei Fehlern beim Laden der Regeln wird ohne die Spezialsortierung fortgefahren.
+  }
+
+  // 1. Hauptpositionen: Neuestes Rechnungsdatum zuerst; bei gleichem Datum neueste Uhrzeit zuerst
+  const topLevelItems = items
+    .filter((item) => !item.parentItemId)
+    .sort((a, b) => {
+      if (a.itemDate !== b.itemDate) {
+        return b.itemDate.localeCompare(a.itemDate)
+      }
+      return b.createdAt.localeCompare(a.createdAt)
+    })
+
+  // 2. Unterpositionen: Zuweisung ("Komplett bezahlt") vor Rest, danach chronologisch
+  const childItems = items
+    .filter((item) => Boolean(item.parentItemId))
+    .sort((a, b) => {
+      const ruleA = rules[a.id]
+      const ruleB = rules[b.id]
+
+      const assignedA = getCompletelyAssignedMemberId(ruleA, a.amountCents)
+      const assignedB = getCompletelyAssignedMemberId(ruleB, b.amountCents)
+
+      if (assignedA && !assignedB) return -1
+      if (!assignedA && assignedB) return 1
+
+      if (assignedA && assignedB && assignedA !== assignedB) {
+        return assignedA.localeCompare(assignedB)
+      }
+
+      return a.createdAt.localeCompare(b.createdAt)
+    })
+
+  return [...topLevelItems, ...childItems]
+}
+
+/**
+ * Ermittelt die ID des Mitglieds, wenn eine Aufteilungsregel die Kosten zu 100%
+ * einer einzelnen Person zuweist. Ansonsten null.
+ */
+function getCompletelyAssignedMemberId(
+  rule: ExpenseSplitRule | undefined,
+  amountCents: number
+): string | null {
+  if (!rule) return null
+
+  switch (rule.mode) {
+    case "complete":
+      return rule.memberId
+    case "percentage": {
+      // Eine Person hat 100% (10000 Basispunkte)
+      const fullShare = rule.shares.find((s) => s.basisPoints === 10000)
+      return fullShare ? fullShare.memberId : null
+    }
+    case "fixed": {
+      // Eine Person trägt den exakten Gesamtbetrag
+      const fullShare = rule.shares.find((s) => s.amountCents === amountCents)
+      return fullShare ? fullShare.memberId : null
+    }
+    default:
+      return null
+  }
 }
 
 export async function createExpenseItem(
