@@ -310,11 +310,11 @@ describe("ExpenseListDetail", () => {
     expect(
       screen
         .getByLabelText("Bezeichnung")
-        .compareDocumentPosition(screen.getByLabelText("Betrag in Euro")) &
+        .compareDocumentPosition(screen.getByLabelText("Betrag in €")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy()
     await user.type(screen.getByLabelText("Bezeichnung"), "  Brot ")
-    await user.type(screen.getByLabelText("Betrag in Euro"), "1.234,50")
+    await user.type(screen.getByLabelText("Betrag in €"), "1.234,50")
     await user.selectOptions(screen.getByLabelText("Bezahlt von"), "m2")
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
 
@@ -344,7 +344,7 @@ describe("ExpenseListDetail", () => {
       await screen.findByRole("button", { name: "Position hinzufügen" })
     )
     await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
-    await user.type(screen.getByLabelText("Betrag in Euro"), "10,00")
+    await user.type(screen.getByLabelText("Betrag in €"), "10,00")
     const splitMode = screen.getByLabelText("Aufteilungsmodus")
     await user.selectOptions(splitMode, "percentage")
     expect(
@@ -390,7 +390,7 @@ describe("ExpenseListDetail", () => {
       await screen.findByRole("button", { name: "Position hinzufügen" })
     )
     await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
-    await user.type(screen.getByLabelText("Betrag in Euro"), "abc")
+    await user.type(screen.getByLabelText("Betrag in €"), "abc")
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
 
     expect(await screen.findByRole("alert")).toBeTruthy()
@@ -411,7 +411,7 @@ describe("ExpenseListDetail", () => {
       (screen.getByLabelText("Bezeichnung") as HTMLInputElement).value
     ).toBe("Socken")
     expect(
-      (screen.getByLabelText("Betrag in Euro") as HTMLInputElement).value
+      (screen.getByLabelText("Betrag in €") as HTMLInputElement).value
     ).toBe("5,00")
     expect(
       (screen.getByLabelText("Bezahlt von") as HTMLSelectElement).value
@@ -419,8 +419,8 @@ describe("ExpenseListDetail", () => {
 
     await user.clear(screen.getByLabelText("Bezeichnung"))
     await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
-    await user.clear(screen.getByLabelText("Betrag in Euro"))
-    await user.type(screen.getByLabelText("Betrag in Euro"), "12.5")
+    await user.clear(screen.getByLabelText("Betrag in €"))
+    await user.type(screen.getByLabelText("Betrag in €"), "12.5")
     await user.click(screen.getByRole("button", { name: "Speichern" }))
 
     expect(updateExpenseItem).toHaveBeenCalledWith("i1", {
@@ -470,7 +470,7 @@ describe("ExpenseListDetail", () => {
     )
     expect(screen.queryByLabelText("Art der Position")).toBeNull()
     await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
-    await user.type(screen.getByLabelText("Betrag in Euro"), "2")
+    await user.type(screen.getByLabelText("Betrag in €"), "2")
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
 
     expect(createExpenseItem).toHaveBeenCalledWith(
@@ -499,7 +499,7 @@ describe("ExpenseListDetail", () => {
       "receipt"
     )
     await user.type(screen.getByLabelText("Bezeichnung"), "REWE")
-    await user.type(screen.getByLabelText("Betrag in Euro"), "50")
+    await user.type(screen.getByLabelText("Betrag in €"), "50")
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
 
     expect(createExpenseItem).toHaveBeenCalledWith(

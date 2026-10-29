@@ -71,7 +71,7 @@ describe("itemService", () => {
         paidByMemberId: "member-1",
         isReceipt: false,
         parentItemId: null,
-        itemDate: "2026-10-26",
+        itemDate: "2026-10-26T10:00:00.000Z",
         createdAt: "2026-10-26T10:00:00.000Z",
       },
     ])
