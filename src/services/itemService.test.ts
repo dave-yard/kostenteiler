@@ -55,6 +55,7 @@ describe("itemService", () => {
         amount_cents: 500,
         paid_by_member_id: "member-1",
         created_at: "2026-10-26T10:00:00.000Z",
+        itemDate: "2026-01-03T13:00:00.000Z",
       },
     ])
 
@@ -125,6 +126,7 @@ describe("itemService", () => {
       p_paid_by_member_id: "member-1",
       p_split_rule: null,
       p_is_receipt: false,
+      p_itemdate: "2026-01-03T00:13:00.000Z",
     })
   })
 

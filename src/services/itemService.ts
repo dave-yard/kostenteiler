@@ -12,14 +12,25 @@ export interface ExpenseItemInput {
   splitRule?: ExpenseSplitRule | null
   isReceipt?: boolean
   parentItemId?: string | null
-  // Format JJJJ-MM-TT
   itemDate?: string | null
 }
 
-async function setExpenseItemDate(itemId: string, itemDate: string) {
+async function setExpenseItemDate(itemId: string, itemDateStr: string) {
+  // Prüfen, ob es bereits ein ISO-String ist oder noch konvertiert werden muss
+  const itemISOdate =
+    itemDateStr.includes("T") || itemDateStr.includes("-")
+      ? itemDateStr
+      : germanToIsoDateTime(itemDateStr)
+
+  console.log("setExpenseItemDate konvertiert:", itemISOdate)
+
+  if (!itemISOdate) {
+    throw new Error("Ungültiges Datum für setExpenseItemDate")
+  }
+
   const { error } = await getSupabaseClient().rpc("set_expense_item_date", {
     p_item_id: itemId,
-    p_date: itemDate,
+    p_date: itemISOdate,
   })
 
   if (error) {
@@ -78,10 +89,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     isReceipt: row.is_receipt === true,
     parentItemId:
       typeof row.parent_item_id === "string" ? row.parent_item_id : null,
-    itemDate:
-      typeof row.item_date === "string"
-        ? row.item_date
-        : readString(row, "created_at"),
+    itemDate: readString(row, "item_date"),
     createdAt: readString(row, "created_at"),
   }))
 
@@ -96,8 +104,24 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   const topLevelItems = items
     .filter((item) => !item.parentItemId)
     .sort((a, b) => {
-      if (a.itemDate !== b.itemDate) {
-        return b.itemDate.localeCompare(a.itemDate)
+      const rawDateA = a.itemDate || a.createdAt || ""
+      const rawDateB = b.itemDate || b.createdAt || ""
+
+      // console.log("itemDate A:", a.name, a.itemDate)
+      // console.log("createdAt A:", a.name, a.createdAt)
+      // console.log("itemDate B:", b.name, b.itemDate)
+      // console.log("createdAt B:", b.name, b.createdAt)
+
+      const dateStrA =
+        rawDateA.length === 10 ? `${rawDateA}T00:00:00Z` : rawDateA
+      const dateStrB =
+        rawDateB.length === 10 ? `${rawDateB}T00:00:00Z` : rawDateB
+
+      // console.log("dateString A:", a.name, dateStrA)
+      // console.log("sateString B", b.name, dateStrB)
+
+      if (dateStrA !== dateStrB) {
+        return dateStrB.localeCompare(dateStrA)
       }
       return b.createdAt.localeCompare(a.createdAt)
     })
@@ -129,7 +153,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
  * Ermittelt die ID des Mitglieds, wenn eine Aufteilungsregel die Kosten zu 100%
  * einer einzelnen Person zuweist. Ansonsten null.
  */
-function getCompletelyAssignedMemberId(
+export function getCompletelyAssignedMemberId(
   rule: ExpenseSplitRule | undefined,
   amountCents: number
 ): string | null {
@@ -187,6 +211,12 @@ export async function updateExpenseItem(
   itemId: string,
   input: ExpenseItemInput
 ): Promise<void> {
+  console.log("itemDate", input.itemDate)
+
+  // input.itemDate ist hier bereits der ISO-String aus dem Frontend!
+  const itemIsoDate = input.itemDate ?? null
+  console.log("updateExpenseItem", itemIsoDate)
+
   const { error } = await getSupabaseClient().rpc(
     "update_expense_item_hierarchical",
     {
@@ -196,6 +226,7 @@ export async function updateExpenseItem(
       p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
+      p_itemdate: itemIsoDate,
     }
   )
 
@@ -205,6 +236,40 @@ export async function updateExpenseItem(
   if (input.itemDate) {
     await setExpenseItemDate(itemId, input.itemDate)
   }
+}
+
+export function germanToIsoDateTime(
+  germanDateStr?: string | null
+): string | null {
+  if (!germanDateStr || typeof germanDateStr !== "string") return null
+
+  // Erwartet Format: "DD.MM.YYYY HH:mm" oder "DD.MM.YYYY"
+  const parts = germanDateStr.trim().split(" ")
+  const datePart = parts[0]
+  const timePart = parts[1] ?? "00:00"
+
+  if (!datePart) return null
+
+  const dateSplits = datePart.split(".").map(Number)
+  const timeSplits = timePart.split(":").map(Number)
+
+  const day = dateSplits[0]
+  const month = dateSplits[1]
+  const year = dateSplits[2]
+  const hours = timeSplits[0] ?? 0
+  const minutes = timeSplits[1] ?? 0
+
+  if (day === undefined || month === undefined || year === undefined)
+    return null
+
+  // Erstelle ein Date-Objekt in der lokalen Zeitzone des Browsers
+  const localDate = new Date(year, month - 1, day, hours, minutes, 0)
+
+  // Prüfen, ob das Datum gültig ist
+  if (isNaN(localDate.getTime())) return null
+
+  // Gibt einen sauberen ISO-String zurück, der die lokale Zeit korrekt nach UTC wandelt
+  return localDate.toISOString()
 }
 
 export async function getExpenseItemSplitRule(

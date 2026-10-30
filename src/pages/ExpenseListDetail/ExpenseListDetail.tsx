@@ -46,30 +46,55 @@ import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
 const timeFormat = new Intl.DateTimeFormat("de-DE", { timeStyle: "short" })
 
-function todayIsoDate() {
+export function todayIsoDate() {
   const now = new Date()
   const month = String(now.getMonth() + 1).padStart(2, "0")
   const day = String(now.getDate()).padStart(2, "0")
   return `${now.getFullYear()}-${month}-${day}`
 }
 
-function isoToGermanDate(isoDate: string) {
-  const [year, month, day] = isoDate.split("-")
-  return `${day}.${month}.${year}`
+export function isoToGermanDateTime(isoDate: string) {
+  if (!isoDate) return ""
+
+  const date = new Date(isoDate)
+  if (isNaN(date.getTime())) {
+    return isoDate
+  }
+
+  // Nutzen der lokalen Methoden (.getHours(), .getMinutes() etc.),
+  // damit der UTC-Zeitstempel aus der DB korrekt in die lokale Browser-Zeit konvertiert wird
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+
+  return `${day}.${month}.${year} ${hours}:${minutes}`
 }
 
-// Wandelt "TT.MM.JJJJ" in ISO um; null bei ungültigem Datum
-function germanToIsoDate(text: string) {
-  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text)
+export function germanToIsoDateTime(text: string) {
+  // Erlaubt nun flexibel 1 oder 2 Ziffern bei Tag, Monat, Stunde und Minute
+  const match =
+    /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?$/.exec(
+      text.trim()
+    )
+  console.log("######## germanToIsoDateTime ############")
+  console.log(text)
   if (!match) {
     return null
   }
-  const [day, month, year] = [
-    Number(match[1]),
-    Number(match[2]),
-    Number(match[3]),
-  ]
-  const date = new Date(year, month - 1, day)
+
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  const hours = match[4] !== undefined ? Number(match[4]) : 0
+  const minutes = match[5] !== undefined ? Number(match[5]) : 0
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null
+  }
+
+  const date = new Date(year, month - 1, day, hours, minutes)
   if (
     date.getFullYear() !== year ||
     date.getMonth() !== month - 1 ||
@@ -77,18 +102,40 @@ function germanToIsoDate(text: string) {
   ) {
     return null
   }
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+  console.log(date)
+  return date.toISOString()
 }
 
 function formatItemDate(isoDate: string, createdAt?: string, showTime = false) {
-  const [year, month, day] = isoDate.split("-").map(Number)
+  if (!isoDate) return ""
+
+  // Extrahiert den reinen Datumsteil (die ersten 10 Zeichen: "YYYY-MM-DD")
+  const datePart = isoDate.slice(0, 10)
+  const [year, month, day] = datePart.split("-").map(Number)
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    return ""
+  }
+
   const formattedDate = dateFormat.format(new Date(year, month - 1, day))
-  if (showTime && createdAt) {
-    const createdDate = new Date(createdAt)
-    if (!Number.isNaN(createdDate.getTime())) {
-      return `${formattedDate}, ${timeFormat.format(createdDate)}`
+
+  if (showTime) {
+    let timeDate: Date | null = null
+    const hasIsoTime = isoDate.includes("T") || isoDate.includes(" ")
+
+    // 1. Wenn isoDate eine Uhrzeit hat, diese nutzen
+    if (hasIsoTime) {
+      const parsedIso = new Date(isoDate)
+      if (!Number.isNaN(parsedIso.getTime())) {
+        timeDate = parsedIso
+      }
+    }
+
+    if (timeDate) {
+      return `${formattedDate}, ${timeFormat.format(timeDate)}`
     }
   }
+
   return formattedDate
 }
 
@@ -251,7 +298,7 @@ export function ExpenseListDetail({
   const [itemName, setItemName] = useState("")
   const [amountText, setAmountText] = useState("")
   const [itemDateText, setItemDateText] = useState(
-    isoToGermanDate(todayIsoDate())
+    isoToGermanDateTime(todayIsoDate())
   )
   const [isViewSettingsOpen, setIsViewSettingsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -559,7 +606,7 @@ export function ExpenseListDetail({
     setIsReceiptDraft(item?.isReceipt ?? false)
     setNewParentId(parent?.id ?? null)
     setItemName(item?.name ?? "")
-    setItemDateText(isoToGermanDate(item?.itemDate ?? todayIsoDate()))
+    setItemDateText(isoToGermanDateTime(item?.itemDate ?? todayIsoDate()))
     setAmountText(
       item ? (item.amountCents / 100).toFixed(2).replace(".", ",") : ""
     )
@@ -586,7 +633,7 @@ export function ExpenseListDetail({
   }
 
   function handlePositionDateChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const formatted = formatGermanDateInput(e.target.value)
+    const formatted = formatGermanDateTimeInput(e.target.value)
     setItemDateText(formatted)
   }
 
@@ -734,9 +781,11 @@ export function ExpenseListDetail({
       }
     }
 
-    const itemDateIso = itemDateText ? germanToIsoDate(itemDateText) : null
+    const itemDateIso = itemDateText ? germanToIsoDateTime(itemDateText) : null
     if (itemDateText && !itemDateIso) {
-      setDialogError("Bitte ein gültiges Datum im Format TT.MM.JJJJ eingeben.")
+      setDialogError(
+        "Bitte ein gültiges Datum im Format TT.MM.JJJJ HH:MM eingeben."
+      )
       return
     }
 
@@ -1623,17 +1672,33 @@ export function ExpenseListDetail({
   )
 }
 
-const formatGermanDateInput = (value: string) => {
-  // Nur Ziffern erlauben
-  const numbers = value.replace(/\D/g, "").slice(0, 8)
+const formatGermanDateTimeInput = (value: string) => {
+  // Nur Ziffern erlauben, maximal 12 Ziffern (8 für Datum, 4 für Uhrzeit)
+  const numbers = value.replace(/\D/g, "").slice(0, 12)
 
-  if (numbers.length <= 2) {
-    return numbers
-  } else if (numbers.length <= 4) {
-    return `${numbers.slice(0, 2)}.${numbers.slice(2)}`
-  } else {
-    return `${numbers.slice(0, 2)}.${numbers.slice(2, 4)}.${numbers.slice(4)}`
+  const day = numbers.slice(0, 2)
+  const month = numbers.slice(2, 4)
+  const year = numbers.slice(4, 8)
+  const hour = numbers.slice(8, 10)
+  const minute = numbers.slice(10, 12)
+
+  let result = day
+
+  if (month.length > 0) {
+    result += `.${month}`
   }
+  if (year.length > 0) {
+    result += `.${year}`
+  }
+  if (hour.length > 0) {
+    // Sobald Ziffern für die Uhrzeit kommen, fügen wir ein Leerzeichen ein
+    result += ` ${hour}`
+  }
+  if (minute.length > 0) {
+    result += `:${minute}`
+  }
+
+  return result
 }
 
 interface GetSortedNodesParams {

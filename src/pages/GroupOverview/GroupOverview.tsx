@@ -339,48 +339,50 @@ export function GroupOverview() {
     }
 
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="mb-4 flex shrink-0 flex-col justify-between gap-4 sm:mb-7 sm:flex-row sm:items-end">
+      <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[1fr_auto] md:grid-rows-[auto_1fr] md:gap-x-6 md:gap-y-6">
+        <div className="mb-4 flex shrink-0 flex-col justify-between gap-4 sm:mb-7 sm:flex-row sm:items-end md:col-start-1 md:row-start-1 md:mb-0 md:self-end">
           <div>
             <p className="text-sm font-medium text-[#65806a]">
               Dein gemeinsamer Überblick
             </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              Deine Gruppen
-            </h1>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                Deine Gruppen
+              </h1>
+              <span className="text-sm text-[#72766f]">
+                {groups.length} {groups.length === 1 ? "Gruppe" : "Gruppen"}
+              </span>
+            </div>
           </div>
-          <span className="text-sm text-[#72766f]">
-            {groups.length} {groups.length === 1 ? "Gruppe" : "Gruppen"}
-          </span>
         </div>
 
-        {loadError && (
-          <div
-            className="mb-5 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between"
-            role="alert"
-          >
-            <span>{loadError}</span>
-            <Button
-              className="rounded-xl"
-              onClick={() => void refreshGroups()}
-              variant="outline"
+        <div className="flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overscroll-y-contain pb-2 md:col-span-2 md:row-start-2">
+          {loadError && (
+            <div
+              className="mb-5 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between"
+              role="alert"
             >
-              Erneut versuchen
-            </Button>
-          </div>
-        )}
+              <span>{loadError}</span>
+              <Button
+                className="rounded-xl"
+                onClick={() => void refreshGroups()}
+                variant="outline"
+              >
+                Erneut versuchen
+              </Button>
+            </div>
+          )}
 
-        {groupOrderError && (
-          <p
-            className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-            role="alert"
-          >
-            Die Gruppenreihenfolge konnte nicht gespeichert werden:{" "}
-            {groupOrderError}
-          </p>
-        )}
+          {groupOrderError && (
+            <p
+              className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+              role="alert"
+            >
+              Die Gruppenreihenfolge konnte nicht gespeichert werden:{" "}
+              {groupOrderError}
+            </p>
+          )}
 
-        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain pb-2">
           {isLoading ? (
             <div
               className="rounded-3xl border border-[#e8ebe5] bg-white p-8 text-center text-sm text-[#72766f]"
@@ -437,13 +439,16 @@ export function GroupOverview() {
           )}
         </div>
 
-        <section className="mt-3 shrink-0 rounded-2xl border border-[#e8ebe5] bg-white p-3 sm:mt-6 sm:rounded-3xl sm:p-5">
+        <section className="mt-3 shrink-0 rounded-2xl border border-[#e8ebe5] bg-white p-3 sm:mt-6 sm:rounded-3xl sm:p-5 md:col-start-2 md:row-start-1 md:mt-0 md:w-80 md:self-end md:p-3.5 lg:w-96">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#d8eb9a] text-[#203a2c]">
-              <Plus aria-hidden="true" className="size-4" />
+            <div className="flex size-8 items-center justify-center rounded-lg bg-[#d8eb9a] text-[#203a2c] md:size-6 md:rounded-md">
+              <Plus aria-hidden="true" className="size-4 md:size-3" />
             </div>
-            <h2 className="font-semibold">Neue Gruppe erstellen</h2>
+            <h2 className="text-sm font-semibold sm:text-base md:text-xs">
+              Neue Gruppe erstellen
+            </h2>
           </div>
+
           <form className="mt-2.5 flex gap-2" onSubmit={handleCreateGroup}>
             <label className="sr-only" htmlFor="new-group-name">
               Gruppenname
@@ -465,6 +470,7 @@ export function GroupOverview() {
               {isCreatingGroup ? "Wird erstellt ..." : "Erstellen"}
             </Button>
           </form>
+
           {createError && (
             <p className="mt-3 text-sm text-red-700" role="alert">
               {createError}

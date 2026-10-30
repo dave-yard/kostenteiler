@@ -101,4 +101,23 @@ describe("GroupOverview Navigation", () => {
     })
     expect(checkbox.getAttribute("aria-checked")).toBe("true")
   })
+
+  it("platziert den Bereich „Neue Gruppe erstellen“ im Desktop-Modus oben rechts", () => {
+    setupMocks()
+
+    render(<GroupOverview />)
+
+    const createHeading = screen.getByRole("heading", {
+      name: "Neue Gruppe erstellen",
+    })
+    const createSection = createHeading.closest("section")
+    expect(createSection).not.toBeNull()
+    expect(createSection?.className).toContain("md:col-start-2")
+    expect(createSection?.className).toContain("md:row-start-1")
+
+    const input = screen.getByRole("textbox", { name: "Gruppenname" })
+    expect(input).toBeTruthy()
+    const submitBtn = screen.getByRole("button", { name: "Erstellen" })
+    expect(submitBtn).toBeTruthy()
+  })
 })

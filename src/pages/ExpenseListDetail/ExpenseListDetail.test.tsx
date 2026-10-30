@@ -2,7 +2,11 @@ import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
-import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
+import {
+  ExpenseListDetail,
+  todayIsoDate,
+  germanToIsoDateTime,
+} from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
 vi.mock("@/components/contexts/ExpenseListContext", () => ({
@@ -238,6 +242,120 @@ describe("ExpenseListDetail", () => {
     expect(screen.queryByText("Pizza")).toBeNull()
   })
 
+  it("sortiert Hauptpositionen nach Belegdatum und Erfassungszeit", async () => {
+    const user = userEvent.setup()
+    const testItems: ExpenseItem[] = [
+      {
+        id: "older-date-newer-created",
+        listId: "l1",
+        name: "Älterer Beleg später erfasst",
+        amountCents: 500,
+        paidByMemberId: "m1",
+        isReceipt: false,
+        parentItemId: null,
+        itemDate: "2026-01-01",
+        createdAt: "2026-01-05T12:00:00Z",
+      },
+      {
+        id: "newer-date-older-created",
+        listId: "l1",
+        name: "Neuerer Beleg früher erfasst",
+        amountCents: 800,
+        paidByMemberId: "m2",
+        isReceipt: false,
+        parentItemId: null,
+        itemDate: "2026-01-04",
+        createdAt: "2026-01-05T08:00:00Z",
+      },
+    ]
+    getExpenseItems.mockResolvedValue(testItems)
+    mockAccess()
+    renderDetail()
+
+    // Standard: Belegdatum -> "Neuerer Beleg" (04.01.) vor "Älterer Beleg" (01.01.)
+    const firstBeforeToggle = await screen.findByText(
+      "Neuerer Beleg früher erfasst"
+    )
+    const secondBeforeToggle = screen.getByText("Älterer Beleg später erfasst")
+    expect(
+      firstBeforeToggle.compareDocumentPosition(secondBeforeToggle) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+
+    // Umschalten auf Erfassungszeit
+    await user.click(
+      screen.getByRole("button", { name: "Ansichts- und Sortieroptionen" })
+    )
+    await user.click(screen.getByRole("button", { name: /Belegdatum/ }))
+
+    // Jetzt Erfassungszeit: 12:00 vor 08:00 -> "Älterer Beleg später erfasst" kommt zuerst
+    expect(
+      screen
+        .getByText("Älterer Beleg später erfasst")
+        .compareDocumentPosition(
+          screen.getByText("Neuerer Beleg früher erfasst")
+        ) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
+  it("sortiert Unterpositionen gemäß der Zuweisung vor Rest", async () => {
+    const user = userEvent.setup()
+    const receipt: ExpenseItem = {
+      id: "bon1",
+      listId: "l1",
+      name: "Supermarkt",
+      amountCents: 3000,
+      paidByMemberId: "m1",
+      isReceipt: true,
+      parentItemId: null,
+      itemDate: "2026-01-03T00:00:00.000Z",
+      createdAt: "2026-01-03T10:00:00Z",
+    }
+    const childShared: ExpenseItem = {
+      id: "c1",
+      listId: "l1",
+      name: "Geteiltes Brot",
+      amountCents: 500,
+      paidByMemberId: "m1",
+      isReceipt: false,
+      parentItemId: "bon1",
+      itemDate: "2026-01-03T00:00:00.000Z",
+      createdAt: "2026-01-03T10:00:00Z",
+    }
+    const childAssigned: ExpenseItem = {
+      id: "c2",
+      listId: "l1",
+      name: "Annas Schokolade",
+      amountCents: 300,
+      paidByMemberId: "m1",
+      isReceipt: false,
+      parentItemId: "bon1",
+      itemDate: "2026-01-03T03:00:00.000Z",
+      createdAt: "2026-01-03T00:00:00Z",
+    }
+    getExpenseItems.mockResolvedValue([receipt, childShared, childAssigned])
+    getExpenseListSplitRules.mockResolvedValue({
+      c1: { mode: "equal" },
+      c2: { mode: "complete", memberId: "m1" },
+    })
+    mockAccess()
+    renderDetail()
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Unterpositionen von Supermarkt anzeigen/,
+      })
+    )
+
+    // c2 ist komplett zugewiesen ("Komplett") und muss VOR c1 ("Geteilt") stehen
+    const assignedItem = screen.getByText("Annas Schokolade")
+    const sharedItem = screen.getByText("Geteiltes Brot")
+    expect(
+      assignedItem.compareDocumentPosition(sharedItem) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
   it("zeigt einen Ladefehler und lädt erneut", async () => {
     const user = userEvent.setup()
     getExpenseItems
@@ -315,8 +433,11 @@ describe("ExpenseListDetail", () => {
     ).toBeTruthy()
     await user.type(screen.getByLabelText("Bezeichnung"), "  Brot ")
     await user.type(screen.getByLabelText("Betrag in €"), "1.234,50")
+
     await user.selectOptions(screen.getByLabelText("Bezahlt von"), "m2")
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
+
+    const todayString = new Date().toISOString().slice(0, 10) // Liefert z. B. "2026-10-30"
 
     expect(createExpenseItem).toHaveBeenCalledWith("l1", {
       name: "Brot",
@@ -325,7 +446,7 @@ describe("ExpenseListDetail", () => {
       splitRule: null,
       isReceipt: false,
       parentItemId: null,
-      itemDate: expect.any(String),
+      itemDate: `${todayString}T00:00:00.000Z`, //germanToIsoDateTime(todayIsoDate()),
     })
     expect(
       await screen.findByText("Die Position wurde hinzugefügt.")
@@ -429,7 +550,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       splitRule: { mode: "equal" },
       isReceipt: false,
-      itemDate: "2026-01-03",
+      itemDate: "2026-01-03T00:00:00.000Z",
     })
     expect(
       await screen.findByText("Die Position wurde aktualisiert.")
