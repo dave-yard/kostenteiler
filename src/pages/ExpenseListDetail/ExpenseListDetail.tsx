@@ -114,31 +114,30 @@ function formatitem_date(
 ) {
   if (!isoDate) return ""
 
-  // Extrahiert den reinen Datumsteil (die ersten 10 Zeichen: "YYYY-MM-DD")
-  const datePart = isoDate.slice(0, 10)
-  const [year, month, day] = datePart.split("-").map(Number)
+  const hasTime = isoDate.includes("T") || isoDate.includes(" ")
 
-  if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    return ""
+  // 1. Reines Datum ohne Zeitangabe ("YYYY-MM-DD") ohne Zeitzonenverschiebung formatieren
+  if (!hasTime) {
+    const datePart = isoDate.slice(0, 10)
+    const [year, month, day] = datePart.split("-").map(Number)
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      return ""
+    }
+
+    return dateFormat.format(new Date(year, month - 1, day))
   }
 
-  const formattedDate = dateFormat.format(new Date(year, month - 1, day))
+  // 2. Vollständiger Zeitstempel: Komplett in lokaler Zeitzone formatieren
+  const parsedDate = new Date(isoDate)
+  if (Number.isNaN(parsedDate.getTime())) {
+    return isoDate
+  }
+
+  const formattedDate = dateFormat.format(parsedDate)
 
   if (showTime) {
-    let timeDate: Date | null = null
-    const hasIsoTime = isoDate.includes("T") || isoDate.includes(" ")
-
-    // 1. Wenn isoDate eine Uhrzeit hat, diese nutzen
-    if (hasIsoTime) {
-      const parsedIso = new Date(isoDate)
-      if (!Number.isNaN(parsedIso.getTime())) {
-        timeDate = parsedIso
-      }
-    }
-
-    if (timeDate) {
-      return `${formattedDate}, ${timeFormat.format(timeDate)}`
-    }
+    return `${formattedDate}, ${timeFormat.format(parsedDate)}`
   }
 
   return formattedDate

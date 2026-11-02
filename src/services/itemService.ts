@@ -31,13 +31,6 @@ type ParsedReceipt = {
   }
 }
 
-type UploadReceiptResult = {
-  receiptId: string
-  storagePath: string
-  warning?: string
-  reconciliation?: ParsedReceipt["reconciliation"]
-}
-
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -408,6 +401,9 @@ export async function createExpenseItem(
   listId: string,
   input: ExpenseItemInput
 ): Promise<string> {
+  console.log("##### createExpenseItem")
+  console.log(input.item_date)
+
   const { data, error } = await getSupabaseClient().rpc(
     "create_expense_item_hierarchical",
     {
@@ -417,6 +413,7 @@ export async function createExpenseItem(
       p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
+      p_item_date: input.item_date ?? null,
       p_parent_item_id: input.parentItemId ?? null,
     }
   )

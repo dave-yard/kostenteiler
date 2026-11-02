@@ -131,7 +131,7 @@ function assertValidMembers(memberIds: string[]) {
 }
 
 function assertValidAmount(amountCents: number) {
-  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+  if (!Number.isSafeInteger(amountCents)) {
     throw new Error(
       "Der Positionsbetrag muss eine positive ganze Centzahl sein."
     )
