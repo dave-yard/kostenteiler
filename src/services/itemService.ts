@@ -147,6 +147,7 @@ export async function uploadAndProcessReceipt(
       name: parseResult.storeName,
       amountCents: parseResult.totalCents,
       isReceipt: true,
+      item_date: parseResult.date,
       parentItemId: null,
       paidByMemberId: currentMemberId,
     })
@@ -161,6 +162,7 @@ export async function uploadAndProcessReceipt(
         name: subItem.name,
         amountCents: subItem.amountCents,
         isReceipt: false,
+        item_date: parseResult.date,
         parentItemId: receiptId,
         paidByMemberId: currentMemberId,
       })
