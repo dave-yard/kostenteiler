@@ -12,20 +12,20 @@ export interface ExpenseItemInput {
   splitRule?: ExpenseSplitRule | null
   isReceipt?: boolean
   parentItemId?: string | null
-  itemDate?: string | null
+  item_date?: string | null
 }
 
-async function setExpenseItemDate(itemId: string, itemDateStr: string) {
+async function setExpenseitem_date(itemId: string, item_dateStr: string) {
   // Prüfen, ob es bereits ein ISO-String ist oder noch konvertiert werden muss
   const itemISOdate =
-    itemDateStr.includes("T") || itemDateStr.includes("-")
-      ? itemDateStr
-      : germanToIsoDateTime(itemDateStr)
+    item_dateStr.includes("T") || item_dateStr.includes("-")
+      ? item_dateStr
+      : germanToIsoDateTime(item_dateStr)
 
-  console.log("setExpenseItemDate konvertiert:", itemISOdate)
+  console.log("setExpenseitem_date konvertiert:", itemISOdate)
 
   if (!itemISOdate) {
-    throw new Error("Ungültiges Datum für setExpenseItemDate")
+    throw new Error("Ungültiges Datum für setExpenseitem_date")
   }
 
   const { error } = await getSupabaseClient().rpc("set_expense_item_date", {
@@ -42,15 +42,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
-function readString(row: Record<string, unknown>, key: string) {
+function readString(row: Record<string, unknown>, key: string): string {
   const value = row[key]
-  if (typeof value !== "string") {
+
+  if (typeof value === "string") {
+    return value
+  }
+
+  if (value === undefined || value === null) {
     throw new Error(
       `In der Positionsantwort fehlt ein gültiger Wert für "${key}".`
     )
   }
 
-  return value
+  // Wenn es kein String ist, aber in ein Datum/String umgewandelt werden soll:
+  // Hier erzwingen wir die Umwandlung zu string/number für den Konstruktor
+  if (
+    value instanceof Date ||
+    typeof value === "number" ||
+    typeof value === "string"
+  ) {
+    return new Date(value).toISOString()
+  }
+
+  // Fallback, falls es ein unerwartetes Objekt ist (z. B. {}):
+  return String(value)
 }
 
 function readInteger(row: Record<string, unknown>, key: string) {
@@ -89,7 +105,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     isReceipt: row.is_receipt === true,
     parentItemId:
       typeof row.parent_item_id === "string" ? row.parent_item_id : null,
-    itemDate: readString(row, "item_date"),
+    item_date: readString(row, "item_date") || readString(row, "item_date"),
     createdAt: readString(row, "created_at"),
   }))
 
@@ -104,12 +120,12 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   const topLevelItems = items
     .filter((item) => !item.parentItemId)
     .sort((a, b) => {
-      const rawDateA = a.itemDate || a.createdAt || ""
-      const rawDateB = b.itemDate || b.createdAt || ""
+      const rawDateA = a.item_date || a.createdAt || ""
+      const rawDateB = b.item_date || b.createdAt || ""
 
-      // console.log("itemDate A:", a.name, a.itemDate)
+      // console.log("item_date A:", a.name, a.item_date)
       // console.log("createdAt A:", a.name, a.createdAt)
-      // console.log("itemDate B:", b.name, b.itemDate)
+      // console.log("item_date B:", b.name, b.item_date)
       // console.log("createdAt B:", b.name, b.createdAt)
 
       const dateStrA =
@@ -200,8 +216,8 @@ export async function createExpenseItem(
   if (typeof data !== "string") {
     throw new Error("Die Position wurde erstellt, aber ihre ID fehlt.")
   }
-  if (input.itemDate) {
-    await setExpenseItemDate(data, input.itemDate)
+  if (input.item_date) {
+    await setExpenseitem_date(data, input.item_date)
   }
 
   return data
@@ -211,10 +227,10 @@ export async function updateExpenseItem(
   itemId: string,
   input: ExpenseItemInput
 ): Promise<void> {
-  console.log("itemDate", input.itemDate)
+  console.log("item_date", input.item_date)
 
-  // input.itemDate ist hier bereits der ISO-String aus dem Frontend!
-  const itemIsoDate = input.itemDate ?? null
+  // input.item_date ist hier bereits der ISO-String aus dem Frontend!
+  const itemIsoDate = input.item_date ?? null
   console.log("updateExpenseItem", itemIsoDate)
 
   const { error } = await getSupabaseClient().rpc(
@@ -226,15 +242,15 @@ export async function updateExpenseItem(
       p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
-      p_itemdate: itemIsoDate,
+      p_item_date: itemIsoDate,
     }
   )
 
   if (error) {
     throw error
   }
-  if (input.itemDate) {
-    await setExpenseItemDate(itemId, input.itemDate)
+  if (input.item_date) {
+    await setExpenseitem_date(itemId, input.item_date)
   }
 }
 

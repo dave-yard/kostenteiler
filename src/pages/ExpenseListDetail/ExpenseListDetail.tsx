@@ -106,7 +106,11 @@ export function germanToIsoDateTime(text: string) {
   return date.toISOString()
 }
 
-function formatItemDate(isoDate: string, createdAt?: string, showTime = false) {
+function formatitem_date(
+  isoDate: string,
+  createdAt?: string,
+  showTime = false
+) {
   if (!isoDate) return ""
 
   // Extrahiert den reinen Datumsteil (die ersten 10 Zeichen: "YYYY-MM-DD")
@@ -297,13 +301,13 @@ export function ExpenseListDetail({
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null)
   const [itemName, setItemName] = useState("")
   const [amountText, setAmountText] = useState("")
-  const [itemDateText, setItemDateText] = useState(
+  const [item_dateText, setitem_dateText] = useState(
     isoToGermanDateTime(todayIsoDate())
   )
   const [isViewSettingsOpen, setIsViewSettingsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [showTime, setShowTime] = useState(false)
-  const [sortBy, setSortBy] = useState<"itemDate" | "createdAt">("itemDate")
+  const [sortBy, setSortBy] = useState<"item_date" | "createdAt">("item_date")
   const [paidByMemberId, setPaidByMemberId] = useState("")
   const [customSplitMode, setCustomSplitMode] =
     useState<ExpenseSplitRule["mode"]>("equal")
@@ -461,11 +465,11 @@ export function ExpenseListDetail({
         <div className="min-w-0">
           <p className="font-medium break-words">
             {highlightSearchMatch(item.name, searchQuery)}
-            {!item.parentItemId && item.itemDate && (
+            {!item.parentItemId && item.item_date && (
               <span className="ml-1.5 text-xs font-normal text-[#72766f]">
                 •{" "}
                 {highlightSearchMatch(
-                  formatItemDate(item.itemDate, item.createdAt, showTime),
+                  formatitem_date(item.item_date, item.createdAt, showTime),
                   searchQuery
                 )}
               </span>
@@ -606,7 +610,7 @@ export function ExpenseListDetail({
     setIsReceiptDraft(item?.isReceipt ?? false)
     setNewParentId(parent?.id ?? null)
     setItemName(item?.name ?? "")
-    setItemDateText(isoToGermanDateTime(item?.itemDate ?? todayIsoDate()))
+    setitem_dateText(isoToGermanDateTime(item?.item_date ?? todayIsoDate()))
     setAmountText(
       item ? (item.amountCents / 100).toFixed(2).replace(".", ",") : ""
     )
@@ -634,7 +638,7 @@ export function ExpenseListDetail({
 
   function handlePositionDateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const formatted = formatGermanDateTimeInput(e.target.value)
-    setItemDateText(formatted)
+    setitem_dateText(formatted)
   }
 
   function setSplitDraft(rule: ExpenseSplitRule) {
@@ -781,8 +785,10 @@ export function ExpenseListDetail({
       }
     }
 
-    const itemDateIso = itemDateText ? germanToIsoDateTime(itemDateText) : null
-    if (itemDateText && !itemDateIso) {
+    const item_dateIso = item_dateText
+      ? germanToIsoDateTime(item_dateText)
+      : null
+    if (item_dateText && !item_dateIso) {
       setDialogError(
         "Bitte ein gültiges Datum im Format TT.MM.JJJJ HH:MM eingeben."
       )
@@ -799,7 +805,7 @@ export function ExpenseListDetail({
           paidByMemberId,
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
-          itemDate: itemDateIso,
+          item_date: item_dateIso,
         })
       } else {
         await createExpenseItem(list.id, {
@@ -809,7 +815,7 @@ export function ExpenseListDetail({
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           parentItemId: dialogParentId,
-          itemDate: itemDateIso,
+          item_date: item_dateIso,
         })
       }
       setIsDialogOpen(false)
@@ -977,12 +983,12 @@ export function ExpenseListDetail({
                           type="button"
                           onClick={() =>
                             setSortBy((prev) =>
-                              prev === "itemDate" ? "createdAt" : "itemDate"
+                              prev === "item_date" ? "createdAt" : "item_date"
                             )
                           }
                           className="mt-1 w-full rounded-lg border border-[#e4e7e1] bg-[#fafbf9] py-1 text-center font-medium hover:bg-[#f3f5f1]"
                         >
-                          {sortBy === "itemDate"
+                          {sortBy === "item_date"
                             ? "📅 Belegdatum"
                             : "🕒 Erfassungszeit"}
                         </button>
@@ -1125,7 +1131,7 @@ export function ExpenseListDetail({
                       type="text"
                       inputMode="numeric"
                       placeholder="TT.MM.JJJJ"
-                      value={itemDateText}
+                      value={item_dateText}
                     />
                   </div>
                 )}
@@ -1703,7 +1709,7 @@ const formatGermanDateTimeInput = (value: string) => {
 
 interface GetSortedNodesParams {
   nodes: ItemNode[]
-  sortBy: "itemDate" | "createdAt"
+  sortBy: "item_date" | "createdAt"
   searchQuery: string
   memberNames: Map<string, string>
   rules: Record<string, ExpenseSplitRule> | null | undefined
@@ -1746,7 +1752,7 @@ function matchesItem(
   }
 
   // 5. Datum
-  const isoDate = item.itemDate || ""
+  const isoDate = item.item_date || ""
 
   let germanDate = ""
   if (isoDate.length >= 10) {
@@ -1773,9 +1779,9 @@ function getSortedNodes({
 }: GetSortedNodesParams): ItemNode[] {
   // 1. Sortieren
   const sorted = [...nodes].sort((a, b) => {
-    if (sortBy === "itemDate") {
-      if (a.item.itemDate !== b.item.itemDate) {
-        return b.item.itemDate.localeCompare(a.item.itemDate)
+    if (sortBy === "item_date") {
+      if (a.item.item_date !== b.item.item_date) {
+        return b.item.item_date.localeCompare(a.item.item_date)
       }
     }
     return b.item.createdAt.localeCompare(a.item.createdAt)

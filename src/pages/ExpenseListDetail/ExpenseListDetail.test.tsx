@@ -2,12 +2,13 @@ import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
-import {
-  ExpenseListDetail,
-  todayIsoDate,
-  germanToIsoDateTime,
-} from "@/pages/ExpenseListDetail/ExpenseListDetail"
+import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
+import { getSupabaseClient } from "@/lib/supabase"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
+
+vi.mock("@/lib/supabase", () => ({
+  getSupabaseClient: vi.fn(),
+}))
 
 vi.mock("@/components/contexts/ExpenseListContext", () => ({
   useExpenseLists: vi.fn(),
@@ -41,7 +42,7 @@ const items: ExpenseItem[] = [
     paidByMemberId: "m1",
     isReceipt: false,
     parentItemId: null,
-    itemDate: "2026-01-03",
+    item_date: "2026-01-03",
     createdAt: "2026-01-03T10:00:00Z",
   },
   {
@@ -52,7 +53,7 @@ const items: ExpenseItem[] = [
     paidByMemberId: "m2",
     isReceipt: false,
     parentItemId: null,
-    itemDate: "2026-01-03",
+    item_date: "2026-01-03",
     createdAt: "2026-01-03T11:00:00Z",
   },
 ]
@@ -253,7 +254,7 @@ describe("ExpenseListDetail", () => {
         paidByMemberId: "m1",
         isReceipt: false,
         parentItemId: null,
-        itemDate: "2026-01-01",
+        item_date: "2026-01-01",
         createdAt: "2026-01-05T12:00:00Z",
       },
       {
@@ -264,7 +265,7 @@ describe("ExpenseListDetail", () => {
         paidByMemberId: "m2",
         isReceipt: false,
         parentItemId: null,
-        itemDate: "2026-01-04",
+        item_date: "2026-01-04",
         createdAt: "2026-01-05T08:00:00Z",
       },
     ]
@@ -308,7 +309,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       isReceipt: true,
       parentItemId: null,
-      itemDate: "2026-01-03T00:00:00.000Z",
+      item_date: "2026-01-03T00:00:00.000Z",
       createdAt: "2026-01-03T10:00:00Z",
     }
     const childShared: ExpenseItem = {
@@ -319,8 +320,8 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       isReceipt: false,
       parentItemId: "bon1",
-      itemDate: "2026-01-03T00:00:00.000Z",
-      createdAt: "2026-01-03T10:00:00Z",
+      item_date: "2026-01-03T00:00:00.000Z",
+      createdAt: "2026-01-03T10:00:00.000Z", // Hier spätere Zeit
     }
     const childAssigned: ExpenseItem = {
       id: "c2",
@@ -330,15 +331,31 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       isReceipt: false,
       parentItemId: "bon1",
-      itemDate: "2026-01-03T03:00:00.000Z",
-      createdAt: "2026-01-03T00:00:00Z",
+      item_date: "2026-01-03T03:00:00.000Z",
+      createdAt: "2026-01-03T00:00:00.000Z", // Hier frühere Zeit (sollte dank Zuweisung trotzdem ganz nach oben)
     }
-    getExpenseItems.mockResolvedValue([receipt, childShared, childAssigned])
+
+    getExpenseItems.mockResolvedValue([receipt, childAssigned, childShared])
     getExpenseListSplitRules.mockResolvedValue({
-      c1: { mode: "equal" },
-      c2: { mode: "complete", memberId: "m1" },
+      c1: { mode: "equal" }, // c1 ist geteilt
+      c2: { mode: "complete", memberId: "m1" }, // c2 ist vollständig zugewiesen!
     })
     mockAccess()
+
+    const rpc = vi.fn().mockImplementation(async (fnName, args) => {
+      if (fnName === "get_list_split_rules") {
+        return {
+          data: [
+            { item_id: "c1", split_rule: { mode: "equal" } },
+            { item_id: "c2", split_rule: { mode: "complete", memberId: "m1" } },
+          ],
+          error: null,
+        }
+      }
+      return { data: null, error: null }
+    })
+    vi.mocked(getSupabaseClient).mockReturnValue({ rpc } as never)
+
     renderDetail()
 
     await user.click(
@@ -347,9 +364,11 @@ describe("ExpenseListDetail", () => {
       })
     )
 
-    // c2 ist komplett zugewiesen ("Komplett") und muss VOR c1 ("Geteilt") stehen
+    // Hole die Elemente über ihre exakten, unterschiedlichen Namen aus dem DOM:
     const assignedItem = screen.getByText("Annas Schokolade")
     const sharedItem = screen.getByText("Geteiltes Brot")
+
+    // Prüfe, ob das zugewiesene Element im DOM VOR dem geteilten Element steht
     expect(
       assignedItem.compareDocumentPosition(sharedItem) &
         Node.DOCUMENT_POSITION_FOLLOWING
@@ -446,7 +465,7 @@ describe("ExpenseListDetail", () => {
       splitRule: null,
       isReceipt: false,
       parentItemId: null,
-      itemDate: `${todayString}T00:00:00.000Z`, //germanToIsoDateTime(todayIsoDate()),
+      item_date: `${todayString}T00:00:00.000Z`, //germanToIsoDateTime(todayIsoDate()),
     })
     expect(
       await screen.findByText("Die Position wurde hinzugefügt.")
@@ -490,7 +509,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       isReceipt: false,
       parentItemId: null,
-      itemDate: expect.any(String),
+      item_date: expect.any(String),
       splitRule: {
         mode: "percentage",
         shares: [
@@ -550,7 +569,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       splitRule: { mode: "equal" },
       isReceipt: false,
-      itemDate: "2026-01-03T00:00:00.000Z",
+      item_date: "2026-01-03T00:00:00.000Z",
     })
     expect(
       await screen.findByText("Die Position wurde aktualisiert.")

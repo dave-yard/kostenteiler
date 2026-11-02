@@ -26,6 +26,7 @@ const input = {
   name: "Socken",
   amountCents: 500,
   paidByMemberId: "member-1",
+  item_date: "2026-01-03T00:13:00.000Z",
 }
 
 function mockRows(rows: Record<string, unknown>[]) {
@@ -54,8 +55,8 @@ describe("itemService", () => {
         name: "Socken",
         amount_cents: 500,
         paid_by_member_id: "member-1",
+        item_date: "2026-10-26T10:00:00.000Z",
         created_at: "2026-10-26T10:00:00.000Z",
-        itemDate: "2026-01-03T13:00:00.000Z",
       },
     ])
 
@@ -72,7 +73,7 @@ describe("itemService", () => {
         paidByMemberId: "member-1",
         isReceipt: false,
         parentItemId: null,
-        itemDate: "2026-10-26T10:00:00.000Z",
+        item_date: "2026-10-26T10:00:00.000Z",
         createdAt: "2026-10-26T10:00:00.000Z",
       },
     ])
@@ -126,7 +127,7 @@ describe("itemService", () => {
       p_paid_by_member_id: "member-1",
       p_split_rule: null,
       p_is_receipt: false,
-      p_itemdate: "2026-01-03T00:13:00.000Z",
+      p_item_date: "2026-01-03T00:13:00.000Z",
     })
   })
 
