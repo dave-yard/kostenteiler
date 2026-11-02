@@ -15,6 +15,217 @@ export interface ExpenseItemInput {
   item_date?: string | null
 }
 
+type ParsedReceipt = {
+  storeName: string
+  totalCents: number
+  date: string
+  items: Array<{
+    name: string
+    amountCents: number
+  }>
+  reconciliation: {
+    itemsTotalCents: number
+    differenceCents: number
+    matches: boolean
+    needsReview: boolean
+  }
+}
+
+type UploadReceiptResult = {
+  receiptId: string
+  storagePath: string
+  warning?: string
+  reconciliation?: ParsedReceipt["reconciliation"]
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export type UploadAndProcessReceiptResult = {
+  receiptId: string
+  needsReview: boolean
+  warning?: string
+}
+
+export async function uploadAndProcessReceipt(
+  listId: string,
+  file: File,
+  currentMemberId: string
+): Promise<UploadAndProcessReceiptResult> {
+  const supabase = getSupabaseClient()
+
+  let uploadedPath: string | null = null
+  let receiptId: string | null = null
+
+  try {
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? ""
+    const inferredType =
+      extension === "png"
+        ? "image/png"
+        : extension === "webp"
+          ? "image/webp"
+          : extension === "jpg" || extension === "jpeg"
+            ? "image/jpeg"
+            : file.type
+
+    if (!inferredType.startsWith("image/")) {
+      throw new Error("Der Beleg muss als Bilddatei hochgeladen werden.")
+    }
+
+    // Eindeutiger temporärer Name; der Listenordner bleibt listId.
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const temporaryPath = `${listId}/${crypto.randomUUID()}_${sanitizedFileName}`
+
+    const { data: storageData, error: storageError } = await supabase.storage
+      .from("receipts")
+      .upload(temporaryPath, file, {
+        contentType: inferredType,
+        upsert: false,
+      })
+
+    if (storageError) throw storageError
+    if (!storageData?.path) {
+      throw new Error("Storage hat keinen Dateipfad zurückgegeben.")
+    }
+
+    uploadedPath = storageData.path
+
+    const { data, error: processError } = await supabase.functions.invoke(
+      "process-receipt",
+      { body: { filePath: uploadedPath } }
+    )
+
+    if (processError) throw processError
+    if (!data) {
+      throw new Error("Die Belegerkennung hat keine Daten zurückgegeben.")
+    }
+
+    const parseResult = data as ParsedReceipt
+    const reconciliation = parseResult.reconciliation
+
+    if (
+      !Number.isSafeInteger(parseResult.totalCents) ||
+      !Array.isArray(parseResult.items) ||
+      !reconciliation ||
+      typeof reconciliation.needsReview !== "boolean" ||
+      !Number.isSafeInteger(reconciliation.differenceCents)
+    ) {
+      throw new Error(
+        "Die Antwort der Belegerkennung ist unvollständig oder ungültig."
+      )
+    }
+
+    // Erst alle Positionen validieren, bevor überhaupt Datensätze angelegt werden.
+    const items = parseResult.items.map((subItem) => {
+      if (
+        !subItem ||
+        typeof subItem.name !== "string" ||
+        !subItem.name.trim() ||
+        !Number.isSafeInteger(subItem.amountCents) ||
+        subItem.amountCents === 0
+      ) {
+        throw new Error(
+          `Ungültige Bonposition: ${subItem?.name ?? "(ohne Namen)"}`
+        )
+      }
+
+      return {
+        name: subItem.name.trim(),
+        amountCents: subItem.amountCents,
+      }
+    })
+
+    // Eine Summenabweichung ist eine Warnung, kein Abbruchgrund.
+    const warning = reconciliation.needsReview
+      ? `Bon wurde angelegt, aber die Bonpositionen weichen um ${new Intl.NumberFormat(
+          "de-DE",
+          {
+            style: "currency",
+            currency: "EUR",
+          }
+        ).format(
+          Math.abs(reconciliation.differenceCents) / 100
+        )} von der Gesamtsumme ab. Bitte prüfe die Positionen.`
+      : undefined
+
+    // Bon-Elterneintrag anlegen.
+    receiptId = await createExpenseItem(listId, {
+      name: parseResult.storeName,
+      amountCents: parseResult.totalCents,
+      isReceipt: true,
+      parentItemId: null,
+      paidByMemberId: currentMemberId,
+    })
+
+    if (!receiptId) {
+      throw new Error("Die Datenbank hat keine Bon-ID zurückgegeben.")
+    }
+
+    // Alle validierten Bonpositionen anlegen — auch bei einer Summenabweichung.
+    for (const subItem of items) {
+      await createExpenseItem(listId, {
+        name: subItem.name,
+        amountCents: subItem.amountCents,
+        isReceipt: false,
+        parentItemId: receiptId,
+        paidByMemberId: currentMemberId,
+      })
+    }
+
+    const { data: attachment, error: attachError } =
+      await supabase.functions.invoke("attach-receipt", {
+        body: {
+          receiptItemId: receiptId,
+          filePath: uploadedPath,
+        },
+      })
+
+    if (
+      attachError ||
+      !attachment?.success ||
+      attachment.receiptItemId !== receiptId ||
+      !attachment.storagePath
+    ) {
+      throw new Error(
+        attachment?.error ??
+          attachError?.message ??
+          `Belegdatei konnte nicht mit Bon ${receiptId} verknüpft werden.`
+      )
+    }
+
+    return {
+      receiptId,
+      needsReview: Boolean(reconciliation.needsReview),
+      warning,
+    }
+  } catch (error) {
+    // Vor dem Anlegen des Bon-Datensatzes kann die temporäre Datei entfernt werden.
+    // Bei einem möglichen Teilerfolg lassen wir Datei und Datensätze bestehen.
+    if (uploadedPath && !receiptId) {
+      const { error: cleanupError } = await supabase.storage
+        .from("receipts")
+        .remove([uploadedPath])
+
+      if (cleanupError) {
+        console.warn(
+          "Temporäre Belegdatei konnte nicht entfernt werden.",
+          cleanupError
+        )
+      }
+    }
+
+    if (receiptId) {
+      throw new Error(
+        `Bon ${receiptId} wurde angelegt, aber der Vorgang wurde nicht vollständig abgeschlossen: ${getErrorMessage(error)}`,
+        { cause: error }
+      )
+    }
+
+    throw error
+  }
+}
+
 async function setExpenseitem_date(itemId: string, item_dateStr: string) {
   // Prüfen, ob es bereits ein ISO-String ist oder noch konvertiert werden muss
   const itemISOdate =

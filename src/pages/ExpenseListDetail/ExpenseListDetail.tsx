@@ -16,6 +16,7 @@ import {
   ReceiptText,
   Trash2,
   X,
+  Camera,
 } from "lucide-react"
 import {
   useExpenseLists,
@@ -293,6 +294,7 @@ export function ExpenseListDetail({
     completeExpenseList,
     createExpenseItem,
     updateExpenseItem,
+    uploadAndProcessReceipt,
     deleteExpenseItem,
   } = useExpenseLists()
   const [reloadNumber, setReloadNumber] = useState(0)
@@ -317,9 +319,13 @@ export function ExpenseListDetail({
   const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [scanWarningMessage, setScanWarningMessage] = useState<string | null>(
+    null
+  )
   const [deletingItem, setDeletingItem] = useState<ExpenseItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isScanning, setIsScanning] = useState(false)
   const [isSettlementOpen, setIsSettlementOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [closeError, setCloseError] = useState<string | null>(null)
@@ -880,6 +886,40 @@ export function ExpenseListDetail({
       setIsDeleting(false)
     }
   }
+  const handleFileSelected = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const memberId = result?.access?.currentMemberId ?? members[0]?.id ?? ""
+
+    if (!memberId) {
+      console.error("Kein Mitglied für den Bon gefunden.")
+      return
+    }
+
+    try {
+      setIsScanning(true)
+      const scanResult = await uploadAndProcessReceipt(list.id, file, memberId)
+
+      if (scanResult.needsReview && scanResult.warning) {
+        // Bon wurde angelegt, aber Summen weichen ab -> Nutzer muss prüfen
+        setScanWarningMessage(scanResult.warning)
+      } else {
+        // Alles passend angelegt
+        setSuccessMessage("Der Bon wurde erfolgreich gescannt und angelegt.")
+      }
+
+      setReloadNumber((current) => current + 1)
+    } catch (err) {
+      console.error("Fehler beim Scannen des Bons:", err)
+      setDialogError(getActionErrorMessage(err))
+    } finally {
+      setIsScanning(false)
+      event.target.value = ""
+    }
+  }
 
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
@@ -1029,6 +1069,40 @@ export function ExpenseListDetail({
               >
                 <Trash2 aria-hidden="true" className="size-4" />
               </Button>
+            )}
+            {canAddItem && (
+              <div className="relative inline-block">
+                <input
+                  type="file"
+                  id="receipt-scan-input"
+                  accept="image/png, image/jpeg, application/pdf"
+                  capture="environment"
+                  className="hidden"
+                  disabled={isScanning}
+                  onChange={handleFileSelected}
+                />
+                <label
+                  htmlFor={isScanning ? undefined : "receipt-scan-input"}
+                  aria-label="Bon einscannen"
+                  className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#1f3b2d] px-3 text-white transition hover:bg-[#294b38] ${
+                    isScanning
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer"
+                  }`}
+                >
+                  {isScanning ? (
+                    <>
+                      <LoaderCircle className="size-4 shrink-0 animate-spin" />
+                      <span className="hidden sm:inline">Wird gescannt...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="size-4 shrink-0" />
+                      <span className="hidden sm:inline">Bon einscannen</span>
+                    </>
+                  )}
+                </label>
+              </div>
             )}
             {canAddItem && (
               <Button
@@ -1458,6 +1532,11 @@ export function ExpenseListDetail({
         </div>
       )}
       <Toast message={successMessage} onClose={() => setSuccessMessage(null)} />
+      <Toast
+        message={scanWarningMessage}
+        onClose={() => setScanWarningMessage(null)}
+        variant="error"
+      />
 
       <div className="mt-4 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain">
         {isLoading ? (

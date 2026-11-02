@@ -6,6 +6,9 @@ Die funktionalen Anforderungen stehen in
 [ARCHITEKTUR.md](./ARCHITEKTUR.md) und die visuellen Vorgaben in
 [DESIGN.md](./DESIGN.md).
 
+##Info
+Kosteiler SSupabase API_KEY bei GROG console.groq.com abrufen.
+
 ## Lokal starten
 
 1. Abhängigkeiten installieren:

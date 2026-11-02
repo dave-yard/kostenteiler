@@ -15,7 +15,9 @@ import {
   getExpenseListMemberNames as getExpenseListMemberNamesRecord,
   getExpenseListSplitRules as getExpenseListSplitRulesRecord,
   updateExpenseItem as updateExpenseItemRecord,
+  uploadAndProcessReceipt as uploadAndProcessReceiptRecord,
   type ExpenseItemInput,
+  type UploadAndProcessReceiptResult,
 } from "@/services/itemService"
 import {
   completeExpenseList as completeExpenseListRecord,
@@ -57,6 +59,11 @@ interface ExpenseListContextValue {
     input: ExpenseItemInput
   ) => Promise<string>
   updateExpenseItem: (itemId: string, input: ExpenseItemInput) => Promise<void>
+  uploadAndProcessReceipt: (
+    listId: string,
+    file: File,
+    currentMemberId: string
+  ) => Promise<UploadAndProcessReceiptResult>
   deleteExpenseItem: (itemId: string) => Promise<void>
   getExpenseItemSplitRule: (itemId: string) => Promise<ExpenseSplitRule>
   getExpenseListSplitRules: (
@@ -133,6 +140,12 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const uploadAndProcessReceipt = useCallback(
+    (listId: string, file: File, currentMemberId: string) =>
+      uploadAndProcessReceiptRecord(listId, file, currentMemberId),
+    []
+  )
+
   const deleteExpenseItem = useCallback(
     (itemId: string) => deleteExpenseItemRecord(itemId),
     []
@@ -150,7 +163,6 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
 
   const getItemAccess = useCallback(
     async (group: Group, list?: ExpenseList): Promise<ExpenseItemAccess> => {
-      // Abgeschlossene Listen zeigen die Namen zum Zeitpunkt des Abschlusses.
       const frozenNames =
         list && list.status !== "open"
           ? getExpenseListMemberNamesRecord(list.id).catch(() => null)
@@ -166,7 +178,6 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
             displayName: names[member.id] ?? member.displayName,
           }))
         : loadedMembers
-      // Den eigenen Anzeigenamen sieht man in offenen Listen immer selbst.
       const members =
         ownName && !names && !group.archivedAt
           ? frozenMembers.map((member) =>
@@ -202,6 +213,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getExpenseItems,
       createExpenseItem,
       updateExpenseItem,
+      uploadAndProcessReceipt,
       deleteExpenseItem,
       getExpenseItemSplitRule,
       getExpenseListSplitRules,
@@ -216,6 +228,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getExpenseItems,
       createExpenseItem,
       updateExpenseItem,
+      uploadAndProcessReceipt,
       deleteExpenseItem,
       getExpenseItemSplitRule,
       getExpenseListSplitRules,
