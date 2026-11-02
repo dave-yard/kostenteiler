@@ -66,7 +66,6 @@ export async function uploadAndProcessReceipt(
       throw new Error("Der Beleg muss als Bilddatei hochgeladen werden.")
     }
 
-    // Eindeutiger temporärer Name; der Listenordner bleibt listId.
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const temporaryPath = `${listId}/${crypto.randomUUID()}_${sanitizedFileName}`
 
@@ -95,56 +94,115 @@ export async function uploadAndProcessReceipt(
     }
 
     const parseResult = data as ParsedReceipt
-    const reconciliation = parseResult.reconciliation
 
-    if (
-      !Number.isSafeInteger(parseResult.totalCents) ||
-      !Array.isArray(parseResult.items) ||
-      !reconciliation ||
-      typeof reconciliation.needsReview !== "boolean" ||
-      !Number.isSafeInteger(reconciliation.differenceCents)
-    ) {
+    // Ohne eine verlässliche Gesamtsumme kann kein korrekter Bon-Elterneintrag
+    // angelegt werden. Fehlende Positionen oder Namen brechen dagegen nicht ab.
+    if (!Number.isSafeInteger(parseResult.totalCents)) {
       throw new Error(
-        "Die Antwort der Belegerkennung ist unvollständig oder ungültig."
+        "Die Belegerkennung hat keine gültige Gesamtsumme geliefert."
       )
     }
 
-    // Erst alle Positionen validieren, bevor überhaupt Datensätze angelegt werden.
-    const items = parseResult.items.map((subItem) => {
+    let needsReview = false
+    let missingNameCount = 0
+    let skippedItemCount = 0
+
+    const rawItems = Array.isArray(parseResult.items) ? parseResult.items : []
+
+    if (!Array.isArray(parseResult.items) || rawItems.length === 0) {
+      needsReview = true
+    }
+
+    const items = rawItems.flatMap((subItem) => {
       if (
         !subItem ||
-        typeof subItem.name !== "string" ||
-        !subItem.name.trim() ||
         !Number.isSafeInteger(subItem.amountCents) ||
         subItem.amountCents === 0
       ) {
-        throw new Error(
-          `Ungültige Bonposition: ${subItem?.name ?? "(ohne Namen)"}`
-        )
+        // Einen unbekannten Betrag nicht erfinden: nur diese Position auslassen.
+        skippedItemCount += 1
+        needsReview = true
+        return []
       }
 
-      return {
-        name: subItem.name.trim(),
-        amountCents: subItem.amountCents,
+      const name = typeof subItem.name === "string" ? subItem.name.trim() : ""
+
+      if (!name) {
+        missingNameCount += 1
+        needsReview = true
       }
+
+      return [
+        {
+          name: name || "Unbekannt",
+          amountCents: subItem.amountCents,
+        },
+      ]
     })
 
-    // Eine Summenabweichung ist eine Warnung, kein Abbruchgrund.
-    const warning = reconciliation.needsReview
-      ? `Bon wurde angelegt, aber die Bonpositionen weichen um ${new Intl.NumberFormat(
-          "de-DE",
-          {
-            style: "currency",
-            currency: "EUR",
-          }
-        ).format(
-          Math.abs(reconciliation.differenceCents) / 100
-        )} von der Gesamtsumme ab. Bitte prüfe die Positionen.`
+    const storeName =
+      typeof parseResult.storeName === "string"
+        ? parseResult.storeName.trim()
+        : ""
+
+    if (!storeName) {
+      needsReview = true
+    }
+
+    const itemsTotalCents = items.reduce(
+      (sum, item) => sum + item.amountCents,
+      0
+    )
+    const itemsTotalIsSafe = Number.isSafeInteger(itemsTotalCents)
+
+    if (!itemsTotalIsSafe) {
+      needsReview = true
+    } else if (itemsTotalCents !== parseResult.totalCents) {
+      needsReview = true
+    }
+
+    const warningDetails: string[] = []
+
+    if (missingNameCount > 0) {
+      warningDetails.push(
+        `${missingNameCount} Position(en) wurde(n) mit „Unbekannt“ gespeichert`
+      )
+    }
+
+    if (skippedItemCount > 0) {
+      warningDetails.push(
+        `${skippedItemCount} Position(en) mit ungültigem Betrag wurde(n) ausgelassen`
+      )
+    }
+
+    if (items.length === 0) {
+      warningDetails.push("es wurden keine gültigen Positionen erkannt")
+    }
+
+    if (!storeName) {
+      warningDetails.push("der Geschäftsname fehlt")
+    }
+
+    if (!itemsTotalIsSafe) {
+      warningDetails.push("die Summe der Positionen ist ungültig")
+    } else if (itemsTotalCents !== parseResult.totalCents) {
+      const differenceCents = itemsTotalCents - parseResult.totalCents
+      const difference = new Intl.NumberFormat("de-DE", {
+        style: "currency",
+        currency: "EUR",
+      }).format(Math.abs(differenceCents) / 100)
+
+      warningDetails.push(
+        `die Positionen weichen um ${difference} von der Gesamtsumme ab`
+      )
+    }
+
+    const warning = needsReview
+      ? `Bon wurde angelegt, bitte prüfen: ${warningDetails.join("; ")}.`
       : undefined
 
-    // Bon-Elterneintrag anlegen.
     receiptId = await createExpenseItem(listId, {
-      name: parseResult.storeName,
+      name: storeName || "Unbekannt",
       amountCents: parseResult.totalCents,
       isReceipt: true,
       item_date: parseResult.date,
@@ -156,7 +214,6 @@ export async function uploadAndProcessReceipt(
       throw new Error("Die Datenbank hat keine Bon-ID zurückgegeben.")
     }
 
-    // Alle validierten Bonpositionen anlegen — auch bei einer Summenabweichung.
     for (const subItem of items) {
       await createExpenseItem(listId, {
         name: subItem.name,
@@ -191,12 +248,10 @@ export async function uploadAndProcessReceipt(
 
     return {
       receiptId,
-      needsReview: Boolean(reconciliation.needsReview),
+      needsReview,
       warning,
     }
   } catch (error) {
-    // Vor dem Anlegen des Bon-Datensatzes kann die temporäre Datei entfernt werden.
-    // Bei einem möglichen Teilerfolg lassen wir Datei und Datensätze bestehen.
     if (uploadedPath && !receiptId) {
       const { error: cleanupError } = await supabase.storage
         .from("receipts")

@@ -1,4 +1,5 @@
 import type { ExpenseItem } from "@/types/group"
+import { isoToGermanDateTime } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 
 export interface ItemNode {
   item: ExpenseItem
@@ -53,7 +54,7 @@ export function toSettlementItems(nodes: ItemNode[]) {
     }
     if (node.remainderCents < 0) {
       throw new Error(
-        `Die Unterpositionen von „${node.item.name}“ übersteigen die Bon-Summe.`
+        `Die Unterpositionen von „${node.item.name} (${isoToGermanDateTime(node.item.item_date)})“ übersteigen die Bon-Summe.`
       )
     }
 
