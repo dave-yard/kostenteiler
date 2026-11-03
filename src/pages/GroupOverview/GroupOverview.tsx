@@ -16,13 +16,8 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import {
-  Check,
   ChevronRight,
-  CircleDollarSign,
-  ContactRound,
   GripVertical,
-  Home,
-  LogOut,
   Plus,
   Settings2,
   UsersRound,
@@ -35,8 +30,8 @@ import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import { ExpenseLists } from "@/pages/ExpenseLists/ExpenseLists"
 import { PersonalContacts } from "@/pages/PersonalContacts/PersonalContacts"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
-import { useAuth } from "@/components/contexts/AuthContext"
 import type { ExpenseList, Group } from "@/types/group"
+import { useNavigate } from "react-router-dom"
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error
@@ -75,20 +70,20 @@ function SortableGroupCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3.5">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+          <div className="bg-brand-surface text-brand-text flex size-11 shrink-0 items-center justify-center rounded-2xl">
             <UsersRound aria-hidden="true" className="size-5" />
           </div>
           <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">
               <button
-                className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+                className="group hover:text-brand-text inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current"
                 onClick={onOpen}
                 type="button"
               >
                 <span className="truncate">{group.name}</span>
                 <ChevronRight
                   aria-hidden="true"
-                  className="size-5 shrink-0 text-[#72766f] group-hover:text-[#31563e]"
+                  className="group-hover:text-brand-text size-5 shrink-0 text-[#72766f]"
                 />
               </button>
             </h2>
@@ -96,7 +91,7 @@ function SortableGroupCard({
               {group.memberCount}{" "}
               {group.memberCount === 1 ? "Mitglied" : "Mitglieder"}
               {group.currentUserIsAdmin && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#edf3e9] px-2 py-0.5 text-xs font-medium text-[#31563e]">
+                <span className="bg-brand-surface text-brand-text ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
                   Admin
                 </span>
               )}
@@ -114,7 +109,7 @@ function SortableGroupCard({
           </span>
           <Button
             aria-label={`Gruppe verschieben: ${group.name}`}
-            className="size-10 cursor-grab touch-none rounded-xl text-[#72766f] hover:text-[#31563e] active:cursor-grabbing"
+            className="hover:text-brand-text size-10 cursor-grab touch-none rounded-xl text-[#72766f] active:cursor-grabbing"
             disabled={disabled}
             size="icon"
             variant="ghost"
@@ -143,7 +138,7 @@ function SortableGroupCard({
 }
 
 export function GroupOverview() {
-  const { session, signOut } = useAuth()
+  const navigate = useNavigate()
   const {
     groups,
     isLoading,
@@ -163,10 +158,8 @@ export function GroupOverview() {
   const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false)
   const navigationMenuRef = useRef<HTMLDivElement>(null)
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
-  const [isSigningOut, setIsSigningOut] = useState(false)
   const [groupName, setGroupName] = useState("")
   const [createError, setCreateError] = useState<string | null>(null)
-  const [signOutError, setSignOutError] = useState<string | null>(null)
   const [isSavingGroupOrder, setIsSavingGroupOrder] = useState(false)
   const [groupOrderError, setGroupOrderError] = useState<string | null>(null)
   const sensors = useSensors(
@@ -225,19 +218,6 @@ export function GroupOverview() {
       setCreateError(getErrorMessage(error))
     } finally {
       setIsCreatingGroup(false)
-    }
-  }
-
-  async function handleSignOut() {
-    setSignOutError(null)
-    setIsSigningOut(true)
-
-    try {
-      await signOut()
-    } catch (error) {
-      setSignOutError(getErrorMessage(error))
-    } finally {
-      setIsSigningOut(false)
     }
   }
 
@@ -342,7 +322,7 @@ export function GroupOverview() {
       <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[1fr_auto] md:grid-rows-[auto_1fr] md:gap-x-6 md:gap-y-6">
         <div className="mb-4 flex shrink-0 flex-col justify-between gap-4 sm:mb-7 sm:flex-row sm:items-end md:col-start-1 md:row-start-1 md:mb-0 md:self-end">
           <div>
-            <p className="text-sm font-medium text-[#65806a]">
+            <p className="text-brand-subtle text-sm font-medium">
               Dein gemeinsamer Überblick
             </p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -407,14 +387,17 @@ export function GroupOverview() {
                       group={group}
                       key={group.id}
                       onManage={() => {
-                        setSelectedGroup(group)
-                        setAdminGroupId(group.id)
+                        navigate(`/groups/${group.id}/admin`)
+                        // setSelectedGroup(group)
+                        // setAdminGroupId(group.id)
                       }}
                       onOpen={() => {
-                        setAdminGroupId(null)
-                        setSelectedList(null)
-                        setIncludeCompleted(false)
-                        setSelectedGroup(group)
+                        navigate(`/groups/${group.id}`)
+
+                        // setAdminGroupId(null)
+                        // setSelectedList(null)
+                        // setIncludeCompleted(false)
+                        // setSelectedGroup(group)
                       }}
                     />
                   ))}
@@ -424,7 +407,7 @@ export function GroupOverview() {
           ) : (
             !loadError && (
               <div className="rounded-3xl border border-dashed border-[#d7ded3] bg-white/70 px-6 py-12 text-center">
-                <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+                <div className="bg-brand-surface text-brand-text mx-auto flex size-12 items-center justify-center rounded-2xl">
                   <UsersRound aria-hidden="true" className="size-6" />
                 </div>
                 <h2 className="mt-4 text-lg font-semibold">
@@ -441,7 +424,7 @@ export function GroupOverview() {
 
         <section className="mt-3 shrink-0 rounded-2xl border border-[#e8ebe5] bg-white p-3 sm:mt-6 sm:rounded-3xl sm:p-5 md:col-start-2 md:row-start-1 md:mt-0 md:w-80 md:self-end md:p-3.5 lg:w-96">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#d8eb9a] text-[#203a2c] md:size-6 md:rounded-md">
+            <div className="bg-brand-accent flex size-8 items-center justify-center rounded-lg text-[#203a2c] md:size-6 md:rounded-md">
               <Plus aria-hidden="true" className="size-4 md:size-3" />
             </div>
             <h2 className="text-sm font-semibold sm:text-base md:text-xs">
@@ -463,7 +446,7 @@ export function GroupOverview() {
               value={groupName}
             />
             <Button
-              className="h-10 shrink-0 rounded-xl bg-[#1f3b2d] px-3 text-white hover:bg-[#294b38] sm:px-4"
+              className="bg-brand-primary hover:bg-brand-primary-hover h-10 shrink-0 rounded-xl px-3 text-white sm:px-4"
               disabled={isCreatingGroup || !groupName.trim()}
               type="submit"
             >
@@ -482,91 +465,7 @@ export function GroupOverview() {
   }
 
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-[#f5f6f2] text-[#20241f]">
-      <header className="z-20 shrink-0 border-b border-black/5 bg-[#f5f6f2]/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <div className="relative" ref={navigationMenuRef}>
-            <Button
-              aria-expanded={isNavigationMenuOpen}
-              aria-haspopup="menu"
-              aria-label="Navigation öffnen"
-              className="h-auto gap-3 rounded-xl p-1.5 text-[#20241f] hover:bg-black/5"
-              onClick={() => setIsNavigationMenuOpen((isOpen) => !isOpen)}
-              type="button"
-              variant="ghost"
-            >
-              <span className="flex size-9 items-center justify-center rounded-xl bg-[#1f3b2d] text-white">
-                <CircleDollarSign aria-hidden="true" className="size-5" />
-              </span>
-              <span className="font-semibold tracking-tight">Kostenteiler</span>
-            </Button>
-            {isNavigationMenuOpen && (
-              <nav
-                aria-label="Hauptnavigation"
-                className="absolute top-full left-0 z-30 mt-2 w-56 rounded-2xl border border-[#e8ebe5] bg-white p-2 shadow-xl"
-                role="menu"
-              >
-                <Button
-                  className="h-11 w-full justify-start gap-3 rounded-xl text-[#31563e]"
-                  onClick={() => {
-                    setSelectedGroup(null)
-                    setAdminGroupId(null)
-                    setIsShowingContacts(false)
-                    setIsNavigationMenuOpen(false)
-                  }}
-                  role="menuitem"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Home aria-hidden="true" className="size-4" />
-                  Gruppen
-                </Button>
-                <div
-                  aria-hidden="true"
-                  className="my-1 border-t border-[#eef0eb]"
-                />
-                <Button
-                  className="h-11 w-full justify-start gap-3 rounded-xl text-[#405b47]"
-                  onClick={() => {
-                    setSelectedGroup(null)
-                    setAdminGroupId(null)
-                    setIsShowingContacts(true)
-                    setIsNavigationMenuOpen(false)
-                  }}
-                  role="menuitem"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ContactRound aria-hidden="true" className="size-4" />
-                  Freundesliste
-                </Button>
-              </nav>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-sm text-[#72766f]">
-            <span className="hidden max-w-48 truncate sm:inline">
-              {session?.user.email ?? "Angemeldet"}
-            </span>
-            <span
-              aria-label="Konto angemeldet"
-              className="flex size-9 items-center justify-center rounded-full bg-[#dce9df] font-semibold text-[#31563e]"
-            >
-              <Check aria-hidden="true" className="size-4" />
-            </span>
-            <Button
-              aria-label="Abmelden"
-              className="ml-1 rounded-xl"
-              disabled={isSigningOut}
-              onClick={handleSignOut}
-              variant="outline"
-            >
-              <LogOut aria-hidden="true" className="size-4" />
-              <span className="hidden sm:inline">Abmelden</span>
-            </Button>
-          </div>
-        </div>
-      </header>
-
+    <main className="bg-app-bg flex h-dvh flex-col overflow-hidden text-[#20241f]">
       <div
         className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-8 ${
           (adminGroupId && selectedGroup) ||
@@ -576,14 +475,6 @@ export function GroupOverview() {
             : ""
         }`}
       >
-        {signOutError && (
-          <p
-            className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-            role="alert"
-          >
-            {signOutError}
-          </p>
-        )}
         {renderContent()}
       </div>
     </main>

@@ -191,7 +191,7 @@ export function PersonalContacts() {
   return (
     <section className="mx-auto w-full max-w-3xl rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
       <div className="mb-5 flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-[#edf3e9] text-[#31563e]">
+        <div className="bg-brand-surface text-brand-text flex size-10 items-center justify-center rounded-xl">
           <ContactRound aria-hidden="true" className="size-5" />
         </div>
         <div>
@@ -258,7 +258,7 @@ export function PersonalContacts() {
           value={contactEmail}
         />
         <Button
-          className="h-11 rounded-xl bg-[#1f3b2d] px-4 text-white hover:bg-[#294b38]"
+          className="bg-brand-primary hover:bg-brand-primary-hover h-11 rounded-xl px-4 text-white"
           disabled={isSaving || !contactName.trim() || !contactEmail.trim()}
           type="submit"
         >

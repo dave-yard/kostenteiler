@@ -480,7 +480,7 @@ export function ExpenseListDetail({
               </span>
             )}
             {item.isReceipt && (
-              <span className="ml-2 rounded-full bg-[#edf3e9] px-2 py-0.5 align-middle text-xs font-medium text-[#31563e]">
+              <span className="bg-brand-surface text-brand-text ml-2 rounded-full px-2 py-0.5 align-middle text-xs font-medium">
                 Bon
               </span>
             )}
@@ -965,7 +965,7 @@ export function ExpenseListDetail({
                         Ansicht & Filter
                       </p>
                       {searchQuery && (
-                        <span className="rounded-full bg-[#eef0eb] px-1.5 py-0.5 text-[10px] font-medium text-[#31563e]">
+                        <span className="text-brand-text rounded-full bg-[#eef0eb] px-1.5 py-0.5 text-[10px] font-medium">
                           Filter aktiv
                         </span>
                       )}
@@ -1083,7 +1083,7 @@ export function ExpenseListDetail({
                 <label
                   htmlFor={isScanning ? undefined : "receipt-scan-input"}
                   aria-label="Bon einscannen"
-                  className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#1f3b2d] px-3 text-white transition hover:bg-[#294b38] ${
+                  className={`bg-brand-primary hover:bg-brand-primary-hover inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-white transition ${
                     isScanning
                       ? "cursor-not-allowed opacity-60"
                       : "cursor-pointer"
@@ -1106,7 +1106,7 @@ export function ExpenseListDetail({
             {canAddItem && (
               <Button
                 aria-label="Position hinzufügen"
-                className="size-9 shrink-0 rounded-xl bg-[#1f3b2d] p-0 text-white hover:bg-[#294b38]"
+                className="bg-brand-primary hover:bg-brand-primary-hover size-9 shrink-0 rounded-xl p-0 text-white"
                 onClick={() => openDialog()}
                 type="button"
               >
@@ -1451,7 +1451,7 @@ export function ExpenseListDetail({
                   Abbrechen
                 </Button>
                 <Button
-                  className="rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+                  className="bg-brand-primary hover:bg-brand-primary-hover rounded-xl text-white"
                   disabled={isSaving || isLoadingSplitRule}
                   type="submit"
                 >
@@ -1733,7 +1733,7 @@ export function ExpenseListDetail({
               {canCloseList && (
                 <div className="flex justify-end">
                   <Button
-                    className="rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+                    className="bg-brand-primary hover:bg-brand-primary-hover rounded-xl text-white"
                     disabled={isClosing || Boolean(settlementError)}
                     onClick={() => void handleCloseList()}
                     type="button"

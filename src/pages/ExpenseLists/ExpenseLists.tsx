@@ -38,19 +38,19 @@ function ExpenseListCard({
   onMarkPaid: () => void
 }) {
   return (
-    <article className="rounded-2xl border border-[#e8ebe5] bg-white p-4">
+    <article className="rounded-3xl border border-[#e8ebe5] bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold">
             <button
-              className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-[#31563e]"
+              className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-brand-text"
               onClick={onOpen}
               type="button"
             >
               <span className="truncate">{list.name}</span>
               <ChevronRight
                 aria-hidden="true"
-                className="size-5 shrink-0 text-[#72766f] group-hover:text-[#31563e]"
+                className="size-5 shrink-0 text-[#72766f] group-hover:text-brand-text"
               />
             </button>
           </h2>
@@ -228,7 +228,7 @@ export function ExpenseLists({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
+    <section className="flex min-h-0 flex-1 flex-col border border-[#e8ebe5] bg-white p-3 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
       <div className="shrink-0">
         <Button
           className="mb-8 h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
@@ -241,7 +241,7 @@ export function ExpenseLists({
         </Button>
 
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-brand-surface text-brand-text">
             <CircleDollarSign aria-hidden="true" className="size-6" />
           </div>
           <div>
@@ -278,7 +278,7 @@ export function ExpenseLists({
           {group.currentUserIsAdmin && !group.archivedAt && (
             <Button
               aria-label="Neue Ausgabenliste hinzufügen"
-              className="size-9 shrink-0 rounded-xl bg-[#1f3b2d] p-0 text-white hover:bg-[#294b38]"
+              className="size-9 shrink-0 rounded-xl bg-brand-primary p-0 text-white hover:bg-brand-primary-hover"
               disabled={isCreating}
               onClick={() => {
                 setIsCreateModalOpen(true)
@@ -370,7 +370,7 @@ export function ExpenseLists({
                   Abbrechen
                 </Button>
                 <Button
-                  className="rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+                  className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
                   disabled={isCreating || !listName.trim()}
                   type="submit"
                 >

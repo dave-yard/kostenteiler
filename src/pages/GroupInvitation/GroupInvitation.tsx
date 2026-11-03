@@ -69,7 +69,7 @@ export function GroupInvitation({
 
   return (
     <section className="mx-auto w-full max-w-xl rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-8">
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+      <div className="bg-brand-surface text-brand-text flex size-12 items-center justify-center rounded-2xl">
         <Mail aria-hidden="true" className="size-6" />
       </div>
       <h1 className="mt-5 text-2xl font-semibold tracking-tight">
@@ -127,7 +127,7 @@ export function GroupInvitation({
         </Button>
         {invitation && (
           <Button
-            className="h-10 rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+            className="bg-brand-primary hover:bg-brand-primary-hover h-10 rounded-xl text-white"
             disabled={isAccepting}
             onClick={() => void handleAcceptInvitation()}
             type="button"

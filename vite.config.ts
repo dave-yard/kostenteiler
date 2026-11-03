@@ -6,6 +6,8 @@ import { defineConfig } from "vitest/config"
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  base: "/kostenteiler/",
+
   resolve: {
     alias: {
       "@": resolve(import.meta.dirname, "./src"),

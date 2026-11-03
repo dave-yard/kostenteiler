@@ -170,10 +170,10 @@ export function AuthScreen() {
           : "Recovery-E-Mail senden"
 
   return (
-    <main className="relative flex min-h-svh items-start justify-center overflow-x-hidden bg-[#f5f6f2] px-4 py-6 text-[#20241f] sm:items-center sm:px-6 sm:py-10">
+    <main className="bg-app-bg relative flex min-h-svh items-start justify-center overflow-x-hidden px-4 py-6 text-[#20241f] sm:items-center sm:px-6 sm:py-10">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-40 -left-32 size-[28rem] rounded-full bg-[#dce9df] opacity-70 blur-3xl"
+        className="bg-brand-badge-bg pointer-events-none absolute -top-40 -left-32 size-[28rem] rounded-full opacity-70 blur-3xl"
       />
       <div
         aria-hidden="true"
@@ -181,7 +181,7 @@ export function AuthScreen() {
       />
 
       <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-[0_32px_100px_-48px_rgba(32,36,31,0.35)] lg:grid-cols-[1.02fr_0.98fr]">
-        <section className="relative hidden flex-col justify-between overflow-hidden bg-[#1f3b2d] p-10 text-white lg:flex xl:p-14">
+        <section className="bg-brand-primary relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex xl:p-14">
           <div
             aria-hidden="true"
             className="absolute -right-28 -bottom-32 size-96 rounded-full border border-white/10"
@@ -192,7 +192,7 @@ export function AuthScreen() {
           />
 
           <div className="relative">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#d8eb9a] text-[#203a2c]">
+            <div className="bg-brand-accent flex size-12 items-center justify-center rounded-2xl text-[#203a2c]">
               <ReceiptText aria-hidden="true" className="size-6" />
             </div>
             <p className="mt-5 text-sm font-semibold tracking-[0.18em] text-white/70 uppercase">
@@ -202,7 +202,7 @@ export function AuthScreen() {
 
           <div className="relative my-12">
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/75">
-              <span className="size-1.5 rounded-full bg-[#d8eb9a]" />
+              <span className="bg-brand-accent size-1.5 rounded-full" />
               Gemeinsam den Überblick behalten
             </p>
             <h1 className="max-w-md text-4xl leading-[1.12] font-semibold tracking-[-0.045em] xl:text-5xl">
@@ -233,17 +233,17 @@ export function AuthScreen() {
         <section className="flex items-center justify-center p-6 sm:p-10 lg:p-12 xl:p-14">
           <div className="w-full max-w-sm">
             <div className="mb-9 flex items-center gap-3 lg:hidden">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-[#1f3b2d] text-white">
+              <div className="bg-brand-primary flex size-10 items-center justify-center rounded-xl text-white">
                 <ReceiptText aria-hidden="true" className="size-5" />
               </div>
               <span className="font-semibold tracking-tight">Kostenteiler</span>
             </div>
 
             <div className="mb-8">
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+              <div className="bg-brand-surface text-brand-text mb-4 flex size-11 items-center justify-center rounded-2xl">
                 <ShieldCheck aria-hidden="true" className="size-5" />
               </div>
-              <p className="text-sm font-medium text-[#65806a]">
+              <p className="text-brand-subtle text-sm font-medium">
                 Schön, dass du da bist
               </p>
               <h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">
@@ -449,7 +449,7 @@ export function AuthScreen() {
               )}
 
               <Button
-                className="h-12 w-full rounded-xl bg-[#1f3b2d] text-sm text-white hover:bg-[#294b38]"
+                className="bg-brand-primary hover:bg-brand-primary-hover h-12 w-full rounded-xl text-sm text-white"
                 disabled={isSubmitting || Boolean(configurationError)}
                 type="submit"
               >

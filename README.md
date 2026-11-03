@@ -7,7 +7,7 @@ Die funktionalen Anforderungen stehen in
 [DESIGN.md](./DESIGN.md).
 
 ##Info
-Kosteiler SSupabase API_KEY bei GROG console.groq.com abrufen.
+Kosteiler Supabase API_KEY bei GROG console.groq.com abrufen.
 
 ## Lokal starten
 

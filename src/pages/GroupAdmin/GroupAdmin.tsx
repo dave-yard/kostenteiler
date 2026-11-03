@@ -513,11 +513,13 @@ export function GroupAdmin({
       </Button>
 
       <div className="mb-7 flex items-start gap-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#1f3b2d] text-white">
+        <div className="bg-brand-primary flex size-12 shrink-0 items-center justify-center rounded-2xl text-white">
           <Shield aria-hidden="true" className="size-6" />
         </div>
         <div>
-          <p className="text-sm font-medium text-[#65806a]">Administration</p>
+          <p className="text-brand-subtle text-sm font-medium">
+            Administration
+          </p>
           <h1 className="mt-0.5 text-3xl font-semibold tracking-[-0.04em]">
             {displayedName}
           </h1>
@@ -544,7 +546,7 @@ export function GroupAdmin({
 
       <section className="rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#edf3e9] text-[#31563e]">
+          <div className="bg-brand-surface text-brand-text flex size-10 items-center justify-center rounded-xl">
             <UsersRound aria-hidden="true" className="size-5" />
           </div>
           <div>
@@ -682,7 +684,7 @@ export function GroupAdmin({
           )}
           <div className="flex justify-end">
             <Button
-              className="rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+              className="bg-brand-primary hover:bg-brand-primary-hover rounded-xl text-white"
               disabled={isSavingSplitDefault || members.length === 0}
               type="submit"
             >
@@ -695,7 +697,7 @@ export function GroupAdmin({
       <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#edf3e9] text-[#31563e]">
+            <div className="bg-brand-surface text-brand-text flex size-10 items-center justify-center rounded-xl">
               <UsersRound aria-hidden="true" className="size-5" />
             </div>
             <div>
@@ -776,7 +778,7 @@ export function GroupAdmin({
                         <span
                           className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
                             member.role === "admin"
-                              ? "bg-[#edf3e9] text-[#31563e]"
+                              ? "bg-brand-surface text-brand-text"
                               : "bg-[#f2f3f0] text-[#676c64]"
                           }`}
                         >
@@ -868,7 +870,7 @@ export function GroupAdmin({
                       </div>
                       {permissionsChanged && (
                         <Button
-                          className="mt-3 h-9 rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+                          className="bg-brand-primary hover:bg-brand-primary-hover mt-3 h-9 rounded-xl text-white"
                           disabled={savingMemberId === member.id}
                           onClick={() => void handleSavePermissions(member)}
                         >
@@ -909,7 +911,7 @@ export function GroupAdmin({
 
       <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#d8eb9a] text-[#203a2c]">
+          <div className="bg-brand-accent flex size-10 items-center justify-center rounded-xl text-[#203a2c]">
             <Plus aria-hidden="true" className="size-5" />
           </div>
           <div>
@@ -990,7 +992,7 @@ export function GroupAdmin({
               )}
           </div>
           <Button
-            className="h-11 rounded-xl bg-[#1f3b2d] px-5 text-white hover:bg-[#294b38]"
+            className="bg-brand-primary hover:bg-brand-primary-hover h-11 rounded-xl px-5 text-white"
             disabled={isAddingMember || !selectedContactId}
             type="submit"
           >
@@ -1006,7 +1008,7 @@ export function GroupAdmin({
         )}
         {invitationLink && (
           <div className="mt-4 rounded-2xl border border-[#d9e8d6] bg-[#f7faf5] p-4">
-            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-[#31563e]">
+            <p className="text-brand-text mb-2 flex items-center gap-2 text-sm font-medium">
               <Clock3 aria-hidden="true" className="size-4" />
               Der Link ist 14 Tage gültig und kann einmal angenommen werden.
             </p>

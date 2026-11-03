@@ -16,7 +16,7 @@ export function ExpenseListStatusBadge({
       className={`rounded-full px-2.5 py-1 text-xs font-medium ${
         status === "completed"
           ? "bg-[#f1f1ee] text-[#656960]"
-          : "bg-[#edf3e9] text-[#31563e]"
+          : "bg-brand-surface text-brand-text"
       }`}
     >
       {STATUS_LABELS[status]}

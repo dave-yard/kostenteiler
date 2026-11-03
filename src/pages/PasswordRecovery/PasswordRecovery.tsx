@@ -46,16 +46,18 @@ export function PasswordRecovery() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-[#f5f6f2] px-4 py-8 text-[#20241f]">
+    <main className="bg-app-bg flex min-h-svh items-center justify-center px-4 py-8 text-[#20241f]">
       <section className="w-full max-w-md rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_24px_72px_-40px_rgba(32,36,31,0.35)] sm:p-9">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#edf3e9] text-[#31563e]">
+        <div className="bg-brand-surface text-brand-text flex size-12 items-center justify-center rounded-2xl">
           {isComplete ? (
             <Check aria-hidden="true" className="size-6" />
           ) : (
             <ShieldCheck aria-hidden="true" className="size-6" />
           )}
         </div>
-        <p className="mt-5 text-sm font-medium text-[#65806a]">Kostenteiler</p>
+        <p className="text-brand-subtle mt-5 text-sm font-medium">
+          Kostenteiler
+        </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">
           {isComplete ? "Passwort geändert" : "Neues Passwort festlegen"}
         </h1>
@@ -71,7 +73,7 @@ export function PasswordRecovery() {
               Passwort weitermachen.
             </p>
             <Button
-              className="mt-6 h-12 w-full rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+              className="bg-brand-primary hover:bg-brand-primary-hover mt-6 h-12 w-full rounded-xl text-white"
               onClick={leaveRecoveryPage}
               type="button"
             >
@@ -86,7 +88,7 @@ export function PasswordRecovery() {
               eine neue E-Mail zum Zurücksetzen deines Passworts an.
             </p>
             <Button
-              className="mt-6 h-12 w-full rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+              className="bg-brand-primary hover:bg-brand-primary-hover mt-6 h-12 w-full rounded-xl text-white"
               onClick={leaveRecoveryPage}
               type="button"
             >
@@ -162,7 +164,7 @@ export function PasswordRecovery() {
               )}
 
               <Button
-                className="h-12 w-full rounded-xl bg-[#1f3b2d] text-white hover:bg-[#294b38]"
+                className="bg-brand-primary hover:bg-brand-primary-hover h-12 w-full rounded-xl text-white"
                 disabled={isSubmitting}
                 type="submit"
               >
