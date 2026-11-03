@@ -22,6 +22,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ExpenseListDetailPage } from "./pages/ExpenseListDetail/ExpenseListDetailPage"
 
 // Geschütztes Layout für eingeloggte Bereiche
 function AuthenticatedLayout() {
@@ -58,8 +59,8 @@ function AuthenticatedLayout() {
   return (
     <GroupOverviewProvider key={session.user.id}>
       <ExpenseListProvider>
-        <main className="bg-app-bg flex min-h-dvh flex-col text-[#20241f]">
-          <header className="bg-app-bg/95 z-20 shrink-0 border-b border-black/5 backdrop-blur">
+        <main className="flex min-h-dvh flex-col bg-app-bg text-[#20241f]">
+          <header className="z-20 shrink-0 border-b border-black/5 bg-app-bg/95 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
               <div className="relative" ref={navigationMenuRef}>
                 <Button
@@ -71,7 +72,7 @@ function AuthenticatedLayout() {
                   type="button"
                   variant="ghost"
                 >
-                  <span className="bg-brand-primary flex size-9 items-center justify-center rounded-xl text-white">
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-brand-primary text-white">
                     <CircleDollarSign aria-hidden="true" className="size-5" />
                   </span>
                   <span className="font-semibold tracking-tight">
@@ -85,7 +86,7 @@ function AuthenticatedLayout() {
                     role="menu"
                   >
                     <Button
-                      className="text-brand-text h-11 w-full justify-start gap-3 rounded-xl"
+                      className="h-11 w-full justify-start gap-3 rounded-xl text-brand-text"
                       onClick={() => {
                         // setSelectedGroup(null)
                         // setAdminGroupId(null)
@@ -129,7 +130,7 @@ function AuthenticatedLayout() {
                 </span>
                 <span
                   aria-label="Konto angemeldet"
-                  className="text-brand-text bg-brand-badge-bg flex size-9 items-center justify-center rounded-full font-semibold"
+                  className="flex size-9 items-center justify-center rounded-full bg-brand-badge-bg font-semibold text-brand-text"
                 >
                   <Check aria-hidden="true" className="size-4" />
                 </span>
@@ -193,18 +194,18 @@ export const router = createBrowserRouter(
           path: "/",
           element: <GroupOverview />,
         },
-        {
-          path: "/groups/:groupId",
-          element: <ExpenseListsPage />,
-        },
         // {
         //   path: "/groups/:groupId/admin",
         //   element: <GroupAdminPage />, // analog mit useParams
         // },
-        // {
-        //   path: "/groups/:groupId/lists/:listId",
-        //   element: <ExpenseListDetailPage />,
-        // },
+        {
+          path: "/groups/:groupId",
+          element: <ExpenseListsPage />,
+        },
+        {
+          path: "/groups/:groupId/lists/:listId",
+          element: <ExpenseListDetailPage />,
+        },
         {
           path: "/contacts",
           element: <PersonalContacts />,
@@ -234,7 +235,7 @@ export function App() {
 
   if (isLoading) {
     return (
-      <main className="bg-app-bg flex min-h-svh items-center justify-center">
+      <main className="flex min-h-svh items-center justify-center bg-app-bg">
         <p className="text-sm text-[#72766f]" role="status">
           Sitzung wird geladen ...
         </p>
