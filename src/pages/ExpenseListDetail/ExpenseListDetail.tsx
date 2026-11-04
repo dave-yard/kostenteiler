@@ -1170,7 +1170,8 @@ export function ExpenseListDetail({
                   Bezeichnung
                 </label>
                 <Input
-                  autoComplete="off"
+                  autoComplete="one-time-code"
+                  data-roboform-disable="true"
                   autoFocus
                   className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                   id="item-name"
@@ -1185,7 +1186,8 @@ export function ExpenseListDetail({
                     Betrag in €
                   </label>
                   <Input
-                    autoComplete="off"
+                    autoComplete="one-time-code"
+                    data-roboform-disable="true"
                     className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                     id="item-amount"
                     inputMode="decimal"
