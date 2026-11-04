@@ -917,7 +917,7 @@ export function ExpenseListDetail({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
+    <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:h-[calc(100dvh-8rem)] sm:p-10">
       <div className="shrink-0">
         <Button
           className="mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
@@ -1538,7 +1538,7 @@ export function ExpenseListDetail({
         variant="error"
       />
 
-      <div className="mt-4 min-h-0 flex-1">
+      <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         {isLoading ? (
           <p
             className="flex items-center gap-2 text-sm text-muted-foreground"
