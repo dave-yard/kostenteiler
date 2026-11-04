@@ -107,11 +107,7 @@ export function germanToIsoDateTime(text: string) {
   return date.toISOString()
 }
 
-function formatitem_date(
-  isoDate: string,
-  createdAt?: string,
-  showTime = false
-) {
+function formatitem_date(isoDate: string, showTime = false) {
   if (!isoDate) return ""
 
   const hasTime = isoDate.includes("T") || isoDate.includes(" ")
@@ -474,13 +470,13 @@ export function ExpenseListDetail({
               <span className="ml-1.5 text-xs font-normal text-[#72766f]">
                 •{" "}
                 {highlightSearchMatch(
-                  formatitem_date(item.item_date, item.createdAt, showTime),
+                  formatitem_date(item.item_date, showTime),
                   searchQuery
                 )}
               </span>
             )}
             {item.isReceipt && (
-              <span className="bg-brand-surface text-brand-text ml-2 rounded-full px-2 py-0.5 align-middle text-xs font-medium">
+              <span className="ml-2 rounded-full bg-brand-surface px-2 py-0.5 align-middle text-xs font-medium text-brand-text">
                 Bon
               </span>
             )}
@@ -965,7 +961,7 @@ export function ExpenseListDetail({
                         Ansicht & Filter
                       </p>
                       {searchQuery && (
-                        <span className="text-brand-text rounded-full bg-[#eef0eb] px-1.5 py-0.5 text-[10px] font-medium">
+                        <span className="rounded-full bg-[#eef0eb] px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
                           Filter aktiv
                         </span>
                       )}
@@ -1083,7 +1079,7 @@ export function ExpenseListDetail({
                 <label
                   htmlFor={isScanning ? undefined : "receipt-scan-input"}
                   aria-label="Bon einscannen"
-                  className={`bg-brand-primary hover:bg-brand-primary-hover inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-white transition ${
+                  className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand-primary px-3 text-white transition hover:bg-brand-primary-hover ${
                     isScanning
                       ? "cursor-not-allowed opacity-60"
                       : "cursor-pointer"
@@ -1106,7 +1102,7 @@ export function ExpenseListDetail({
             {canAddItem && (
               <Button
                 aria-label="Position hinzufügen"
-                className="bg-brand-primary hover:bg-brand-primary-hover size-9 shrink-0 rounded-xl p-0 text-white"
+                className="size-9 shrink-0 rounded-xl bg-brand-primary p-0 text-white hover:bg-brand-primary-hover"
                 onClick={() => openDialog()}
                 type="button"
               >
@@ -1451,7 +1447,7 @@ export function ExpenseListDetail({
                   Abbrechen
                 </Button>
                 <Button
-                  className="bg-brand-primary hover:bg-brand-primary-hover rounded-xl text-white"
+                  className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
                   disabled={isSaving || isLoadingSplitRule}
                   type="submit"
                 >
@@ -1733,7 +1729,7 @@ export function ExpenseListDetail({
               {canCloseList && (
                 <div className="flex justify-end">
                   <Button
-                    className="bg-brand-primary hover:bg-brand-primary-hover rounded-xl text-white"
+                    className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
                     disabled={isClosing || Boolean(settlementError)}
                     onClick={() => void handleCloseList()}
                     type="button"

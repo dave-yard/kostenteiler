@@ -342,7 +342,7 @@ describe("ExpenseListDetail", () => {
     })
     mockAccess()
 
-    const rpc = vi.fn().mockImplementation(async (fnName, args) => {
+    const rpc = vi.fn().mockImplementation(async (fnName) => {
       if (fnName === "get_list_split_rules") {
         return {
           data: [
