@@ -462,8 +462,9 @@ export function ExpenseListDetail({
         className={`relative flex items-start justify-between gap-3 py-3 ${
           canDeleteItems && deleteMode ? "pr-10" : ""
         }`}
+        onClick={() => openDialog(item)}
       >
-        <div className="min-w-0" onClick={() => openDialog(item)}>
+        <div className="min-w-0">
           <p className="font-medium break-words">
             {highlightSearchMatch(item.name, searchQuery)}
             {!item.parentItemId && item.item_date && (
