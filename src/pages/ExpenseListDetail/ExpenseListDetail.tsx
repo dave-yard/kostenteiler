@@ -1533,7 +1533,7 @@ export function ExpenseListDetail({
         variant="error"
       />
 
-      <div className="mt-4 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain">
+      <div className="mt-4 min-h-0 flex-1">
         {isLoading ? (
           <p
             className="flex items-center gap-2 text-sm text-[#72766f]"
