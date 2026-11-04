@@ -58,6 +58,60 @@
 }
 
 :root {
+  /* App & Brand */
+  --app-bg: whitesmoke; /* Dein gewählter Hintergrund */
+  --brand-primary: #0f766e; /* Kräftiges, dunkles Teal für Buttons */
+  --brand-primary-hover: #115e59; /* Dunklerer Hover-Zustand */
+  --brand-accent: #5eead4; /* Helles Akzent-Türkis */
+  --brand-accent-text: #134e4a; /* Dunkles Teal für Text auf Akzenten */
+  --brand-surface: #e5e7eb;
+  --brand-text: #1f2937;
+  --brand-subtle: #9ca3af;
+  --brand-badge-bg: #f3f4f6;
+  --brand-badge-border: #d1d5db;
+
+  /* Base & UI Components (Weichere Karten statt hartem Weiß) */
+  --background: whitesmoke;
+  --foreground: oklch(0.145 0 0);
+  --card: #f8fafc; /* Sanftes Off-White / helles Grau-Blau für die Karten */
+  --card-foreground: oklch(0.145 0 0);
+  --popover: #f8fafc;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.45 0.12 180); /* Dunkles Türkis für Buttons */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.96 0.02 180);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(
+    0.89 0.01 180
+  ); /* Dezenter Rahmen für die Karten, damit sie sich abheben */
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.45 0.12 180);
+
+  /* Charts */
+  --chart-1: oklch(0.65 0.14 180);
+  --chart-2: oklch(0.52 0.13 180);
+  --chart-3: oklch(0.7 0 0);
+  --chart-4: oklch(0.5 0 0);
+  --chart-5: oklch(0.3 0 0);
+
+  --radius: 0.625rem;
+
+  /* Sidebar */
+  --sidebar: #f8fafc;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.45 0.12 180);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.89 0.01 180);
+  --sidebar-ring: oklch(0.45 0.12 180);
+}
+.blue {
   --app-bg: #f3f6fa;
   --brand-primary: #1e3a5f;
   --brand-primary-hover: #162b46;

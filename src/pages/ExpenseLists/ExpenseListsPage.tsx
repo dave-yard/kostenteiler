@@ -32,7 +32,7 @@ export function ExpenseListsPage() {
       group={group}
       includeCompleted={includeCompleted}
       onIncludeCompletedChange={setIncludeCompleted}
-      onBack={() => navigate("/")}
+      onBack={() => navigate(`/`)}
       onOpenList={(list) => navigate(`/groups/${group.id}/lists/${list.id}`)}
     />
   )

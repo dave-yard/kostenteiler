@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ExpenseListDetailPage } from "./pages/ExpenseListDetail/ExpenseListDetailPage"
+import { GroupAdminPage } from "./pages/GroupAdmin/GroupAdminPage"
 
 // Geschütztes Layout für eingeloggte Bereiche
 function AuthenticatedLayout() {
@@ -60,20 +61,20 @@ function AuthenticatedLayout() {
     <GroupOverviewProvider key={session.user.id}>
       <ExpenseListProvider>
         <main className="flex min-h-dvh flex-col bg-app-bg text-[#20241f]">
-          <header className="z-20 shrink-0 border-b border-black/5 bg-app-bg/95 backdrop-blur">
+          <header className="z-20 shrink-0 border-b border-black/5 bg-brand-primary backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
               <div className="relative" ref={navigationMenuRef}>
                 <Button
                   aria-expanded={isNavigationMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Navigation öffnen"
-                  className="h-auto gap-3 rounded-xl bg-blue-50 p-1.5 text-[#20241f] hover:bg-black"
+                  className="h-9 gap-2.5 rounded-full border border-white/40 bg-brand-primary px-3 py-1 text-primary-foreground shadow-sm transition-colors hover:bg-brand-primary-hover hover:text-primary-foreground"
                   onClick={() => setIsNavigationMenuOpen((isOpen) => !isOpen)}
                   type="button"
                   variant="ghost"
                 >
-                  <span className="flex size-9 items-center justify-center rounded-xl bg-brand-primary text-white">
-                    <CircleDollarSign aria-hidden="true" className="size-5" />
+                  <span className="text-primary-foreground] flex size-6 items-center justify-center rounded-full">
+                    <CircleDollarSign aria-hidden="true" className="size-3.5" />
                   </span>
                   <span className="font-semibold tracking-tight">
                     Kostenteiler X
@@ -124,19 +125,19 @@ function AuthenticatedLayout() {
                   </nav>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm text-[#72766f]">
+              <div className="flex items-center gap-2 text-sm text-primary-foreground">
                 <span className="hidden max-w-48 truncate sm:inline">
                   {session?.user.email ?? "Angemeldet"}
                 </span>
                 <span
                   aria-label="Konto angemeldet"
-                  className="flex size-9 items-center justify-center rounded-full bg-brand-badge-bg font-semibold text-brand-text"
+                  className="flex size-9 items-center justify-center rounded-full bg-brand-accent font-semibold text-brand-text"
                 >
                   <Check aria-hidden="true" className="size-4" />
                 </span>
                 <Button
                   aria-label="Abmelden"
-                  className="ml-1 rounded-xl"
+                  className="ml-1 rounded-xl bg-transparent"
                   disabled={isSigningOut}
                   onClick={handleSignOut}
                   variant="outline"
@@ -194,10 +195,10 @@ export const router = createBrowserRouter(
           path: "/",
           element: <GroupOverview />,
         },
-        // {
-        //   path: "/groups/:groupId/admin",
-        //   element: <GroupAdminPage />, // analog mit useParams
-        // },
+        {
+          path: "/groups/:groupId/admin",
+          element: <GroupAdminPage />, // analog mit useParams
+        },
         {
           path: "/groups/:groupId",
           element: <ExpenseListsPage />,

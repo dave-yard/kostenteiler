@@ -74,7 +74,7 @@ export function ExpenseListDetailPage() {
     <ExpenseListDetail
       group={group}
       list={expenseList}
-      onBack={() => navigate("/")}
+      onBack={() => navigate(`/groups/${group.id}`)}
     />
   )
 }

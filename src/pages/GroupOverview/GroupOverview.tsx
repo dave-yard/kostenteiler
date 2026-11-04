@@ -70,20 +70,23 @@ function SortableGroupCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3.5">
-          <div className="bg-brand-surface text-brand-text flex size-11 shrink-0 items-center justify-center rounded-2xl">
+          <div
+            className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-brand-badge-bg"
+            onClick={onOpen}
+          >
             <UsersRound aria-hidden="true" className="size-5" />
           </div>
           <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">
               <button
-                className="group hover:text-brand-text inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current"
+                className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-brand-text"
                 onClick={onOpen}
                 type="button"
               >
                 <span className="truncate">{group.name}</span>
                 <ChevronRight
                   aria-hidden="true"
-                  className="group-hover:text-brand-text size-5 shrink-0 text-[#72766f]"
+                  className="size-5 shrink-0 text-[#72766f] group-hover:text-brand-text"
                 />
               </button>
             </h2>
@@ -91,7 +94,7 @@ function SortableGroupCard({
               {group.memberCount}{" "}
               {group.memberCount === 1 ? "Mitglied" : "Mitglieder"}
               {group.currentUserIsAdmin && (
-                <span className="bg-brand-surface text-brand-text ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-brand-surface px-2 py-0.5 text-xs font-medium text-brand-text">
                   Admin
                 </span>
               )}
@@ -109,7 +112,7 @@ function SortableGroupCard({
           </span>
           <Button
             aria-label={`Gruppe verschieben: ${group.name}`}
-            className="hover:text-brand-text size-10 cursor-grab touch-none rounded-xl text-[#72766f] active:cursor-grabbing"
+            className="size-10 cursor-grab touch-none rounded-xl text-[#72766f] hover:text-brand-text active:cursor-grabbing"
             disabled={disabled}
             size="icon"
             variant="ghost"
@@ -322,9 +325,6 @@ export function GroupOverview() {
       <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[1fr_auto] md:grid-rows-[auto_1fr] md:gap-x-6 md:gap-y-6">
         <div className="mb-4 flex shrink-0 flex-col justify-between gap-4 sm:mb-7 sm:flex-row sm:items-end md:col-start-1 md:row-start-1 md:mb-0 md:self-end">
           <div>
-            <p className="text-brand-subtle text-sm font-medium">
-              Dein gemeinsamer Überblick
-            </p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                 Deine Gruppen
@@ -407,7 +407,7 @@ export function GroupOverview() {
           ) : (
             !loadError && (
               <div className="rounded-3xl border border-dashed border-[#d7ded3] bg-white/70 px-6 py-12 text-center">
-                <div className="bg-brand-surface text-brand-text mx-auto flex size-12 items-center justify-center rounded-2xl">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-surface text-brand-text">
                   <UsersRound aria-hidden="true" className="size-6" />
                 </div>
                 <h2 className="mt-4 text-lg font-semibold">
@@ -424,7 +424,7 @@ export function GroupOverview() {
 
         <section className="mt-3 shrink-0 rounded-2xl border border-[#e8ebe5] bg-white p-3 sm:mt-6 sm:rounded-3xl sm:p-5 md:col-start-2 md:row-start-1 md:mt-0 md:w-80 md:self-end md:p-3.5 lg:w-96">
           <div className="flex items-center gap-2.5">
-            <div className="bg-brand-accent flex size-8 items-center justify-center rounded-lg text-[#203a2c] md:size-6 md:rounded-md">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-brand-accent text-[#203a2c] md:size-6 md:rounded-md">
               <Plus aria-hidden="true" className="size-4 md:size-3" />
             </div>
             <h2 className="text-sm font-semibold sm:text-base md:text-xs">
@@ -446,7 +446,7 @@ export function GroupOverview() {
               value={groupName}
             />
             <Button
-              className="bg-brand-primary hover:bg-brand-primary-hover h-10 shrink-0 rounded-xl px-3 text-white sm:px-4"
+              className="h-10 shrink-0 rounded-xl bg-brand-primary px-3 text-white hover:bg-brand-primary-hover sm:px-4"
               disabled={isCreatingGroup || !groupName.trim()}
               type="submit"
             >
@@ -465,7 +465,7 @@ export function GroupOverview() {
   }
 
   return (
-    <main className="bg-app-bg flex h-dvh flex-col overflow-hidden text-[#20241f]">
+    <main className="flex h-dvh flex-col overflow-hidden bg-app-bg text-[#20241f]">
       <div
         className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-8 ${
           (adminGroupId && selectedGroup) ||
