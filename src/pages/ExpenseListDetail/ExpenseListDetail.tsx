@@ -463,7 +463,7 @@ export function ExpenseListDetail({
           canDeleteItems && deleteMode ? "pr-10" : ""
         }`}
       >
-        <div className="min-w-0">
+        <div className="min-w-0" onClick={() => openDialog(item)}>
           <p className="font-medium break-words">
             {highlightSearchMatch(item.name, searchQuery)}
             {!item.parentItemId && item.item_date && (

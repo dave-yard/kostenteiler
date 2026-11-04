@@ -34,17 +34,20 @@ function ExpenseListCard({
   canClose: boolean
   isBusy: boolean
   onOpen: () => void
-  onComplete: () => void
-  onMarkPaid: () => void
+  onComplete: (e: React.MouseEvent<HTMLButtonElement>) => void
+  onMarkPaid: (e: React.MouseEvent<HTMLButtonElement>) => void
 }) {
   return (
-    <article className="rounded-3xl border border-border bg-card p-3">
+    <article
+      className="rounded-3xl border border-border bg-card p-3"
+      onClick={onOpen}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold">
             <button
               className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-brand-text"
-              onClick={onOpen}
+
               type="button"
             >
               <span className="truncate">{list.name}</span>
@@ -424,8 +427,14 @@ export function ExpenseLists({
               isBusy={busyListId === list.id}
               key={list.id}
               list={list}
-              onComplete={() => void handleStatusChange(list)}
-              onMarkPaid={() => void handleStatusChange(list)}
+              onComplete={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation()
+                void handleStatusChange(list)
+              }}
+              onMarkPaid={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation()
+                void handleStatusChange(list)
+              }}
               onOpen={() => onOpenList(list)}
             />
           ))

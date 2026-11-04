@@ -47,7 +47,7 @@ function SortableGroupCard({
 }: {
   group: Group
   onOpen: () => void
-  onManage: () => void
+  onManage: (e: React.MouseEvent<HTMLButtonElement>) => void
   disabled: boolean
 }) {
   const {
@@ -61,6 +61,7 @@ function SortableGroupCard({
 
   return (
     <article
+      onClick={onOpen}
       className={`rounded-3xl border border-border bg-card p-5 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-6 ${isDragging ? "z-10 opacity-70 shadow-xl" : ""}`}
       ref={setNodeRef}
       style={{
@@ -70,10 +71,7 @@ function SortableGroupCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3.5">
-          <div
-            className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-brand-badge-bg"
-            onClick={onOpen}
-          >
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-brand-badge-bg">
             <UsersRound aria-hidden="true" className="size-5" />
           </div>
           <div className="min-w-0">
@@ -386,7 +384,8 @@ export function GroupOverview() {
                       disabled={isSavingGroupOrder || groups.length < 2}
                       group={group}
                       key={group.id}
-                      onManage={() => {
+                      onManage={(e: React.MouseEvent<HTMLButtonElement>) => {
+                        e.stopPropagation()
                         navigate(`/groups/${group.id}/admin`)
                         // setSelectedGroup(group)
                         // setAdminGroupId(group.id)
