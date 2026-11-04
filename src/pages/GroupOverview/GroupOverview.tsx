@@ -61,7 +61,7 @@ function SortableGroupCard({
 
   return (
     <article
-      className={`rounded-3xl border border-[#e8ebe5] bg-white p-5 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-6 ${isDragging ? "z-10 opacity-70 shadow-xl" : ""}`}
+      className={`rounded-3xl border border-border bg-card p-5 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-6 ${isDragging ? "z-10 opacity-70 shadow-xl" : ""}`}
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
@@ -86,11 +86,11 @@ function SortableGroupCard({
                 <span className="truncate">{group.name}</span>
                 <ChevronRight
                   aria-hidden="true"
-                  className="size-5 shrink-0 text-[#72766f] group-hover:text-brand-text"
+                  className="size-5 shrink-0 text-muted-foreground group-hover:text-brand-text"
                 />
               </button>
             </h2>
-            <p className="mt-1 text-sm text-[#72766f]">
+            <p className="mt-1 text-sm text-muted-foreground">
               {group.memberCount}{" "}
               {group.memberCount === 1 ? "Mitglied" : "Mitglieder"}
               {group.currentUserIsAdmin && (
@@ -99,7 +99,7 @@ function SortableGroupCard({
                 </span>
               )}
               {group.archivedAt && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-[#f1f1ee] px-2 py-0.5 text-xs font-medium text-[#656960]">
+                <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   Archiviert · nur lesbar
                 </span>
               )}
@@ -107,12 +107,12 @@ function SortableGroupCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="hidden rounded-full border border-[#e8ebe5] px-2.5 py-1 text-xs text-[#72766f] sm:inline-flex">
+          {/* <span className="hidden rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground sm:inline-flex">
             Listen folgen
-          </span>
+          </span> */}
           <Button
             aria-label={`Gruppe verschieben: ${group.name}`}
-            className="size-10 cursor-grab touch-none rounded-xl text-[#72766f] hover:text-brand-text active:cursor-grabbing"
+            className="size-10 cursor-grab touch-none rounded-xl text-muted-foreground hover:text-brand-text active:cursor-grabbing"
             disabled={disabled}
             size="icon"
             variant="ghost"
@@ -125,9 +125,9 @@ function SortableGroupCard({
       </div>
 
       {group.currentUserIsAdmin && !group.archivedAt && (
-        <div className="mt-5 flex border-t border-[#eef0eb] pt-4">
+        <div className="mt-5 flex border-t border-border pt-4">
           <Button
-            className="h-10 justify-start gap-2 rounded-xl text-[#405b47]"
+            className="h-10 justify-start gap-2 rounded-xl text-brand-text"
             onClick={onManage}
             variant="outline"
           >
@@ -329,7 +329,7 @@ export function GroupOverview() {
               <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                 Deine Gruppen
               </h1>
-              <span className="text-sm text-[#72766f]">
+              <span className="text-sm text-muted-foreground">
                 {groups.length} {groups.length === 1 ? "Gruppe" : "Gruppen"}
               </span>
             </div>
@@ -339,7 +339,7 @@ export function GroupOverview() {
         <div className="flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overscroll-y-contain pb-2 md:col-span-2 md:row-start-2">
           {loadError && (
             <div
-              className="mb-5 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between"
+              className="mb-5 flex flex-col gap-3 rounded-2xl border border-danger-border bg-danger-bg p-4 text-sm text-danger-text sm:flex-row sm:items-center sm:justify-between"
               role="alert"
             >
               <span>{loadError}</span>
@@ -355,7 +355,7 @@ export function GroupOverview() {
 
           {groupOrderError && (
             <p
-              className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+              className="mb-5 rounded-2xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-text"
               role="alert"
             >
               Die Gruppenreihenfolge konnte nicht gespeichert werden:{" "}
@@ -365,7 +365,7 @@ export function GroupOverview() {
 
           {isLoading ? (
             <div
-              className="rounded-3xl border border-[#e8ebe5] bg-white p-8 text-center text-sm text-[#72766f]"
+              className="rounded-3xl border border-border bg-card p-8 text-center text-sm text-muted-foreground"
               role="status"
             >
               Gruppen werden geladen ...
@@ -406,14 +406,14 @@ export function GroupOverview() {
             </DndContext>
           ) : (
             !loadError && (
-              <div className="rounded-3xl border border-dashed border-[#d7ded3] bg-white/70 px-6 py-12 text-center">
+              <div className="rounded-3xl border border-dashed border-border bg-card/70 px-6 py-12 text-center">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-surface text-brand-text">
                   <UsersRound aria-hidden="true" className="size-6" />
                 </div>
                 <h2 className="mt-4 text-lg font-semibold">
                   Noch keine Gruppe
                 </h2>
-                <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-[#72766f]">
+                <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">
                   Erstelle eine Gruppe für deine WG, Reise oder gemeinsame
                   Haushaltsausgaben.
                 </p>
@@ -422,9 +422,9 @@ export function GroupOverview() {
           )}
         </div>
 
-        <section className="mt-3 shrink-0 rounded-2xl border border-[#e8ebe5] bg-white p-3 sm:mt-6 sm:rounded-3xl sm:p-5 md:col-start-2 md:row-start-1 md:mt-0 md:w-80 md:self-end md:p-3.5 lg:w-96">
+        <section className="mt-3 shrink-0 rounded-2xl border border-border bg-card p-3 sm:mt-6 sm:rounded-3xl sm:p-5 md:col-start-2 md:row-start-1 md:mt-0 md:w-80 md:self-end md:p-3.5 lg:w-96">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-brand-accent text-[#203a2c] md:size-6 md:rounded-md">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-brand-accent text-brand-accent-text md:size-6 md:rounded-md">
               <Plus aria-hidden="true" className="size-4 md:size-3" />
             </div>
             <h2 className="text-sm font-semibold sm:text-base md:text-xs">
@@ -437,7 +437,7 @@ export function GroupOverview() {
               Gruppenname
             </label>
             <Input
-              className="h-10 min-w-0 flex-1 rounded-xl border border-[#e4e7e1] px-3 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+              className="h-10 min-w-0 flex-1 rounded-xl border border-border px-3 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
               id="new-group-name"
               maxLength={80}
               onChange={(event) => setGroupName(event.target.value)}
@@ -455,7 +455,7 @@ export function GroupOverview() {
           </form>
 
           {createError && (
-            <p className="mt-3 text-sm text-red-700" role="alert">
+            <p className="mt-3 text-sm text-destructive" role="alert">
               {createError}
             </p>
           )}
@@ -465,7 +465,7 @@ export function GroupOverview() {
   }
 
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-app-bg text-[#20241f]">
+    <main className="flex h-dvh flex-col overflow-hidden bg-app-bg text-foreground">
       <div
         className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-5 sm:px-6 sm:py-8 ${
           (adminGroupId && selectedGroup) ||

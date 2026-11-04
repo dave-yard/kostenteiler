@@ -68,8 +68,8 @@ export function GroupInvitation({
   }
 
   return (
-    <section className="mx-auto w-full max-w-xl rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-8">
-      <div className="bg-brand-surface text-brand-text flex size-12 items-center justify-center rounded-2xl">
+    <section className="mx-auto w-full max-w-xl rounded-3xl border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-8">
+      <div className="flex size-12 items-center justify-center rounded-2xl bg-brand-surface text-brand-text">
         <Mail aria-hidden="true" className="size-6" />
       </div>
       <h1 className="mt-5 text-2xl font-semibold tracking-tight">
@@ -78,7 +78,7 @@ export function GroupInvitation({
 
       {isLoading ? (
         <p
-          className="mt-4 flex items-center gap-2 text-sm text-[#72766f]"
+          className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"
           role="status"
         >
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -86,11 +86,11 @@ export function GroupInvitation({
         </p>
       ) : invitation ? (
         <>
-          <p className="mt-3 text-sm leading-6 text-[#72766f]">
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Du wurdest als <strong>{invitation.displayName}</strong> in die
             Gruppe <strong>{invitation.groupName}</strong> eingeladen.
           </p>
-          <p className="mt-4 flex items-start gap-2 rounded-2xl bg-[#f7faf5] p-3 text-sm leading-5 text-[#405b47]">
+          <p className="mt-4 flex items-start gap-2 rounded-2xl bg-brand-surface p-3 text-sm leading-5 text-brand-text">
             <ShieldCheck
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0"
@@ -99,7 +99,7 @@ export function GroupInvitation({
             an das sie gesendet wurde. Deine Gruppenpositionen und Aufteilungen
             bleiben dabei erhalten.
           </p>
-          <p className="mt-3 flex items-center gap-2 text-xs text-[#72766f]">
+          <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Clock3 aria-hidden="true" className="size-3.5" />
             Der Link ist einmalig und läuft nach 14 Tagen ab.
           </p>
@@ -108,7 +108,7 @@ export function GroupInvitation({
 
       {errorMessage && (
         <p
-          className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm leading-5 text-red-800"
+          className="mt-4 rounded-xl border border-danger-border bg-danger-bg px-3 py-2 text-sm leading-5 text-danger-text"
           role="alert"
         >
           {errorMessage}
@@ -127,7 +127,7 @@ export function GroupInvitation({
         </Button>
         {invitation && (
           <Button
-            className="bg-brand-primary hover:bg-brand-primary-hover h-10 rounded-xl text-white"
+            className="h-10 rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
             disabled={isAccepting}
             onClick={() => void handleAcceptInvitation()}
             type="button"

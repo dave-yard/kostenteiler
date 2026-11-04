@@ -60,7 +60,7 @@ function AuthenticatedLayout() {
   return (
     <GroupOverviewProvider key={session.user.id}>
       <ExpenseListProvider>
-        <main className="flex min-h-dvh flex-col bg-app-bg text-[#20241f]">
+        <main className="flex min-h-dvh flex-col bg-app-bg text-foreground">
           <header className="z-20 shrink-0 border-b border-black/5 bg-brand-primary backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
               <div className="relative" ref={navigationMenuRef}>
@@ -83,7 +83,7 @@ function AuthenticatedLayout() {
                 {isNavigationMenuOpen && (
                   <nav
                     aria-label="Hauptnavigation"
-                    className="absolute top-full left-0 z-30 mt-2 w-56 rounded-2xl border border-[#e8ebe5] bg-white p-2 shadow-xl"
+                    className="absolute top-full left-0 z-30 mt-2 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl"
                     role="menu"
                   >
                     <Button
@@ -104,10 +104,10 @@ function AuthenticatedLayout() {
                     </Button>
                     <div
                       aria-hidden="true"
-                      className="my-1 border-t border-[#eef0eb]"
+                      className="my-1 border-t border-border"
                     />
                     <Button
-                      className="h-11 w-full justify-start gap-3 rounded-xl text-[#405b47]"
+                      className="h-11 w-full justify-start gap-3 rounded-xl text-brand-text"
                       onClick={() => {
                         // setSelectedGroup(null)
                         // setAdminGroupId(null)
@@ -151,7 +151,7 @@ function AuthenticatedLayout() {
           {signOutError && (
             <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6">
               <p
-                className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                className="border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-text"
                 role="alert"
               >
                 {signOutError}
@@ -237,7 +237,7 @@ export function App() {
   if (isLoading) {
     return (
       <main className="flex min-h-svh items-center justify-center bg-app-bg">
-        <p className="text-sm text-[#72766f]" role="status">
+        <p className="text-sm text-muted-foreground" role="status">
           Sitzung wird geladen ...
         </p>
       </main>

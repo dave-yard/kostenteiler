@@ -38,7 +38,7 @@ function ExpenseListCard({
   onMarkPaid: () => void
 }) {
   return (
-    <article className="rounded-3xl border border-[#e8ebe5] bg-white p-3">
+    <article className="rounded-3xl border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold">
@@ -50,11 +50,11 @@ function ExpenseListCard({
               <span className="truncate">{list.name}</span>
               <ChevronRight
                 aria-hidden="true"
-                className="size-5 shrink-0 text-[#72766f] group-hover:text-brand-text"
+                className="size-5 shrink-0 text-muted-foreground group-hover:text-brand-text"
               />
             </button>
           </h2>
-          <p className="mt-1 text-xs text-[#72766f]">
+          <p className="mt-1 text-xs text-muted-foreground">
             Erstellt am{" "}
             {new Intl.DateTimeFormat("de-DE", {
               dateStyle: "medium",
@@ -228,10 +228,10 @@ export function ExpenseLists({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col border border-[#e8ebe5] bg-white p-3 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
+    <section className="flex min-h-0 flex-1 flex-col border border-border bg-card p-3 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
       <div className="shrink-0">
         <Button
-          className="mb-8 h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+          className="mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
           onClick={onBack}
           type="button"
           variant="ghost"
@@ -245,7 +245,7 @@ export function ExpenseLists({
             <CircleDollarSign aria-hidden="true" className="size-6" />
           </div>
           <div>
-            <p className="text-sm text-[#72766f]">Ausgabenlisten</p>
+            <p className="text-sm text-muted-foreground">Ausgabenlisten</p>
             <h1 className="text-2xl font-semibold tracking-[-0.04em]">
               {group.name}
             </h1>
@@ -254,7 +254,7 @@ export function ExpenseLists({
 
         {group.archivedAt && (
           <p
-            className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            className="mt-5 rounded-xl border border-warning-border bg-warning-bg px-4 py-3 text-sm text-warning-text"
             role="status"
           >
             Diese Gruppe ist archiviert und kann nur noch gelesen werden. Sie
@@ -262,8 +262,8 @@ export function ExpenseLists({
           </p>
         )}
 
-        <div className="mt-7 flex items-center gap-3 border-b border-[#eef0eb] pb-4">
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-[#555b53]">
+        <div className="mt-7 flex items-center gap-3 border-b border-border pb-4">
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
               checked={includeCompleted}
               onCheckedChange={(checked) =>
@@ -310,7 +310,7 @@ export function ExpenseLists({
           <div
             aria-labelledby="create-expense-list-title"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl"
             role="dialog"
           >
             <div className="flex items-start justify-between gap-4">
@@ -321,13 +321,13 @@ export function ExpenseLists({
                 >
                   Neue Ausgabenliste
                 </h2>
-                <p className="mt-1 text-sm text-[#72766f]">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Vergib einen Namen für die Liste.
                 </p>
               </div>
               <Button
                 aria-label="Dialog schließen"
-                className="size-8 shrink-0 rounded-lg p-0 text-[#555b53]"
+                className="size-8 shrink-0 rounded-lg p-0 text-muted-foreground"
                 disabled={isCreating}
                 onClick={() => setIsCreateModalOpen(false)}
                 type="button"
@@ -346,7 +346,7 @@ export function ExpenseLists({
               <Input
                 autoComplete="off"
                 autoFocus
-                className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
+                className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                 id="expense-list-name"
                 maxLength={80}
                 minLength={1}
@@ -356,7 +356,7 @@ export function ExpenseLists({
                 value={listName}
               />
               {createError && (
-                <p className="text-sm text-red-800" role="alert">
+                <p className="text-sm text-danger-text" role="alert">
                   {createError}
                 </p>
               )}
@@ -397,7 +397,7 @@ export function ExpenseLists({
       <div className="mt-4 min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-y-contain">
         {isLoading ? (
           <p
-            className="flex items-center justify-center gap-2 py-10 text-sm text-[#72766f]"
+            className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"
             role="status"
           >
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -405,7 +405,7 @@ export function ExpenseLists({
           </p>
         ) : errorMessage ? (
           <div
-            className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+            className="rounded-2xl border border-danger-border bg-danger-bg p-4 text-sm text-danger-text"
             role="alert"
           >
             <p>{errorMessage}</p>
@@ -430,11 +430,11 @@ export function ExpenseLists({
             />
           ))
         ) : (
-          <div className="rounded-2xl border border-dashed border-[#d7ded3] bg-[#fafbf9] px-5 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-muted px-5 py-10 text-center">
             <p className="font-medium">
               {includeCompleted ? "Noch keine Listen" : "Keine offenen Listen"}
             </p>
-            <p className="mt-1 text-sm text-[#72766f]">
+            <p className="mt-1 text-sm text-muted-foreground">
               {includeCompleted
                 ? "Für diese Gruppe wurden noch keine Listen erstellt."
                 : "Erledigte Listen kannst du über den Filter einblenden."}

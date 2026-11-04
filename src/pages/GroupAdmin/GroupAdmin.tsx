@@ -503,7 +503,7 @@ export function GroupAdmin({
   return (
     <div className="mx-auto max-w-4xl">
       <Button
-        className="mb-5 h-auto gap-2 p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+        className="mb-5 h-auto gap-2 p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
         onClick={onBack}
         type="button"
         variant="ghost"
@@ -513,17 +513,17 @@ export function GroupAdmin({
       </Button>
 
       <div className="mb-7 flex items-start gap-4">
-        <div className="bg-brand-primary flex size-12 shrink-0 items-center justify-center rounded-2xl text-white">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-white">
           <Shield aria-hidden="true" className="size-6" />
         </div>
         <div>
-          <p className="text-brand-subtle text-sm font-medium">
+          <p className="text-sm font-medium text-brand-subtle">
             Administration
           </p>
           <h1 className="mt-0.5 text-3xl font-semibold tracking-[-0.04em]">
             {displayedName}
           </h1>
-          <p className="mt-1 text-sm text-[#72766f]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Gruppendetails und Mitglieder verwalten.
           </p>
         </div>
@@ -537,21 +537,21 @@ export function GroupAdmin({
       <Toast message={successMessage} onClose={() => setSuccessMessage(null)} />
       {loadError && (
         <p
-          className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          className="mb-5 rounded-2xl border border-warning-border bg-warning-bg px-4 py-3 text-sm text-warning-text"
           role="status"
         >
           {loadError}
         </p>
       )}
 
-      <section className="rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
+      <section className="rounded-3xl border border-border bg-card p-5 sm:p-7">
         <div className="mb-5 flex items-center gap-3">
-          <div className="bg-brand-surface text-brand-text flex size-10 items-center justify-center rounded-xl">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-brand-surface text-brand-text">
             <UsersRound aria-hidden="true" className="size-5" />
           </div>
           <div>
             <h2 className="font-semibold">Allgemeine Einstellungen</h2>
-            <p className="text-sm text-[#72766f]">
+            <p className="text-sm text-muted-foreground">
               Nur Gruppen-Admins können diese Angaben bearbeiten.
             </p>
           </div>
@@ -564,7 +564,7 @@ export function GroupAdmin({
             Gruppenname
           </label>
           <Input
-            className="h-11 min-w-0 flex-1 rounded-xl border border-[#e4e7e1] px-3.5 text-sm transition outline-none focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+            className="h-11 min-w-0 flex-1 rounded-xl border border-border px-3.5 text-sm transition outline-none focus:border-ring focus:ring-4 focus:ring-ring/10"
             id="admin-group-name"
             maxLength={80}
             onChange={(event) => setGroupName(event.target.value)}
@@ -586,10 +586,10 @@ export function GroupAdmin({
         </form>
       </section>
 
-      <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
+      <section className="mt-5 rounded-3xl border border-border bg-card p-5 sm:p-7">
         <div className="mb-5">
           <h2 className="font-semibold">Standardverteilung der Gruppe</h2>
-          <p className="mt-1 text-sm text-[#72766f]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Ohne eigene Einstellung werden Kosten gleichmäßig auf alle
             Gruppenmitglieder verteilt. Einzelne Positionen können einen eigenen
             Schlüssel verwenden.
@@ -603,7 +603,7 @@ export function GroupAdmin({
             Standard-Aufteilungsmodus
           </label>
           <select
-            className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
             id="group-split-mode"
             onChange={(event) =>
               changeGroupSplitMode(
@@ -627,7 +627,7 @@ export function GroupAdmin({
                 Übernimmt den gesamten Betrag
               </label>
               <select
-                className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
                 id="group-split-member"
                 onChange={(event) => setGroupSplitMemberId(event.target.value)}
                 value={groupSplitMemberId}
@@ -656,7 +656,7 @@ export function GroupAdmin({
                   </label>
                   <div className="flex w-36 shrink-0 items-center gap-2">
                     <Input
-                      className="h-10 rounded-xl border-[#e4e7e1] px-3 text-right text-sm"
+                      className="h-10 rounded-xl border-border px-3 text-right text-sm"
                       id={`group-split-${member.id}`}
                       inputMode="decimal"
                       onChange={(event) =>
@@ -668,14 +668,14 @@ export function GroupAdmin({
                       placeholder="0,00"
                       value={groupSplitValues[member.id] ?? ""}
                     />
-                    <span className="text-sm text-[#72766f]">
+                    <span className="text-sm text-muted-foreground">
                       {groupSplitMode === "percentage" ? "%" : "€"}
                     </span>
                   </div>
                 </div>
               ))}
               {groupSplitMode === "fixed" && (
-                <p className="text-xs text-[#72766f]">
+                <p className="text-xs text-muted-foreground">
                   Nicht verteilte Restbeträge werden je Position gleichmäßig
                   verteilt.
                 </p>
@@ -684,7 +684,7 @@ export function GroupAdmin({
           )}
           <div className="flex justify-end">
             <Button
-              className="bg-brand-primary hover:bg-brand-primary-hover rounded-xl text-white"
+              className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
               disabled={isSavingSplitDefault || members.length === 0}
               type="submit"
             >
@@ -694,15 +694,15 @@ export function GroupAdmin({
         </form>
       </section>
 
-      <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
+      <section className="mt-5 rounded-3xl border border-border bg-card p-5 sm:p-7">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="bg-brand-surface text-brand-text flex size-10 items-center justify-center rounded-xl">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-brand-surface text-brand-text">
               <UsersRound aria-hidden="true" className="size-5" />
             </div>
             <div>
               <h2 className="font-semibold">Mitgliederverwaltung</h2>
-              <p className="text-sm text-[#72766f]">
+              <p className="text-sm text-muted-foreground">
                 {members.length}{" "}
                 {members.length === 1 ? "Mitglied" : "Mitglieder"}
               </p>
@@ -713,7 +713,7 @@ export function GroupAdmin({
               <Button
                 aria-label="Löschen aktivieren"
                 aria-pressed={deleteMode}
-                className={`rounded-xl ${deleteMode ? "bg-red-700 text-white hover:bg-red-800" : "text-red-700"}`}
+                className={`rounded-xl ${deleteMode ? "bg-destructive text-white hover:bg-destructive/90" : "text-destructive"}`}
                 onClick={() => setDeleteMode((current) => !current)}
                 variant={deleteMode ? "default" : "outline"}
               >
@@ -736,11 +736,14 @@ export function GroupAdmin({
         </div>
 
         {isLoading ? (
-          <p className="py-6 text-center text-sm text-[#72766f]" role="status">
+          <p
+            className="py-6 text-center text-sm text-muted-foreground"
+            role="status"
+          >
             Mitglieder werden geladen ...
           </p>
         ) : members.length === 0 ? (
-          <p className="rounded-2xl bg-[#fafbf9] px-4 py-6 text-center text-sm text-[#72766f]">
+          <p className="rounded-2xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
             In dieser Gruppe sind noch keine Mitglieder hinterlegt.
           </p>
         ) : (
@@ -753,14 +756,14 @@ export function GroupAdmin({
 
               return (
                 <article
-                  className="relative rounded-2xl border border-[#e8ebe5] p-4 sm:p-5"
+                  className="relative rounded-2xl border border-border p-4 sm:p-5"
                   key={member.id}
                 >
                   <div
                     className={`flex flex-wrap items-start justify-between gap-3 ${deleteMode ? "pr-10" : ""}`}
                   >
                     <div className="flex min-w-0 items-start gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f1f3ef] text-[#5d6f60]">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                         {member.role === "admin" ? (
                           <Crown aria-hidden="true" className="size-4" />
                         ) : (
@@ -769,7 +772,7 @@ export function GroupAdmin({
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium">{member.displayName}</p>
-                        <p className="mt-0.5 text-sm break-all text-[#72766f]">
+                        <p className="mt-0.5 text-sm break-all text-muted-foreground">
                           {member.email ??
                             (member.userId
                               ? "Registriertes Mitglied"
@@ -779,7 +782,7 @@ export function GroupAdmin({
                           className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
                             member.role === "admin"
                               ? "bg-brand-surface text-brand-text"
-                              : "bg-[#f2f3f0] text-[#676c64]"
+                              : "bg-muted text-muted-foreground"
                           }`}
                         >
                           {member.role === "admin"
@@ -847,14 +850,14 @@ export function GroupAdmin({
                   </div>
 
                   {member.role === "member" && draft && (
-                    <div className="mt-4 border-t border-[#eef0eb] pt-4">
-                      <p className="mb-3 text-xs font-semibold tracking-wide text-[#72766f] uppercase">
+                    <div className="mt-4 border-t border-border pt-4">
+                      <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                         Freigegebene Rechte
                       </p>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {PERMISSIONS.map(({ key, label }) => (
                           <label
-                            className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl px-2 text-sm hover:bg-[#fafbf9]"
+                            className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl px-2 text-sm hover:bg-muted"
                             key={key}
                           >
                             <Checkbox
@@ -870,7 +873,7 @@ export function GroupAdmin({
                       </div>
                       {permissionsChanged && (
                         <Button
-                          className="bg-brand-primary hover:bg-brand-primary-hover mt-3 h-9 rounded-xl text-white"
+                          className="mt-3 h-9 rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
                           disabled={savingMemberId === member.id}
                           onClick={() => void handleSavePermissions(member)}
                         >
@@ -887,11 +890,13 @@ export function GroupAdmin({
         )}
       </section>
 
-      <section className="mt-5 rounded-3xl border border-red-200 bg-white p-5 sm:p-7">
+      <section className="mt-5 rounded-3xl border border-danger-border bg-card p-5 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-semibold text-red-900">Gruppe archivieren</h2>
-            <p className="mt-1 max-w-xl text-sm leading-6 text-[#72766f]">
+            <h2 className="font-semibold text-danger-text">
+              Gruppe archivieren
+            </h2>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
               Die Gruppe bleibt für alle Mitglieder sechs Monate lesbar. Danach
               werden die Gruppe und ihre zugehörigen Daten endgültig gelöscht.
             </p>
@@ -909,14 +914,14 @@ export function GroupAdmin({
         </div>
       </section>
 
-      <section className="mt-5 rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
+      <section className="mt-5 rounded-3xl border border-border bg-card p-5 sm:p-7">
         <div className="mb-4 flex items-center gap-3">
-          <div className="bg-brand-accent flex size-10 items-center justify-center rounded-xl text-[#203a2c]">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-brand-accent text-brand-accent-text">
             <Plus aria-hidden="true" className="size-5" />
           </div>
           <div>
             <h2 className="font-semibold">Person einladen</h2>
-            <p className="text-sm text-[#72766f]">
+            <p className="text-sm text-muted-foreground">
               Wähle eine Person aus der Freundesliste. Noch nicht registrierte
               Personen erhalten einen zeitlich begrenzten Einladungslink.
             </p>
@@ -940,7 +945,7 @@ export function GroupAdmin({
                 !selectedContactId && contactSuggestions.length > 0
               }
               autoComplete="off"
-              className="h-11 min-w-0 rounded-xl border border-[#e4e7e1] px-3.5 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+              className="h-11 min-w-0 rounded-xl border border-border px-3.5 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
               id="new-member-name"
               maxLength={80}
               onChange={(event) => {
@@ -952,7 +957,7 @@ export function GroupAdmin({
               value={memberName}
             />
             {isLoadingContacts && memberName.trim() && (
-              <p className="mt-2 text-xs text-[#72766f]" role="status">
+              <p className="mt-2 text-xs text-muted-foreground" role="status">
                 Freundesliste wird durchsucht ...
               </p>
             )}
@@ -960,7 +965,7 @@ export function GroupAdmin({
               !isLoadingContacts &&
               contactSuggestions.length > 0 && (
                 <div
-                  className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-[#e4e7e1] bg-white p-1 shadow-lg"
+                  className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg"
                   id="member-contact-suggestions"
                   role="listbox"
                   aria-label="Vorschläge aus deiner Freundesliste"
@@ -982,7 +987,7 @@ export function GroupAdmin({
                         <span className="block truncate font-medium">
                           {contact.displayName}
                         </span>
-                        <span className="block truncate text-xs text-[#72766f]">
+                        <span className="block truncate text-xs text-muted-foreground">
                           {contact.email}
                         </span>
                       </span>
@@ -992,7 +997,7 @@ export function GroupAdmin({
               )}
           </div>
           <Button
-            className="bg-brand-primary hover:bg-brand-primary-hover h-11 rounded-xl px-5 text-white"
+            className="h-11 rounded-xl bg-brand-primary px-5 text-white hover:bg-brand-primary-hover"
             disabled={isAddingMember || !selectedContactId}
             type="submit"
           >
@@ -1002,24 +1007,24 @@ export function GroupAdmin({
           </Button>
         </form>
         {contacts.length === 0 && !isLoadingContacts && (
-          <p className="mt-3 text-sm text-[#72766f]">
+          <p className="mt-3 text-sm text-muted-foreground">
             Füge zuerst Kontakte in deiner Freundesliste hinzu.
           </p>
         )}
         {invitationLink && (
-          <div className="mt-4 rounded-2xl border border-[#d9e8d6] bg-[#f7faf5] p-4">
-            <p className="text-brand-text mb-2 flex items-center gap-2 text-sm font-medium">
+          <div className="mt-4 rounded-2xl border border-border bg-brand-surface p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-brand-text">
               <Clock3 aria-hidden="true" className="size-4" />
               Der Link ist 14 Tage gültig und kann einmal angenommen werden.
             </p>
-            <p className="mb-3 text-xs leading-5 text-[#72766f]">
+            <p className="mb-3 text-xs leading-5 text-muted-foreground">
               Es wird keine E-Mail automatisch versendet. Teile diesen Link
               selbst mit der eingeladenen Person.
             </p>
             <div className="flex gap-2">
               <Input
                 aria-label="Einladungslink"
-                className="h-10 min-w-0 flex-1 rounded-xl bg-white text-xs"
+                className="h-10 min-w-0 flex-1 rounded-xl bg-card text-xs"
                 readOnly
                 value={invitationLink}
               />

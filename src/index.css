@@ -12,6 +12,16 @@
   --color-brand-primary: var(--brand-primary);
   --color-brand-primary-hover: var(--brand-primary-hover);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-text: var(--brand-accent-text);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-danger-text: var(--danger-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-text: var(--warning-text);
+  --color-highlight: var(--highlight);
+  --color-toast: var(--toast);
+  --color-toast-error: var(--toast-error);
   --color-brand-surface: var(--brand-surface);
   --color-brand-text: var(--brand-text);
   --color-brand-subtle: var(--brand-subtle);
@@ -59,25 +69,34 @@
 
 :root {
   /* App & Brand */
-  --app-bg: whitesmoke; /* Dein gewählter Hintergrund */
-  --brand-primary: #0f766e; /* Kräftiges, dunkles Teal für Buttons */
-  --brand-primary-hover: #115e59; /* Dunklerer Hover-Zustand */
-  --brand-accent: #5eead4; /* Helles Akzent-Türkis */
-  --brand-accent-text: #134e4a; /* Dunkles Teal für Text auf Akzenten */
+  --app-bg: whitesmoke;
+  --brand-primary: #0f766e;
+  --brand-primary-hover: #115e59;
+  --brand-accent: #5eead4;
+  --brand-accent-text: #134e4a;
   --brand-surface: #e5e7eb;
   --brand-text: #1f2937;
   --brand-subtle: #9ca3af;
   --brand-badge-bg: #f3f4f6;
   --brand-badge-border: #d1d5db;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #991b1b;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #451a03;
+  --highlight: #fde68a;
+  --toast: #2b3a55;
+  --toast-error: #a32d2d;
 
-  /* Base & UI Components (Weichere Karten statt hartem Weiß) */
+  /* Base & UI Components */
   --background: whitesmoke;
   --foreground: oklch(0.145 0 0);
-  --card: #f8fafc; /* Sanftes Off-White / helles Grau-Blau für die Karten */
+  --card: #f8fafc;
   --card-foreground: oklch(0.145 0 0);
   --popover: #f8fafc;
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.45 0.12 180); /* Dunkles Türkis für Buttons */
+  --primary: oklch(0.45 0.12 180);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.96 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -86,9 +105,7 @@
   --accent: oklch(0.96 0.02 180);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(
-    0.89 0.01 180
-  ); /* Dezenter Rahmen für die Karten, damit sie sich abheben */
+  --border: oklch(0.89 0.01 180);
   --input: oklch(0.9 0 0);
   --ring: oklch(0.45 0.12 180);
 
@@ -111,6 +128,7 @@
   --sidebar-border: oklch(0.89 0.01 180);
   --sidebar-ring: oklch(0.45 0.12 180);
 }
+
 .blue {
   --app-bg: #f3f6fa;
   --brand-primary: #1e3a5f;
@@ -122,6 +140,16 @@
   --brand-subtle: #4a6785;
   --brand-badge-bg: #dbeafe;
   --brand-badge-border: #bfdbfe;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #991b1b;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #78350f;
+  --highlight: #bae6fd;
+  --toast: #1e3a5f;
+  --toast-error: #991b1b;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -158,28 +186,35 @@
 
 .dark {
   /* App & Brand (Dark Mode - Dunkles Grau mit leuchtendem Türkis) */
-  --app-bg: #12181b; /* Sehr dunkles, elegantes Anthrazit-Grau */
-  --brand-primary: #0d9488; /* Etwas helleres Türkis (teal-600) für guten Kontrast im Dark Mode */
-  --brand-primary-hover: #14b8a6; /* Helles Teal (teal-500) beim Hovern */
-  --brand-accent: #2dd4bf; /* Strahlendes Akzent-Türkis */
-  --brand-accent-text: #042f2e; /* Sehr dunkler Text auf hellen Akzenten */
-  --brand-surface: #1e293b; /* Dunkle Oberflächenfarbe */
-  --brand-text: #f3f4f6; /* Heller Text */
-  --brand-subtle: #6b7280; /* Gedämpfter Grauton */
-  --brand-badge-bg: #1f2937; /* Badge-Hintergrund im Dark Mode */
-  --brand-badge-border: #374151; /* Badge-Rahmen im Dark Mode */
+  --app-bg: #12181b;
+  --brand-primary: #0d9488;
+  --brand-primary-hover: #14b8a6;
+  --brand-accent: #2dd4bf;
+  --brand-accent-text: #042f2e;
+  --brand-surface: #1e293b;
+  --brand-text: #f3f4f6;
+  --brand-subtle: #6b7280;
+  --brand-badge-bg: #1f2937;
+  --brand-badge-border: #374151;
+  --danger-bg: oklch(0.25 0.06 25);
+  --danger-border: oklch(0.4 0.12 25);
+  --danger-text: #fecaca;
+  --warning-bg: oklch(0.27 0.05 85);
+  --warning-border: oklch(0.42 0.09 85);
+  --warning-text: #fef3c7;
+  --highlight: #854d0e;
+  --toast: #2b3a55;
+  --toast-error: #a32d2d;
 
   /* Base & UI Components (OKLCH Dark Palette mit Türkis-Verankerung) */
-  --background: oklch(0.145 0 0); /* Dunkler Haupt-Hintergrund */
-  --foreground: oklch(0.985 0 0); /* Heller Text */
-  --card: oklch(
-    0.19 0.005 180
-  ); /* Dunkelgraue Karte mit leichtem Türkis-Unterton */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.19 0.005 180);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.19 0.005 180);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.58 0.14 180); /* Leuchtendes Türkis für Buttons */
-  --primary-foreground: oklch(0.99 0 0); /* Weißer Text auf Buttons */
+  --primary: oklch(0.58 0.14 180);
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.24 0.01 180);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.24 0 0);
@@ -187,18 +222,18 @@
   --accent: oklch(0.24 0.02 180);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%); /* Dezente, transparente Ränder */
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.58 0.14 180); /* Türkiser Fokus-Ring */
+  --ring: oklch(0.58 0.14 180);
 
-  /* Charts (Türkis & dunkle Nuancen) */
+  /* Charts */
   --chart-1: oklch(0.65 0.14 180);
   --chart-2: oklch(0.52 0.13 180);
   --chart-3: oklch(0.75 0.1 180);
   --chart-4: oklch(0.4 0.05 180);
   --chart-5: oklch(0.3 0 0);
 
-  /* Sidebar (Dark Mode) */
+  /* Sidebar */
   --sidebar: oklch(0.17 0.005 180);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.58 0.14 180);

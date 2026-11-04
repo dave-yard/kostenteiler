@@ -189,21 +189,21 @@ export function PersonalContacts() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl rounded-3xl border border-[#e8ebe5] bg-white p-5 sm:p-7">
+    <section className="mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-5 sm:p-7">
       <div className="mb-5 flex items-center gap-3">
-        <div className="bg-brand-surface text-brand-text flex size-10 items-center justify-center rounded-xl">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-brand-surface text-brand-text">
           <ContactRound aria-hidden="true" className="size-5" />
         </div>
         <div>
           <h1 className="font-semibold">Freundesliste</h1>
-          <p className="text-sm text-[#72766f]">
+          <p className="text-sm text-muted-foreground">
             Deine Kontakte sind privat und nur für dich sichtbar.
           </p>
         </div>
       </div>
 
       <form
-        className="mb-6 flex flex-col gap-3 border-b border-[#eef0eb] pb-6 sm:flex-row"
+        className="mb-6 flex flex-col gap-3 border-b border-border pb-6 sm:flex-row"
         onSubmit={handleSaveOwnName}
       >
         <label className="sr-only" htmlFor="own-display-name">
@@ -258,7 +258,7 @@ export function PersonalContacts() {
           value={contactEmail}
         />
         <Button
-          className="bg-brand-primary hover:bg-brand-primary-hover h-11 rounded-xl px-4 text-white"
+          className="h-11 rounded-xl bg-brand-primary px-4 text-white hover:bg-brand-primary-hover"
           disabled={isSaving || !contactName.trim() || !contactEmail.trim()}
           type="submit"
         >
@@ -275,11 +275,11 @@ export function PersonalContacts() {
       <Toast message={successMessage} onClose={() => setSuccessMessage(null)} />
 
       {isLoading ? (
-        <p className="mt-5 text-sm text-[#72766f]" role="status">
+        <p className="mt-5 text-sm text-muted-foreground" role="status">
           Freundesliste wird geladen ...
         </p>
       ) : contacts.length > 0 ? (
-        <ul className="mt-4 divide-y divide-[#eef0eb]">
+        <ul className="mt-4 divide-y divide-border">
           {contacts.map((contact) => (
             <li
               className="flex items-center justify-between gap-3 py-3"
@@ -328,7 +328,7 @@ export function PersonalContacts() {
                     <p className="truncate text-sm font-medium">
                       {contact.displayName}
                     </p>
-                    <p className="flex items-center gap-1.5 truncate text-xs text-[#72766f]">
+                    <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                       <Mail aria-hidden="true" className="size-3.5 shrink-0" />
                       {contact.email}
                     </p>
@@ -365,7 +365,7 @@ export function PersonalContacts() {
         </ul>
       ) : (
         !hasLoadError && (
-          <p className="mt-5 text-sm text-[#72766f]">
+          <p className="mt-5 text-sm text-muted-foreground">
             Du hast noch keine Kontakte gespeichert.
           </p>
         )

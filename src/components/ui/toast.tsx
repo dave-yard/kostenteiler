@@ -40,7 +40,7 @@ export function Toast({
     <div
       aria-live={isError ? "assertive" : "polite"}
       className={`fixed top-4 left-1/2 z-[60] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-xl py-3 pr-2 pl-4 text-sm font-medium text-white shadow-xl ring-1 ring-black/10 sm:top-6 ${
-        isError ? "bg-[#a32d2d]" : "bg-[#2b3a55]"
+        isError ? "bg-toast-error" : "bg-toast"
       }`}
       role={isError ? "alert" : "status"}
     >

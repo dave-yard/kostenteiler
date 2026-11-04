@@ -170,18 +170,18 @@ export function AuthScreen() {
           : "Recovery-E-Mail senden"
 
   return (
-    <main className="bg-app-bg relative flex min-h-svh items-start justify-center overflow-x-hidden px-4 py-6 text-[#20241f] sm:items-center sm:px-6 sm:py-10">
+    <main className="relative flex min-h-svh items-start justify-center overflow-x-hidden bg-app-bg px-4 py-6 text-foreground sm:items-center sm:px-6 sm:py-10">
       <div
         aria-hidden="true"
-        className="bg-brand-badge-bg pointer-events-none absolute -top-40 -left-32 size-[28rem] rounded-full opacity-70 blur-3xl"
+        className="pointer-events-none absolute -top-40 -left-32 size-[28rem] rounded-full bg-brand-badge-bg opacity-70 blur-3xl"
       />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-40 -bottom-48 size-[34rem] rounded-full bg-[#f0e6cf] opacity-70 blur-3xl"
       />
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-[0_32px_100px_-48px_rgba(32,36,31,0.35)] lg:grid-cols-[1.02fr_0.98fr]">
-        <section className="bg-brand-primary relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex xl:p-14">
+      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-black/5 bg-card shadow-[0_32px_100px_-48px_rgba(32,36,31,0.35)] lg:grid-cols-[1.02fr_0.98fr]">
+        <section className="relative hidden flex-col justify-between overflow-hidden bg-brand-primary p-10 text-white lg:flex xl:p-14">
           <div
             aria-hidden="true"
             className="absolute -right-28 -bottom-32 size-96 rounded-full border border-white/10"
@@ -192,7 +192,7 @@ export function AuthScreen() {
           />
 
           <div className="relative">
-            <div className="bg-brand-accent flex size-12 items-center justify-center rounded-2xl text-[#203a2c]">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-brand-accent text-brand-accent-text">
               <ReceiptText aria-hidden="true" className="size-6" />
             </div>
             <p className="mt-5 text-sm font-semibold tracking-[0.18em] text-white/70 uppercase">
@@ -202,7 +202,7 @@ export function AuthScreen() {
 
           <div className="relative my-12">
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/75">
-              <span className="bg-brand-accent size-1.5 rounded-full" />
+              <span className="size-1.5 rounded-full bg-brand-accent" />
               Gemeinsam den Überblick behalten
             </p>
             <h1 className="max-w-md text-4xl leading-[1.12] font-semibold tracking-[-0.045em] xl:text-5xl">
@@ -233,17 +233,17 @@ export function AuthScreen() {
         <section className="flex items-center justify-center p-6 sm:p-10 lg:p-12 xl:p-14">
           <div className="w-full max-w-sm">
             <div className="mb-9 flex items-center gap-3 lg:hidden">
-              <div className="bg-brand-primary flex size-10 items-center justify-center rounded-xl text-white">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-brand-primary text-white">
                 <ReceiptText aria-hidden="true" className="size-5" />
               </div>
               <span className="font-semibold tracking-tight">Kostenteiler</span>
             </div>
 
             <div className="mb-8">
-              <div className="bg-brand-surface text-brand-text mb-4 flex size-11 items-center justify-center rounded-2xl">
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl bg-brand-surface text-brand-text">
                 <ShieldCheck aria-hidden="true" className="size-5" />
               </div>
-              <p className="text-brand-subtle text-sm font-medium">
+              <p className="text-sm font-medium text-brand-subtle">
                 Schön, dass du da bist
               </p>
               <h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">
@@ -255,7 +255,7 @@ export function AuthScreen() {
                       ? "Passwort zurücksetzen"
                       : "Willkommen zurück"}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-[#72766f]">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {mode === "signup"
                   ? "Erstelle ein Konto, um mit deiner Gruppe loszulegen."
                   : mode === "password-recovery"
@@ -263,7 +263,7 @@ export function AuthScreen() {
                     : "Melde dich an und behalte eure gemeinsamen Ausgaben im Blick."}
               </p>
               {hasInvitation && (
-                <p className="mt-3 rounded-xl border border-[#d9e8d6] bg-[#f7faf5] px-3 py-2 text-sm leading-5 text-[#405b47]">
+                <p className="mt-3 rounded-xl border border-border bg-brand-surface px-3 py-2 text-sm leading-5 text-brand-text">
                   Du hast eine Gruppeneinladung erhalten. Verwende für
                   Registrierung oder Anmeldung die dazu eingeladene
                   E-Mail-Adresse.
@@ -271,7 +271,7 @@ export function AuthScreen() {
               )}
             </div>
 
-            <div className="mb-6 grid grid-cols-2 rounded-xl bg-[#f4f5f2] p-1">
+            <div className="mb-6 grid grid-cols-2 rounded-xl bg-muted p-1">
               <Button
                 type="button"
                 onClick={() => {
@@ -281,7 +281,7 @@ export function AuthScreen() {
                   setSuccessMessage(null)
                 }}
                 variant="ghost"
-                className={`h-auto rounded-lg px-3 py-2 text-sm font-medium transition ${mode !== "signup" ? "bg-white text-[#20241f] shadow-sm" : "text-[#777b74] hover:text-[#20241f]"}`}
+                className={`h-auto rounded-lg px-3 py-2 text-sm font-medium transition ${mode !== "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Anmelden
               </Button>
@@ -294,7 +294,7 @@ export function AuthScreen() {
                   setSuccessMessage(null)
                 }}
                 variant="ghost"
-                className={`h-auto rounded-lg px-3 py-2 text-sm font-medium transition ${mode === "signup" ? "bg-white text-[#20241f] shadow-sm" : "text-[#777b74] hover:text-[#20241f]"}`}
+                className={`h-auto rounded-lg px-3 py-2 text-sm font-medium transition ${mode === "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
               >
                 Registrieren
               </Button>
@@ -308,11 +308,11 @@ export function AuthScreen() {
                 <div className="relative">
                   <Mail
                     aria-hidden="true"
-                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#8a8f87]"
+                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
                   />
                   <Input
                     autoComplete="email"
-                    className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-4 pl-10 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+                    className="h-12 w-full rounded-xl border border-border bg-card pr-4 pl-10 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
                     id="auth-email"
                     name="email"
                     onChange={(event) => {
@@ -338,7 +338,7 @@ export function AuthScreen() {
                     </label>
                     {mode === "login" && (
                       <Button
-                        className="h-auto p-0 text-xs font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+                        className="h-auto p-0 text-xs font-medium text-brand-text hover:bg-transparent hover:text-foreground"
                         onClick={() => {
                           setMode("magic-link")
                           setErrorMessage(null)
@@ -357,7 +357,7 @@ export function AuthScreen() {
                       autoComplete={
                         mode === "signup" ? "new-password" : "current-password"
                       }
-                      className="h-12 w-full rounded-xl border border-[#e4e7e1] bg-white pr-12 pl-4 text-sm transition outline-none placeholder:text-[#a0a49d] focus:border-[#65806a] focus:ring-4 focus:ring-[#65806a]/10"
+                      className="h-12 w-full rounded-xl border border-border bg-card pr-12 pl-4 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
                       id="auth-password"
                       minLength={8}
                       name="password"
@@ -373,7 +373,7 @@ export function AuthScreen() {
                           ? "Passwort verbergen"
                           : "Passwort anzeigen"
                       }
-                      className="absolute top-1/2 right-3 size-8 -translate-y-1/2 rounded-lg p-0 text-[#8a8f87] hover:bg-[#f4f5f2] hover:text-[#32372f]"
+                      className="absolute top-1/2 right-3 size-8 -translate-y-1/2 rounded-lg p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
                       onClick={() => setShowPassword((visible) => !visible)}
                       size="icon"
                       type="button"
@@ -391,7 +391,7 @@ export function AuthScreen() {
 
               {mode === "login" && (
                 <Button
-                  className="h-auto p-0 text-xs font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+                  className="h-auto p-0 text-xs font-medium text-brand-text hover:bg-transparent hover:text-foreground"
                   onClick={() => {
                     setMode("password-recovery")
                     setErrorMessage(null)
@@ -407,7 +407,7 @@ export function AuthScreen() {
 
               {configurationError && (
                 <div
-                  className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
+                  className="rounded-xl border border-warning-border bg-warning-bg px-4 py-3 text-sm leading-6 text-warning-text"
                   role="alert"
                 >
                   <p className="font-semibold">
@@ -420,14 +420,14 @@ export function AuthScreen() {
               {errorMessage && (
                 <div className="space-y-2">
                   <p
-                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800"
+                    className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-sm leading-6 text-danger-text"
                     role="alert"
                   >
                     {errorMessage}
                   </p>
                   {canResendConfirmation && (
                     <Button
-                      className="h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e] disabled:opacity-50"
+                      className="h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground disabled:opacity-50"
                       disabled={isSubmitting || !email}
                       onClick={handleResendConfirmation}
                       type="button"
@@ -441,7 +441,7 @@ export function AuthScreen() {
 
               {successMessage && (
                 <p
-                  className="rounded-xl border border-[#d9e8d6] bg-[#f0f7ed] px-4 py-3 text-sm leading-6 text-[#355b3b]"
+                  className="rounded-xl border border-border bg-brand-surface px-4 py-3 text-sm leading-6 text-brand-text"
                   role="status"
                 >
                   {successMessage}
@@ -449,7 +449,7 @@ export function AuthScreen() {
               )}
 
               <Button
-                className="bg-brand-primary hover:bg-brand-primary-hover h-12 w-full rounded-xl text-sm text-white"
+                className="h-12 w-full rounded-xl bg-brand-primary text-sm text-white hover:bg-brand-primary-hover"
                 disabled={isSubmitting || Boolean(configurationError)}
                 type="submit"
               >
@@ -462,7 +462,7 @@ export function AuthScreen() {
 
             {mode === "magic-link" || mode === "password-recovery" ? (
               <Button
-                className="mt-5 h-auto w-full p-0 text-center text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+                className="mt-5 h-auto w-full p-0 text-center text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
                 onClick={() => {
                   setMode("login")
                   setErrorMessage(null)
@@ -475,7 +475,7 @@ export function AuthScreen() {
                 Zurück zur Anmeldung
               </Button>
             ) : (
-              <p className="mt-6 text-center text-xs leading-5 text-[#878b84]">
+              <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
                 Deine Anmeldung wird sicher über Supabase Auth verarbeitet.
               </p>
             )}

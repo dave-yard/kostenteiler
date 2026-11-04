@@ -217,7 +217,7 @@ function highlightSearchMatch(text: string, searchQuery: string): ReactNode {
     const matchEnd = matchIndex + query.length
     parts.push(
       <mark
-        className="rounded-sm bg-amber-200 px-0.5 text-inherit"
+        className="rounded-sm bg-highlight px-0.5 text-inherit"
         key={matchIndex}
       >
         {text.slice(matchIndex, matchEnd)}
@@ -467,7 +467,7 @@ export function ExpenseListDetail({
           <p className="font-medium break-words">
             {highlightSearchMatch(item.name, searchQuery)}
             {!item.parentItemId && item.item_date && (
-              <span className="ml-1.5 text-xs font-normal text-[#72766f]">
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                 •{" "}
                 {highlightSearchMatch(
                   formatitem_date(item.item_date, showTime),
@@ -481,7 +481,7 @@ export function ExpenseListDetail({
               </span>
             )}
           </p>
-          <p className="mt-0.5 text-xs text-[#72766f]">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Bezahlt von {highlightSearchMatch(payerName, searchQuery)}
           </p>
         </div>
@@ -491,7 +491,7 @@ export function ExpenseListDetail({
               {highlightSearchMatch(amount, searchQuery)}
             </p>
             {splitHint && (
-              <p className="mt-0.5 text-xs text-[#72766f]">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {highlightSearchMatch(splitHint, searchQuery)}
               </p>
             )}
@@ -499,7 +499,7 @@ export function ExpenseListDetail({
           {canEditItems && (
             <Button
               aria-label={`Position bearbeiten: ${item.name}`}
-              className="size-8 p-0 text-[#555b53]"
+              className="size-8 p-0 text-muted-foreground"
               onClick={() => void openDialog(item)}
               type="button"
               variant="ghost"
@@ -510,7 +510,7 @@ export function ExpenseListDetail({
           {canDeleteItems && deleteMode && (
             <Button
               aria-label={`Position löschen: ${item.name}`}
-              className="absolute top-2 right-0 size-8 p-0 text-red-700 hover:text-red-800"
+              className="absolute top-2 right-0 size-8 p-0 text-destructive hover:text-danger-text"
               onClick={(event) => {
                 event.stopPropagation()
                 setDeletingItem(item)
@@ -917,10 +917,10 @@ export function ExpenseListDetail({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[#e8ebe5] bg-white p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
+    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
       <div className="shrink-0">
         <Button
-          className="mb-8 h-auto p-0 text-sm font-medium text-[#54705a] hover:bg-transparent hover:text-[#263f2e]"
+          className="mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
           onClick={onBack}
           type="button"
           variant="ghost"
@@ -931,12 +931,12 @@ export function ExpenseListDetail({
 
         <div className="flex w-full items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm text-[#72766f]">{group.name}</p>
+            <p className="text-sm text-muted-foreground">{group.name}</p>
             <h1 className="text-2xl font-semibold tracking-[-0.04em] break-words">
               {list.name}
             </h1>
             <div className="flex flex-row gap-1">
-              <p className="mt-1 text-xs text-[#72766f]">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Erstellt am {dateFormat.format(new Date(list.createdAt))}
                 {list.completedAt &&
                   ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
@@ -946,7 +946,7 @@ export function ExpenseListDetail({
               <div className="relative">
                 <Button
                   aria-label="Ansichts- und Sortieroptionen"
-                  className="size-8 rounded-lg border border-[#e4e7e1] p-0 text-[#72766f] hover:bg-[#fafbf9]"
+                  className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
                   onClick={() => setIsViewSettingsOpen((prev) => !prev)}
                   type="button"
                   variant="outline"
@@ -955,13 +955,13 @@ export function ExpenseListDetail({
                 </Button>
 
                 {isViewSettingsOpen && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-64 rounded-xl border border-[#e4e7e1] bg-white p-3 shadow-lg">
+                  <div className="absolute top-full left-0 z-20 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-[#20241f]">
+                      <p className="text-xs font-semibold text-foreground">
                         Ansicht & Filter
                       </p>
                       {searchQuery && (
-                        <span className="rounded-full bg-[#eef0eb] px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
                           Filter aktiv
                         </span>
                       )}
@@ -970,7 +970,10 @@ export function ExpenseListDetail({
                     <div className="mt-2.5 space-y-2.5 text-xs">
                       {/* Volltext-Suche ganz oben */}
                       <div>
-                        <label className="text-[#72766f]" htmlFor="item-search">
+                        <label
+                          className="text-muted-foreground"
+                          htmlFor="item-search"
+                        >
                           Positionen durchsuchen
                         </label>
                         <div className="relative mt-1">
@@ -979,14 +982,14 @@ export function ExpenseListDetail({
                             placeholder="Name, Zahler, Bon-Posten..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-8 rounded-lg border-[#e4e7e1] bg-[#fafbf9] px-2.5 pr-7 text-xs"
+                            className="h-8 rounded-lg border-border bg-muted px-2.5 pr-7 text-xs"
                             autoFocus
                           />
                           {searchQuery && (
                             <button
                               type="button"
                               onClick={() => setSearchQuery("")}
-                              className="absolute top-1/2 right-2 -translate-y-1/2 text-[#72766f] hover:text-[#20241f]"
+                              className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                               aria-label="Suche zurücksetzen"
                             >
                               <X className="size-3.5" />
@@ -995,17 +998,17 @@ export function ExpenseListDetail({
                         </div>
                       </div>
 
-                      <hr className="border-[#eef0eb]" />
+                      <hr className="border-border" />
 
                       {/* Uhrzeit-Umschalter */}
                       <div>
-                        <label className="text-[#72766f]">
+                        <label className="text-muted-foreground">
                           Uhrzeit anzeigen
                         </label>
                         <button
                           type="button"
                           onClick={() => setShowTime((prev) => !prev)}
-                          className="mt-1 w-full rounded-lg border border-[#e4e7e1] bg-[#fafbf9] py-1 text-center font-medium hover:bg-[#f3f5f1]"
+                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
                         >
                           {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
                         </button>
@@ -1013,7 +1016,9 @@ export function ExpenseListDetail({
 
                       {/* Sortierung */}
                       <div>
-                        <label className="text-[#72766f]">Sortieren nach</label>
+                        <label className="text-muted-foreground">
+                          Sortieren nach
+                        </label>
                         <button
                           type="button"
                           onClick={() =>
@@ -1021,7 +1026,7 @@ export function ExpenseListDetail({
                               prev === "item_date" ? "createdAt" : "item_date"
                             )
                           }
-                          className="mt-1 w-full rounded-lg border border-[#e4e7e1] bg-[#fafbf9] py-1 text-center font-medium hover:bg-[#f3f5f1]"
+                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
                         >
                           {sortBy === "item_date"
                             ? "📅 Belegdatum"
@@ -1037,12 +1042,12 @@ export function ExpenseListDetail({
           <ExpenseListStatusBadge status={list.status} />
         </div>
 
-        <div className="mt-1 flex items-center justify-between gap-3 border-b border-[#eef0eb] pb-4">
+        <div className="mt-1 flex items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-2.5">
             <h2 className="font-semibold">Positionen</h2>
             {items.length > 0 && (
-              <p className="text-sm text-[#72766f]">
-                <span className="font-semibold text-[#20241f]">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">
                   {formatCents(totalCents)}
                 </span>{" "}
               </p>
@@ -1055,8 +1060,8 @@ export function ExpenseListDetail({
                 aria-pressed={deleteMode}
                 className={`size-9 shrink-0 rounded-xl p-0 ${
                   deleteMode
-                    ? "bg-red-700 text-white hover:bg-red-800"
-                    : "text-red-700"
+                    ? "bg-destructive text-white hover:bg-destructive/90"
+                    : "text-destructive"
                 }`}
                 onClick={() => setDeleteMode((current) => !current)}
                 type="button"
@@ -1130,7 +1135,7 @@ export function ExpenseListDetail({
           <div
             aria-labelledby="add-item-title"
             aria-modal="true"
-            className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-6 shadow-xl"
             role="dialog"
           >
             <div className="flex items-start justify-between gap-4">
@@ -1145,7 +1150,7 @@ export function ExpenseListDetail({
               </h2>
               <Button
                 aria-label="Dialog schließen"
-                className="size-8 shrink-0 rounded-lg p-0 text-[#555b53]"
+                className="size-8 shrink-0 rounded-lg p-0 text-muted-foreground"
                 disabled={isSaving || isLoadingSplitRule}
                 onClick={closeDialog}
                 type="button"
@@ -1166,7 +1171,7 @@ export function ExpenseListDetail({
                 <Input
                   autoComplete="off"
                   autoFocus
-                  className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
+                  className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                   id="item-name"
                   maxLength={120}
                   onChange={(event) => setItemName(event.target.value)}
@@ -1180,7 +1185,7 @@ export function ExpenseListDetail({
                   </label>
                   <Input
                     autoComplete="off"
-                    className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
+                    className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                     id="item-amount"
                     inputMode="decimal"
                     onChange={(event) => setAmountText(event.target.value)}
@@ -1194,7 +1199,7 @@ export function ExpenseListDetail({
                       Datum
                     </label>
                     <Input
-                      className="h-11 rounded-xl border-[#e4e7e1] bg-white px-4 text-sm"
+                      className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                       id="item-date"
                       onChange={handlePositionDateChange}
                       type="text"
@@ -1207,7 +1212,7 @@ export function ExpenseListDetail({
               </div>
               <div className="flex flex-row gap-1">
                 {dialogParent ? (
-                  <p className="text-sm text-[#72766f]">
+                  <p className="text-sm text-muted-foreground">
                     Teil des Bons „{dialogParent.name}“. Was nicht als
                     Unterposition erfasst ist, wird nach Zahler und Verteilung
                     des Bons verrechnet.
@@ -1218,7 +1223,7 @@ export function ExpenseListDetail({
                       Art der Position
                     </label>
                     <select
-                      className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                      className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
                       disabled={editingHasChildren}
                       id="item-type"
                       onChange={(event) =>
@@ -1232,7 +1237,7 @@ export function ExpenseListDetail({
                       </option>
                     </select>
                     {editingHasChildren && (
-                      <p className="text-xs text-[#72766f]">
+                      <p className="text-xs text-muted-foreground">
                         Ein Bon mit Unterpositionen kann nicht zur
                         Einzelposition werden.
                       </p>
@@ -1244,7 +1249,7 @@ export function ExpenseListDetail({
                     Bezahlt von
                   </label>
                   <select
-                    className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                    className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
                     id="item-payer"
                     onChange={(event) => setPaidByMemberId(event.target.value)}
                     value={paidByMemberId}
@@ -1257,7 +1262,7 @@ export function ExpenseListDetail({
                   </select>
                 </div>
               </div>
-              <hr className="border-[#e8ebe5]" />
+              <hr className="border-border" />
               <section aria-labelledby="item-split-title" className="space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold" id="item-split-title">
@@ -1265,7 +1270,7 @@ export function ExpenseListDetail({
                   </h3>
                   <p
                     aria-live="polite"
-                    className="mt-1 text-xs text-[#72766f]"
+                    className="mt-1 text-xs text-muted-foreground"
                     role="status"
                   >
                     {isGroupDistribution
@@ -1281,7 +1286,7 @@ export function ExpenseListDetail({
                       Aufteilungsmodus
                     </label>
                     <select
-                      className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                      className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
                       id="item-split-mode"
                       onChange={(event) =>
                         changeCustomSplitMode(
@@ -1308,7 +1313,7 @@ export function ExpenseListDetail({
                           <div className="grid grid-cols-2 gap-2">
                             {members.map((member) => (
                               <label
-                                className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-[#e4e7e1] bg-white px-3 py-2 text-sm"
+                                className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
                                 htmlFor={`item-split-member-${member.id}`}
                                 key={member.id}
                               >
@@ -1342,7 +1347,7 @@ export function ExpenseListDetail({
                             Übernimmt den gesamten Betrag
                           </label>
                           <select
-                            className="h-11 w-full rounded-xl border border-[#e4e7e1] bg-white px-3 text-sm"
+                            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
                             id="item-split-member"
                             onChange={(event) => {
                               changeCustomSplitMode("complete")
@@ -1380,7 +1385,7 @@ export function ExpenseListDetail({
                             </label>
                             <div className="flex w-36 shrink-0 items-center gap-2">
                               <Input
-                                className="h-10 rounded-xl border-[#e4e7e1] px-3 text-right text-sm"
+                                className="h-10 rounded-xl border-border px-3 text-right text-sm"
                                 id={`split-${member.id}`}
                                 inputMode="decimal"
                                 onChange={(event) =>
@@ -1396,7 +1401,7 @@ export function ExpenseListDetail({
                                 }
                                 value={splitInputs[member.id] ?? ""}
                               />
-                              <span className="text-sm text-[#72766f]">
+                              <span className="text-sm text-muted-foreground">
                                 {customSplitMode === "percentage" ? "%" : "€"}
                               </span>
                             </div>
@@ -1407,14 +1412,14 @@ export function ExpenseListDetail({
                   </>
                 )}
                 {splitPreviewError && (
-                  <p className="text-sm text-red-800" role="alert">
+                  <p className="text-sm text-danger-text" role="alert">
                     {splitPreviewError}
                   </p>
                 )}
                 {splitPreview && (
                   <ul
                     aria-label="Vorschau der Verteilung"
-                    className="space-y-1 rounded-xl bg-[#fafbf9] p-3 text-sm"
+                    className="space-y-1 rounded-xl bg-muted p-3 text-sm"
                   >
                     {splitPreview.map((allocation) => (
                       <li
@@ -1433,7 +1438,7 @@ export function ExpenseListDetail({
                 )}
               </section>
               {dialogError && (
-                <p className="text-sm text-red-800" role="alert">
+                <p className="text-sm text-danger-text" role="alert">
                   {dialogError}
                 </p>
               )}
@@ -1485,17 +1490,17 @@ export function ExpenseListDetail({
           <div
             aria-labelledby="delete-item-title"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl"
             role="alertdialog"
           >
             <h2 className="text-lg font-semibold" id="delete-item-title">
               Position löschen?
             </h2>
-            <p className="mt-2 text-sm text-[#555b53]">
+            <p className="mt-2 text-sm text-muted-foreground">
               „{deletingItem.name}“ wird dauerhaft aus dieser Liste entfernt.
             </p>
             {deleteError && (
-              <p className="mt-3 text-sm text-red-800" role="alert">
+              <p className="mt-3 text-sm text-danger-text" role="alert">
                 {deleteError}
               </p>
             )}
@@ -1509,7 +1514,7 @@ export function ExpenseListDetail({
                 Abbrechen
               </Button>
               <Button
-                className="bg-red-700 text-white hover:bg-red-800"
+                className="bg-destructive text-white hover:bg-destructive/90"
                 disabled={isDeleting}
                 onClick={() => void handleDelete()}
                 type="button"
@@ -1536,7 +1541,7 @@ export function ExpenseListDetail({
       <div className="mt-4 min-h-0 flex-1">
         {isLoading ? (
           <p
-            className="flex items-center gap-2 text-sm text-[#72766f]"
+            className="flex items-center gap-2 text-sm text-muted-foreground"
             role="status"
           >
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -1544,7 +1549,7 @@ export function ExpenseListDetail({
           </p>
         ) : errorMessage ? (
           <div
-            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            className="rounded-2xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-text"
             role="alert"
           >
             <p>{errorMessage}</p>
@@ -1557,7 +1562,7 @@ export function ExpenseListDetail({
             </Button>
           </div>
         ) : items.length > 0 ? (
-          <ul className="divide-y divide-[#eef0eb]">
+          <ul className="divide-y divide-border">
             {sortedNodes.map((node) => {
               const { item } = node
               const isExpanded = expandedIds.has(item.id)
@@ -1572,7 +1577,7 @@ export function ExpenseListDetail({
                         aria-label={`Unterpositionen von ${item.name} ${
                           isExpanded ? "ausblenden" : "anzeigen"
                         }`}
-                        className="flex w-full items-center justify-between gap-2 rounded-lg bg-[#fafbf9] px-3 py-2 text-left text-xs text-[#555b53]"
+                        className="flex w-full items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
                         onClick={() =>
                           setExpandedIds((current) => {
                             const next = new Set(current)
@@ -1603,21 +1608,21 @@ export function ExpenseListDetail({
                         )}
                       </button>
                       {isExpanded && (
-                        <div className="mt-2 ml-3 border-l-2 border-[#e4e7e1] pl-3">
-                          <ul className="divide-y divide-[#eef0eb]">
+                        <div className="mt-2 ml-3 border-l-2 border-border pl-3">
+                          <ul className="divide-y divide-border">
                             {node.children.map((child) => (
                               <li key={child.id}>{renderItemRow(child)}</li>
                             ))}
                           </ul>
                           {node.remainderCents > 0 && (
-                            <p className="py-2 text-xs text-[#72766f]">
+                            <p className="py-2 text-xs text-muted-foreground">
                               Rest {formatCents(node.remainderCents)} wird nach
                               Zahler und Verteilung des Bons verrechnet.
                             </p>
                           )}
                           {node.remainderCents < 0 && (
                             <p
-                              className="py-2 text-xs text-red-800"
+                              className="py-2 text-xs text-danger-text"
                               role="alert"
                             >
                               Die Unterpositionen übersteigen die Bon-Summe um{" "}
@@ -1645,13 +1650,13 @@ export function ExpenseListDetail({
             })}
           </ul>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[#d7ded3] bg-[#fafbf9] px-5 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-muted px-5 py-10 text-center">
             <ReceiptText
               aria-hidden="true"
-              className="mx-auto mb-2 size-6 text-[#72766f]"
+              className="mx-auto mb-2 size-6 text-muted-foreground"
             />
             <p className="font-medium">Noch keine Positionen</p>
-            <p className="mt-1 text-sm text-[#72766f]">
+            <p className="mt-1 text-sm text-muted-foreground">
               Zu dieser Liste wurden noch keine Positionen erfasst.
             </p>
           </div>
@@ -1661,7 +1666,7 @@ export function ExpenseListDetail({
       {!isLoading && !errorMessage && (
         <section
           aria-label="Abrechnung"
-          className="mt-4 shrink-0 border-t border-[#eef0eb] pt-3"
+          className="mt-4 shrink-0 border-t border-border pt-3"
         >
           <button
             aria-controls="settlement-details"
@@ -1691,13 +1696,13 @@ export function ExpenseListDetail({
               id="settlement-details"
             >
               {settlementError ? (
-                <p className="text-sm text-red-800" role="alert">
+                <p className="text-sm text-danger-text" role="alert">
                   {settlementError}
                 </p>
               ) : settlement && settlement.transfers.length > 0 ? (
                 <ul
                   aria-label="Erstattungen"
-                  className="space-y-1.5 rounded-xl bg-[#fafbf9] p-3 text-sm"
+                  className="space-y-1.5 rounded-xl bg-muted p-3 text-sm"
                 >
                   {settlement.transfers.map((transfer) => (
                     <li key={`${transfer.fromMemberId}-${transfer.toMemberId}`}>
@@ -1717,12 +1722,12 @@ export function ExpenseListDetail({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-[#72766f]">
+                <p className="text-sm text-muted-foreground">
                   Es sind keine Erstattungen nötig.
                 </p>
               )}
               {closeError && (
-                <p className="text-sm text-red-800" role="alert">
+                <p className="text-sm text-danger-text" role="alert">
                   {closeError}
                 </p>
               )}

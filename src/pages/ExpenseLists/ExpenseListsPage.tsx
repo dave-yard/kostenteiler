@@ -13,7 +13,7 @@ export function ExpenseListsPage() {
 
   if (isLoading) {
     return (
-      <p className="p-8 text-center text-sm text-[#72766f]">
+      <p className="p-8 text-center text-sm text-muted-foreground">
         Gruppe wird geladen ...
       </p>
     )
@@ -21,7 +21,7 @@ export function ExpenseListsPage() {
 
   if (!group) {
     return (
-      <p className="p-8 text-center text-sm text-red-600">
+      <p className="p-8 text-center text-sm text-destructive">
         Gruppe nicht gefunden.
       </p>
     )

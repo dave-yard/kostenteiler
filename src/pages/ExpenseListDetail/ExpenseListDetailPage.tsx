@@ -48,7 +48,7 @@ export function ExpenseListDetailPage() {
 
   if (isLoading) {
     return (
-      <p className="p-8 text-center text-sm text-[#72766f]">
+      <p className="p-8 text-center text-sm text-muted-foreground">
         Liste wird geladen ...
       </p>
     )
@@ -56,13 +56,15 @@ export function ExpenseListDetailPage() {
 
   if (error) {
     return (
-      <p className="p-8 text-center text-sm text-red-600">Fehler: {error}</p>
+      <p className="p-8 text-center text-sm text-destructive">
+        Fehler: {error}
+      </p>
     )
   }
 
   if (!groupId || !group || !listId || !expenseList) {
     return (
-      <p className="p-8 text-center text-sm text-red-600">
+      <p className="p-8 text-center text-sm text-destructive">
         {!group
           ? "Gruppe nicht gefunden"
           : `Liste nicht gefunden (${groupId}|${listId}).`}
