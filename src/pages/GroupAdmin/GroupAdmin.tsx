@@ -353,12 +353,9 @@ export function GroupAdmin({
     }
   }
 
-  async function handleCreateInvitation(contactId: string) {
-    const selectedContact = contacts.find((contact) => contact.id === contactId)
-    if (!selectedContact) {
-      setErrorMessage("Wähle einen Kontakt aus deiner Freundesliste aus.")
-      return
-    }
+  async function handleCreateInvitation(contactIdToUse?: string) {
+    const trimmedInput = memberName.trim()
+    const targetContactId = contactIdToUse ?? selectedContactId
 
     setErrorMessage(null)
     setSuccessMessage(null)
@@ -366,7 +363,38 @@ export function GroupAdmin({
     setIsAddingMember(true)
 
     try {
-      const token = await createGroupInvitation(group.id, selectedContact.id)
+      const selectedContact = contacts.find(
+        (contact) => contact.id === targetContactId
+      )
+      if (!selectedContact && !trimmedInput) {
+        setErrorMessage(
+          "Wähle einen Kontakt aus oder gib einen Namen/eine E-Mail ein."
+        )
+        setIsAddingMember(false)
+        return
+      }
+
+      let effectiveContactId = selectedContact?.id
+      if (!effectiveContactId && trimmedInput) {
+        const existing = contacts.find(
+          (c) =>
+            c.email.toLowerCase() === trimmedInput.toLowerCase() ||
+            c.displayName.toLowerCase() === trimmedInput.toLowerCase()
+        )
+        if (existing) {
+          effectiveContactId = existing.id
+        }
+      }
+
+      if (!effectiveContactId) {
+        setErrorMessage(
+          "Bitte wähle einen gültigen Vorschlag aus oder gib einen Namen/eine E-Mail ein."
+        )
+        setIsAddingMember(false)
+        return
+      }
+
+      const token = await createGroupInvitation(group.id, effectiveContactId)
       setInvitationLink(
         `${window.location.origin}/?invite=${encodeURIComponent(token)}`
       )
@@ -374,8 +402,11 @@ export function GroupAdmin({
       setSelectedContactId("")
       await loadMembers()
       await refreshGroups()
+      const displayNameUsed =
+        contacts.find((c) => c.id === effectiveContactId)?.displayName ||
+        trimmedInput
       setSuccessMessage(
-        `Einladung für ${selectedContact.displayName} erstellt. Teile den Link mit der eingeladenen Person.`
+        `Einladung für ${displayNameUsed} erstellt. Teile den Link mit der eingeladenen Person.`
       )
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
@@ -922,8 +953,9 @@ export function GroupAdmin({
           <div>
             <h2 className="font-semibold">Person einladen</h2>
             <p className="text-sm text-muted-foreground">
-              Wähle eine Person aus der Freundesliste. Noch nicht registrierte
-              Personen erhalten einen zeitlich begrenzten Einladungslink.
+              Wähle eine Person aus der Freundesliste oder gib einen Namen/eine
+              E-Mail-Adresse ein. Neue Einträge werden in deine Freundesliste
+              aufgenommen.
             </p>
           </div>
         </div>
@@ -931,11 +963,11 @@ export function GroupAdmin({
           className="flex flex-col gap-3 sm:flex-row"
           onSubmit={(event) => {
             event.preventDefault()
-            void handleCreateInvitation(selectedContactId)
+            void handleCreateInvitation()
           }}
         >
           <label className="sr-only" htmlFor="new-member-name">
-            Person aus der Freundesliste suchen
+            Person aus der Freundesliste suchen oder neu eintragen
           </label>
           <div className="relative min-w-0 flex-1">
             <Input
@@ -952,7 +984,7 @@ export function GroupAdmin({
                 setMemberName(event.target.value)
                 setSelectedContactId("")
               }}
-              placeholder="Name oder E-Mail suchen"
+              placeholder="Name oder E-Mail-Adresse eingeben oder suchen"
               required
               value={memberName}
             />
@@ -998,7 +1030,7 @@ export function GroupAdmin({
           </div>
           <Button
             className="h-11 rounded-xl bg-brand-primary px-5 text-white hover:bg-brand-primary-hover"
-            disabled={isAddingMember || !selectedContactId}
+            disabled={isAddingMember || !memberName.trim()}
             type="submit"
           >
             {isAddingMember
@@ -1006,11 +1038,6 @@ export function GroupAdmin({
               : "Einladung erstellen"}
           </Button>
         </form>
-        {contacts.length === 0 && !isLoadingContacts && (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Füge zuerst Kontakte in deiner Freundesliste hinzu.
-          </p>
-        )}
         {invitationLink && (
           <div className="mt-4 rounded-2xl border border-border bg-brand-surface p-4">
             <p className="mb-2 flex items-center gap-2 text-sm font-medium text-brand-text">

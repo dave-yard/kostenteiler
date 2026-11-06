@@ -36,6 +36,7 @@ export function PersonalContacts() {
   )
   const [editingContactId, setEditingContactId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
+  const [editingEmail, setEditingEmail] = useState("")
   const [contacts, setContacts] = useState<PersonalContact[]>([])
   const [contactName, setContactName] = useState("")
   const [contactEmail, setContactEmail] = useState("")
@@ -88,9 +89,19 @@ export function PersonalContacts() {
 
   async function handleCreateContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const trimmedName = contactName.trim()
+    let trimmedName = contactName.trim()
     const trimmedEmail = contactEmail.trim().toLowerCase()
-    if (!trimmedName || !trimmedEmail) {
+
+    // Wenn kein Name, aber eine E-Mail eingegeben wurde -> Name aus E-Mail vor dem '@' bilden
+    if (!trimmedName && trimmedEmail) {
+      const emailNamePart = trimmedEmail.split("@")[0]
+      if (emailNamePart) {
+        trimmedName =
+          emailNamePart.charAt(0).toUpperCase() + emailNamePart.slice(1)
+      }
+    }
+
+    if (!trimmedName) {
       return
     }
 
@@ -135,26 +146,34 @@ export function PersonalContacts() {
     }
   }
 
-  async function handleRenameContact(contact: PersonalContact) {
-    const trimmedName = editingName.trim()
-    if (!trimmedName) {
-      return
+  async function handleUpdateContact(contact: PersonalContact) {
+    let trimmedName = editingName.trim()
+    const trimmedEmail = editingEmail.trim().toLowerCase()
+
+    // Wenn kein Name eingegeben wurde, aber eine E-Mail da ist -> Name aus E-Mail bilden
+    if (!trimmedName && trimmedEmail) {
+      const emailNamePart = trimmedEmail.split("@")[0]
+      if (emailNamePart) {
+        trimmedName =
+          emailNamePart.charAt(0).toUpperCase() + emailNamePart.slice(1)
+      }
     }
-    if (trimmedName === contact.displayName) {
-      setEditingContactId(null)
-      return
+
+    // Fallback auf den bestehenden Namen, falls immer noch leer
+    if (!trimmedName) {
+      trimmedName = contact.displayName
     }
 
     setErrorMessage(null)
     setSuccessMessage(null)
     setIsSaving(true)
     try {
-      await renamePersonalContact(contact.id, trimmedName)
+      await renamePersonalContact(contact.id, trimmedName, trimmedEmail)
       setEditingContactId(null)
       if (!(await loadContacts())) {
         return
       }
-      setSuccessMessage("Der Anzeigename wurde geändert.")
+      setSuccessMessage("Der Kontakt wurde aktualisiert.")
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
     } finally {
@@ -240,26 +259,24 @@ export function PersonalContacts() {
           id="contact-name"
           maxLength={80}
           onChange={(event) => setContactName(event.target.value)}
-          placeholder="Name"
-          required
+          placeholder="Name (optional bei E-Mail)"
           value={contactName}
         />
         <label className="sr-only" htmlFor="contact-email">
-          E-Mail-Adresse
+          E-Mail-Adresse (optional)
         </label>
         <Input
           autoComplete="email"
           className="h-11 min-w-0 rounded-xl px-3.5"
           id="contact-email"
           onChange={(event) => setContactEmail(event.target.value)}
-          placeholder="E-Mail-Adresse"
-          required
+          placeholder="E-Mail-Adresse (optional)"
           type="email"
           value={contactEmail}
         />
         <Button
           className="h-11 rounded-xl bg-brand-primary px-4 text-white hover:bg-brand-primary-hover"
-          disabled={isSaving || !contactName.trim() || !contactEmail.trim()}
+          disabled={isSaving || (!contactName.trim() && !contactEmail.trim())}
           type="submit"
         >
           <Plus aria-hidden="true" className="size-4" />
@@ -287,40 +304,54 @@ export function PersonalContacts() {
             >
               {editingContactId === contact.id ? (
                 <form
-                  className="flex min-w-0 flex-1 items-center gap-2"
+                  className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center"
                   onSubmit={(event) => {
                     event.preventDefault()
-                    void handleRenameContact(contact)
+                    void handleUpdateContact(contact)
                   }}
                 >
                   <Input
                     aria-label="Anzeigename"
                     autoFocus
-                    className="h-9 min-w-0 flex-1 rounded-lg px-3"
+                    className="h-9 min-w-0 flex-1 rounded-lg px-3 text-sm"
                     maxLength={80}
+                    placeholder="Name"
                     onChange={(event) => setEditingName(event.target.value)}
                     value={editingName}
                   />
-                  <Button
-                    aria-label="Anzeigenamen speichern"
-                    className="size-9 shrink-0 rounded-lg"
-                    disabled={isSaving || !editingName.trim()}
-                    size="icon"
-                    type="submit"
-                    variant="ghost"
-                  >
-                    <Check aria-hidden="true" className="size-4" />
-                  </Button>
-                  <Button
-                    aria-label="Abbrechen"
-                    className="size-9 shrink-0 rounded-lg"
-                    onClick={() => setEditingContactId(null)}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <X aria-hidden="true" className="size-4" />
-                  </Button>
+                  <Input
+                    aria-label="E-Mail-Adresse"
+                    className="h-9 min-w-0 flex-1 rounded-lg px-3 text-sm"
+                    placeholder="E-Mail-Adresse"
+                    type="email"
+                    onValueChange={setEditingEmail}
+                    value={editingEmail}
+                  />
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      aria-label="Kontakt speichern"
+                      className="size-9 shrink-0 rounded-lg"
+                      disabled={
+                        isSaving ||
+                        (!editingName.trim() && !editingEmail.trim())
+                      }
+                      size="icon"
+                      type="submit"
+                      variant="ghost"
+                    >
+                      <Check aria-hidden="true" className="size-4" />
+                    </Button>
+                    <Button
+                      aria-label="Abbrechen"
+                      className="size-9 shrink-0 rounded-lg"
+                      onClick={() => setEditingContactId(null)}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <X aria-hidden="true" className="size-4" />
+                    </Button>
+                  </div>
                 </form>
               ) : (
                 <>
@@ -330,17 +361,20 @@ export function PersonalContacts() {
                     </p>
                     <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                       <Mail aria-hidden="true" className="size-3.5 shrink-0" />
-                      {contact.email}
+                      {contact.email
+                        ? contact.email
+                        : "Keine E-Mail hinterlegt"}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Button
-                      aria-label={`${contact.displayName} umbenennen`}
+                      aria-label={`${contact.displayName} bearbeiten`}
                       className="size-9 rounded-lg"
                       disabled={isSaving}
                       onClick={() => {
                         setEditingContactId(contact.id)
                         setEditingName(contact.displayName)
+                        setEditingEmail(contact.email ?? "")
                       }}
                       size="icon"
                       variant="ghost"

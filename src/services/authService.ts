@@ -1,15 +1,12 @@
 import { getSupabaseClient } from "@/lib/supabase"
 
 function getEmailRedirectUrl() {
-  const redirectUrl = new URL(window.location.origin)
-  const invitationToken = new URLSearchParams(window.location.search).get(
-    "invite"
-  )
-  if (invitationToken) {
-    redirectUrl.searchParams.set("invite", invitationToken)
+  if (window.location.hostname === "dave-yard.github.io") {
+    return "https://dave-yard.github.io/kostenteiler/"
   }
 
-  return redirectUrl.toString()
+  // Lokalentwicklung: verwendet den aktuellen localhost-Port
+  return `${window.location.origin}/`
 }
 
 export async function signInWithPassword(email: string, password: string) {

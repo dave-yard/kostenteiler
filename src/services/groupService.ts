@@ -137,11 +137,13 @@ export async function createPersonalContact(
 
 export async function renamePersonalContact(
   contactId: string,
-  displayName: string
+  displayName: string,
+  trimmedEmail?: string
 ): Promise<void> {
   const { error } = await getSupabaseClient().rpc("rename_personal_contact", {
     p_contact_id: contactId,
     p_display_name: displayName,
+    p_email: trimmedEmail,
   })
 
   if (error) {

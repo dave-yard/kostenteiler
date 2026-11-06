@@ -49,7 +49,8 @@ interface GroupOverviewContextValue {
   removePersonalContact: (contactId: string) => Promise<void>
   renamePersonalContact: (
     contactId: string,
-    displayName: string
+    displayName: string,
+    trimmedEmail: string
   ) => Promise<void>
   setMyDisplayName: (displayName: string) => Promise<void>
   createGroupInvitation: (groupId: string, contactId: string) => Promise<string>
@@ -143,8 +144,8 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
     []
   )
   const renamePersonalContact = useCallback(
-    (contactId: string, displayName: string) =>
-      renamePersonalContactRecord(contactId, displayName),
+    (contactId: string, displayName: string, trimmedEmail: string) =>
+      renamePersonalContactRecord(contactId, displayName, trimmedEmail),
     []
   )
   const setMyDisplayName = useCallback(
