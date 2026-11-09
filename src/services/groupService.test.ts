@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { getSupabaseClient } from "@/lib/supabase"
 import {
+  addGroupMember,
   archiveGroup,
   getGroupSplitDefault,
   getMyGroups,
@@ -45,8 +46,30 @@ describe("groupService", () => {
     })
   })
 
+  it("adds a group member through the authorization-checked database function", async () => {
+    rpc.mockResolvedValueOnce({ error: null })
+
+    await addGroupMember("group-1", "contact-1")
+
+    expect(rpc).toHaveBeenCalledWith("add_group_member", {
+      p_group_id: "group-1",
+      p_contact_id: "contact-1",
+    })
+  })
+
+  it("surfaces group member creation errors", async () => {
+    rpc.mockResolvedValueOnce({ error: new Error("Not an admin") })
+
+    await expect(addGroupMember("group-1", "contact-1")).rejects.toThrow(
+      "Not an admin"
+    )
+  })
+
   it("maps archive timestamps to groups while preserving active groups", async () => {
     rpc
+      .mockResolvedValueOnce({
+        error: null,
+      })
       .mockResolvedValueOnce({
         data: [
           {
@@ -94,8 +117,9 @@ describe("groupService", () => {
         archivedAt: "2026-10-26T12:00:00.000Z",
       },
     ])
-    expect(rpc).toHaveBeenNthCalledWith(1, "get_my_groups")
-    expect(rpc).toHaveBeenNthCalledWith(2, "get_my_archived_groups")
+    expect(rpc).toHaveBeenNthCalledWith(1, "link_pending_group_members")
+    expect(rpc).toHaveBeenNthCalledWith(2, "get_my_groups")
+    expect(rpc).toHaveBeenNthCalledWith(3, "get_my_archived_groups")
   })
 
   it("archives a group through the authorization-checked database function", async () => {

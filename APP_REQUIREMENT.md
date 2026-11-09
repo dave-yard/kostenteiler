@@ -30,11 +30,11 @@
 - **FR-1.1 (Gruppen erstellen):** Registrierte Benutzer können neue Gruppen erstellen. Der Ersteller wird automatisch als Administrator der Gruppe definiert.
 - **FR-1.2 (Gruppenübersicht):** Benutzer können eine Übersicht aller Gruppen einsehen, denen sie fest zugeordnet sind.
 - **FR-1.2.1 (Gruppen sortieren):** Benutzer können die Reihenfolge ihrer Gruppenübersicht per Drag-and-drop anpassen. Die Sortierung ist pro Benutzer gespeichert und beeinflusst nicht die Ansicht anderer Gruppenmitglieder.
-- **FR-1.2.2 (Persönliche Freundesliste):** Benutzer können Kontakte mit Namen und E-Mail-Adresse in einer privaten, gruppenübergreifend verfügbaren Freundesliste speichern. Beim Einladen eines Gruppenmitglieds werden passende eigene Kontakte vorgeschlagen. Die Auswahl erstellt eine gruppenbezogene ausstehende Einladung; der private Kontakt selbst wird nicht mit der Gruppe geteilt. Das Speichern eines Kontakts versendet keine Einladung.
+- **FR-1.2.2 (Persönliche Freundesliste):** Benutzer können Kontakte mit Namen und E-Mail-Adresse in einer privaten, gruppenübergreifend verfügbaren Freundesliste speichern. Beim Hinzufügen eines Gruppenmitglieds werden passende eigene Kontakte vorgeschlagen. Neue Kontakte werden zuerst in der privaten Freundesliste angelegt; nur die für die Gruppe nötigen Kontaktangaben werden als Gruppenmitglied gespeichert. Die Freundesliste bleibt privat.
 - **FR-1.2.3 (Hauptnavigation):** Ein Klick auf den Markennamen „Kostenteiler“ öffnet ein Menü. Der erste Menüpunkt ist „Gruppen“ mit Home-Symbol und führt zur Gruppenübersicht. Ein weiterer Menüpunkt öffnet die private Freundesliste unabhängig davon, ob der Benutzer einer Gruppe angehört oder Gruppen-Admin ist.
-- **FR-1.3 (Gruppenmitglieder einladen):** Gruppen-Admins können Personen aus ihrer privaten Freundesliste in eine Gruppe einladen. Ohne Auswahl eines gespeicherten Kontakts wird kein neues Gruppenmitglied angelegt.
-- **FR-1.4.1 (Einladungslinks):** Eine Einladung erzeugt einen einmaligen, nach 14 Tagen ablaufenden Link mit einem nicht erratbaren Token. Der Link wird nicht automatisch per E-Mail versendet und muss von der einladenden Person geteilt werden. Eine Einladung kann nur mit dem registrierten und bestätigten Konto der eingeladenen E-Mail-Adresse angenommen werden.
-- **FR-1.4.2 (Konto verknüpfen):** Nach ausdrücklicher Annahme wird das bestehende Gruppenmitglied mit dem bestätigten Konto verknüpft. Die Gruppenmitglied-ID bleibt erhalten, sodass zugehörige Positionen, Aufteilungen und Ausgleichsdaten bestehen bleiben. Es werden keine Kontakte oder Daten aus anderen Gruppen geteilt.
+- **FR-1.3 (Gruppenmitglieder hinzufügen):** Gruppen-Admins können Personen aus ihrer privaten Freundesliste direkt als Gruppenmitglied hinzufügen. Wird eine neue E-Mail-Adresse eingegeben, wird dafür zunächst ein Kontakt in der privaten Freundesliste angelegt. Bis zur Registrierung mit bestätigter, übereinstimmender E-Mail-Adresse bleibt das Gruppenmitglied ausstehend. Es wird kein Einladungslink erzeugt und keine E-Mail versendet; die App-Adresse kann separat kopiert und selbst geteilt werden. Bei der Registrierung wird das bestehende Gruppenmitglied anhand der bestätigten E-Mail-Adresse mit dem Konto verknüpft.
+- **FR-1.4.1 (Bestehende Einladungslinks):** Bereits erzeugte Einladungslinks bleiben einmalig, laufen nach 14 Tagen ab und können nur mit dem registrierten und bestätigten Konto der eingeladenen E-Mail-Adresse angenommen werden. Für neu hinzugefügte Gruppenmitglieder werden keine Einladungslinks mehr erstellt.
+- **FR-1.4.2 (Konto verknüpfen):** Ein ausstehendes Gruppenmitglied wird nach bestätigter Registrierung automatisch mit dem Konto derselben E-Mail-Adresse verknüpft. Die Gruppenmitglied-ID bleibt erhalten, sodass zugehörige Positionen, Aufteilungen und Ausgleichsdaten bestehen bleiben. Bereits bestehende Einladungslinks behalten ihre ausdrückliche Annahme. Es werden keine Kontakte oder Daten aus anderen Gruppen geteilt.
 
 ### 2.2 Listen- und Statusmanagement
 
@@ -142,16 +142,16 @@ Nach click auf Bearbeiten
 |                                                   |
 |  +---------------------------------------------+  |
 |  | 👤 John Wayne                               |  |
-|  | Status: Einladung ausstehend                |  |
-|  | [ 🔗 Einladungslink neu erstellen ]         |  |
+|  | 📧 john@beispiel.de                         |  |
+|  | Status: Registrierung ausstehend             |  |
 |  +---------------------------------------------+  |
 |                                                   |
 |  ------------------------------------------------ |
 |                                                   |
-|  ➕ **Person einladen**                            |
-|  Name oder E-Mail aus Freundesliste suchen:        |
-|  [ z. B. Karl                                 ] |
-|  [ + Einladung erstellen ]                        |
+|  ➕ **Person hinzufügen**                          |
+|  Name (optional): [ John Wayne                 ] |
+|  E-Mail: [ john@beispiel.de ] [ App-Link kopieren]|
+|  [ + Person hinzufügen ]                          |
 |                                                   |
 |  ------------------------------------------------ |
 +---------------------------------------------------+

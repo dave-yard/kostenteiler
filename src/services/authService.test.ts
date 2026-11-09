@@ -20,27 +20,26 @@ const auth = {
   updateUser: vi.fn(),
 }
 
-// Setzt vor jedem Test einen bekannten Ausgangszustand: keine alten Aufrufe,
-// eine Beispiel-Einladung in der URL und erfolgreiche Standardantworten.
+// Setzt vor jedem Test einen bekannten Ausgangszustand und erfolgreiche
+// Standardantworten.
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getSupabaseClient).mockReturnValue({ auth } as never)
-  window.history.replaceState({}, "", "/?invite=invite-token")
+  window.history.replaceState({}, "", "/")
   auth.signInWithOtp.mockResolvedValue({ error: null })
   auth.resetPasswordForEmail.mockResolvedValue({ error: null })
   auth.updateUser.mockResolvedValue({ error: null })
 })
 
 describe("authService", () => {
-  // Der Magic-Link soll an die App zurückführen und dabei eine Gruppeneinladung
-  // in der URL erhalten, damit der eingeladene Nutzer sie anschließend öffnen kann.
-  it("requests a magic link and preserves a group invitation redirect", async () => {
+  // Magic-Links führen an die konfigurierte App-Adresse zurück.
+  it("requests a magic link with the app redirect URL", async () => {
     await sendMagicLink("person@example.com")
 
     expect(auth.signInWithOtp).toHaveBeenCalledWith({
       email: "person@example.com",
       options: {
-        emailRedirectTo: `${window.location.origin}/?invite=invite-token`,
+        emailRedirectTo: `${window.location.origin}/`,
       },
     })
   })

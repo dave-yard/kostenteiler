@@ -1,9 +1,11 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { useAuth } from "@/components/contexts/AuthContext"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
+import { ExpenseListsPage } from "@/pages/ExpenseLists/ExpenseListsPage"
 import { GroupOverview } from "./GroupOverview"
 
 vi.mock("@/components/contexts/AuthContext", () => ({ useAuth: vi.fn() }))
@@ -63,49 +65,47 @@ function setupMocks() {
   } as never)
 }
 
+function renderRoutes(initialEntry = "/") {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route element={<GroupOverview />} path="/" />
+        <Route element={<ExpenseListsPage />} path="/groups/:groupId" />
+      </Routes>
+    </MemoryRouter>
+  )
+}
+
 describe("GroupOverview Navigation", () => {
-  it("öffnet Gruppe, dann Liste und geht zurück", async () => {
+  it("navigates from the group overview to that group's lists route", async () => {
     const user = userEvent.setup()
     setupMocks()
 
-    render(<GroupOverview />)
+    renderRoutes()
 
     await user.click(screen.getByRole("button", { name: "WG Berlin" }))
-    await user.click(await screen.findByRole("button", { name: /Urlaub/ }))
 
-    expect(screen.getByText("Noch keine Positionen")).toBeTruthy()
-
-    await user.click(
-      screen.getByRole("button", { name: /Zu den Ausgabenlisten/ })
-    )
     expect(await screen.findByRole("button", { name: /Urlaub/ })).toBeTruthy()
   })
 
-  it("behält den Filter „Erledigte anzeigen“ nach der Rückkehr aus der Detailansicht", async () => {
+  it("toggles the completed-list filter on the group's lists route", async () => {
     const user = userEvent.setup()
     setupMocks()
 
-    render(<GroupOverview />)
-
-    await user.click(screen.getByRole("button", { name: "WG Berlin" }))
-    await user.click(
-      await screen.findByRole("checkbox", { name: "Erledigte anzeigen" })
-    )
-    await user.click(await screen.findByRole("button", { name: /Urlaub/ }))
-    await user.click(
-      screen.getByRole("button", { name: /Zu den Ausgabenlisten/ })
-    )
-
+    renderRoutes("/groups/g1")
     const checkbox = await screen.findByRole("checkbox", {
       name: "Erledigte anzeigen",
     })
+    await user.click(checkbox)
+
     expect(checkbox.getAttribute("aria-checked")).toBe("true")
+    expect(screen.getByRole("heading", { name: "Alle Listen" })).toBeTruthy()
   })
 
   it("platziert den Bereich „Neue Gruppe erstellen“ im Desktop-Modus oben rechts", () => {
     setupMocks()
 
-    render(<GroupOverview />)
+    renderRoutes()
 
     const createHeading = screen.getByRole("heading", {
       name: "Neue Gruppe erstellen",

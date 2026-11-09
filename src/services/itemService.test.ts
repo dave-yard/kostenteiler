@@ -104,7 +104,12 @@ describe("itemService", () => {
       p_paid_by_member_id: "member-1",
       p_split_rule: null,
       p_is_receipt: false,
+      p_item_date: "2026-01-03T00:13:00.000Z",
       p_parent_item_id: null,
+    })
+    expect(rpc).toHaveBeenNthCalledWith(2, "set_expense_item_date", {
+      p_item_id: "item-id",
+      p_date: "2026-01-03T00:13:00.000Z",
     })
     expect(id).toBe("item-id")
   })

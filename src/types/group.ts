@@ -54,6 +54,6 @@ export interface GroupInvitation {
 
 export interface PersonalContact {
   id: string
-  displayName: string
-  email: string
+  displayName: string | null
+  email: string | null
 }

@@ -3,11 +3,9 @@ import {
   ArrowLeft,
   Archive,
   Check,
-  Clock3,
   Copy,
   Crown,
   LoaderCircle,
-  MailPlus,
   Plus,
   Shield,
   Trash2,
@@ -63,7 +61,8 @@ export function GroupAdmin({
     getGroupMembers,
     getGroupSplitDefault,
     getMyContacts,
-    createGroupInvitation,
+    createPersonalContact,
+    addGroupMember,
     renameGroup,
     archiveGroup,
     setGroupMemberAdmin,
@@ -77,10 +76,10 @@ export function GroupAdmin({
   const [permissionDrafts, setPermissionDrafts] = useState<
     Record<string, GroupMemberPermissions>
   >({})
-  const [memberName, setMemberName] = useState("")
+  const [memberName, setMemberName] = useState<string | null>("")
+  const [memberEmail, setMemberEmail] = useState<string | null>("")
   const [contacts, setContacts] = useState<PersonalContact[]>([])
   const [selectedContactId, setSelectedContactId] = useState("")
-  const [invitationLink, setInvitationLink] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [deleteMode, setDeleteMode] = useState(false)
   const [isLoadingContacts, setIsLoadingContacts] = useState(true)
@@ -353,75 +352,90 @@ export function GroupAdmin({
     }
   }
 
-  async function handleCreateInvitation(contactIdToUse?: string) {
-    const trimmedInput = memberName.trim()
-    const targetContactId = contactIdToUse ?? selectedContactId
+  async function handleAddMember() {
+    const trimmedEmail = memberEmail?.trim().toLowerCase() || null
+    const enteredName = memberName?.trim() || null
 
     setErrorMessage(null)
     setSuccessMessage(null)
-    setInvitationLink("")
+
+    // 1. Validierung: Mindestens Name oder E-Mail muss angegeben sein
+    const emailName = trimmedEmail ? trimmedEmail.split("@")[0] : null
+    const displayName = enteredName || emailName
+
+    if (!displayName) {
+      setErrorMessage("Gib bitte einen Namen oder eine E-Mail-Adresse ein.")
+      return
+    }
+
     setIsAddingMember(true)
 
     try {
-      const selectedContact = contacts.find(
-        (contact) => contact.id === targetContactId
-      )
-      if (!selectedContact && !trimmedInput) {
-        setErrorMessage(
-          "Wähle einen Kontakt aus oder gib einen Namen/eine E-Mail ein."
-        )
-        setIsAddingMember(false)
-        return
-      }
+      // 2. Suche in bestehender Freundesliste (nach E-Mail oder Anzeige-Name)
+      let contact = contacts.find((entry) => {
+        if (trimmedEmail && entry.email?.toLowerCase() === trimmedEmail) {
+          return true
+        }
+        if (
+          enteredName &&
+          entry.displayName?.toLowerCase() === enteredName.toLowerCase()
+        ) {
+          return true
+        }
+        return false
+      })
 
-      let effectiveContactId = selectedContact?.id
-      if (!effectiveContactId && trimmedInput) {
-        const existing = contacts.find(
-          (c) =>
-            c.email.toLowerCase() === trimmedInput.toLowerCase() ||
-            c.displayName.toLowerCase() === trimmedInput.toLowerCase()
+      // 3. Falls nicht in der Freundesliste: Neu anlegen
+      // 3. Falls nicht in der Freundesliste: Neu anlegen
+      if (!contact) {
+        console.log(
+          "Kontakt nicht gefunden. Erstelle neuen Eintrag in Freundesliste..."
         )
-        if (existing) {
-          effectiveContactId = existing.id
+
+        await createPersonalContact(displayName, trimmedEmail)
+        const updatedContacts = await getMyContacts()
+        setContacts(updatedContacts)
+
+        // Kontakt über E-Mail, Name oder als allerletztes Element der Liste greifen
+        contact =
+          updatedContacts.find(
+            (entry) =>
+              (trimmedEmail && entry.email?.toLowerCase() === trimmedEmail) ||
+              entry.displayName?.toLowerCase() === displayName.toLowerCase()
+          ) ?? updatedContacts[updatedContacts.length - 1]
+
+        if (!contact) {
+          throw new Error(
+            "Der Kontakt konnte nach der Erstellung nicht abgerufen werden."
+          )
         }
       }
 
-      if (!effectiveContactId) {
-        setErrorMessage(
-          "Bitte wähle einen gültigen Vorschlag aus oder gib einen Namen/eine E-Mail ein."
-        )
-        setIsAddingMember(false)
-        return
-      }
+      // 4. Zur Gruppe hinzufügen
+      await addGroupMember(group.id, contact.id)
 
-      const token = await createGroupInvitation(group.id, effectiveContactId)
-      setInvitationLink(
-        `${window.location.origin}/?invite=${encodeURIComponent(token)}`
-      )
+      // Formular zurücksetzen & State aktualisieren
       setMemberName("")
+      setMemberEmail("")
       setSelectedContactId("")
       await loadMembers()
       await refreshGroups()
-      const displayNameUsed =
-        contacts.find((c) => c.id === effectiveContactId)?.displayName ||
-        trimmedInput
-      setSuccessMessage(
-        `Einladung für ${displayNameUsed} erstellt. Teile den Link mit der eingeladenen Person.`
-      )
+      setSuccessMessage(`${contact.displayName} wurde zur Gruppe hinzugefügt.`)
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
     } finally {
       setIsAddingMember(false)
     }
   }
-
-  async function handleCopyInvitationLink() {
+  async function handleCopyAppAddress() {
     try {
-      await navigator.clipboard.writeText(invitationLink)
-      setSuccessMessage("Einladungslink wurde in die Zwischenablage kopiert.")
+      await navigator.clipboard.writeText(
+        "https://dave-yard.github.io/kostenteiler/"
+      )
+      setSuccessMessage("Die App-Adresse wurde in die Zwischenablage kopiert.")
     } catch (error) {
       setErrorMessage(
-        `Der Link konnte nicht automatisch kopiert werden. Kopiere ihn aus dem Feld. ${getErrorMessage(error)}`
+        `Die App-Adresse konnte nicht automatisch kopiert werden. ${getErrorMessage(error)}`
       )
     }
   }
@@ -516,20 +530,25 @@ export function GroupAdmin({
   const availableContacts = contacts.filter(
     (contact) =>
       !members.some(
-        (member) => member.email?.toLowerCase() === contact.email.toLowerCase()
+        (member) => member.email?.toLowerCase() === contact.email?.toLowerCase()
       )
   )
-  const contactSuggestions = memberName.trim()
+  const contactQuery = memberName?.trim() || memberEmail?.trim()
+  const contactSuggestions = contactQuery
     ? availableContacts
         .filter((contact) => {
-          const query = memberName.trim().toLocaleLowerCase()
+          const query = contactQuery.toLocaleLowerCase()
           return (
-            contact.displayName.toLocaleLowerCase().includes(query) ||
-            contact.email.toLocaleLowerCase().includes(query)
+            contact.displayName?.toLocaleLowerCase().includes(query) ||
+            contact.email?.toLocaleLowerCase().includes(query)
           )
         })
         .slice(0, 5)
     : []
+
+  const [openPermissionMemberId, setOpenPermissionMemberId] = useState<
+    string | null
+  >(null)
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -819,7 +838,7 @@ export function GroupAdmin({
                           {member.role === "admin"
                             ? "Gruppen-Admin"
                             : member.membershipStatus === "pending"
-                              ? "Einladung ausstehend"
+                              ? "Registrierung ausstehend"
                               : member.membershipStatus === "legacy"
                                 ? "Altes virtuelles Mitglied"
                                 : "Mitglied"}
@@ -828,32 +847,6 @@ export function GroupAdmin({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {member.membershipStatus === "pending" &&
-                        member.email &&
-                        contacts.some(
-                          (contact) =>
-                            contact.email.toLowerCase() ===
-                            member.email?.toLowerCase()
-                        ) && (
-                          <Button
-                            className="h-9 rounded-xl text-xs"
-                            disabled={isAddingMember}
-                            onClick={() => {
-                              const contact = contacts.find(
-                                (entry) =>
-                                  entry.email.toLowerCase() ===
-                                  member.email?.toLowerCase()
-                              )
-                              if (contact) {
-                                void handleCreateInvitation(contact.id)
-                              }
-                            }}
-                            variant="outline"
-                          >
-                            <MailPlus aria-hidden="true" className="size-4" />
-                            Link neu erstellen
-                          </Button>
-                        )}
                       {member.userId && (
                         <Button
                           className="h-9 rounded-xl text-xs"
@@ -882,35 +875,55 @@ export function GroupAdmin({
 
                   {member.role === "member" && draft && (
                     <div className="mt-4 border-t border-border pt-4">
-                      <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        Freigegebene Rechte
-                      </p>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {PERMISSIONS.map(({ key, label }) => (
-                          <label
-                            className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl px-2 text-sm hover:bg-muted"
-                            key={key}
-                          >
-                            <Checkbox
-                              checked={draft[key]}
+                      <Button
+                        aria-expanded={openPermissionMemberId === member.id}
+                        className="h-9 w-full justify-between rounded-xl px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:bg-muted"
+                        onClick={() =>
+                          setOpenPermissionMemberId((current) =>
+                            current === member.id ? null : member.id
+                          )
+                        }
+                        type="button"
+                        variant="ghost"
+                      >
+                        <span>Freigegebene Rechte</span>
+                        <span className="text-xs lowercase">
+                          {openPermissionMemberId === member.id
+                            ? "einklappen ▲"
+                            : "ausklappen ▼"}
+                        </span>
+                      </Button>
+
+                      {openPermissionMemberId === member.id && (
+                        <div className="mt-3 space-y-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {PERMISSIONS.map(({ key, label }) => (
+                              <label
+                                className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl px-2 text-sm hover:bg-muted"
+                                key={key}
+                              >
+                                <Checkbox
+                                  checked={draft[key]}
+                                  disabled={savingMemberId === member.id}
+                                  onCheckedChange={() =>
+                                    togglePermission(member.id, key)
+                                  }
+                                />
+                                {label}
+                              </label>
+                            ))}
+                          </div>
+                          {permissionsChanged && (
+                            <Button
+                              className="mt-3 h-9 rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
                               disabled={savingMemberId === member.id}
-                              onCheckedChange={() =>
-                                togglePermission(member.id, key)
-                              }
-                            />
-                            {label}
-                          </label>
-                        ))}
-                      </div>
-                      {permissionsChanged && (
-                        <Button
-                          className="mt-3 h-9 rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-                          disabled={savingMemberId === member.id}
-                          onClick={() => void handleSavePermissions(member)}
-                        >
-                          <Check aria-hidden="true" className="size-4" />
-                          Rechte speichern
-                        </Button>
+                              onClick={() => void handleSavePermissions(member)}
+                            >
+                              <Check aria-hidden="true" className="size-4" />
+                              Rechte speichern
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -951,122 +964,130 @@ export function GroupAdmin({
             <Plus aria-hidden="true" className="size-5" />
           </div>
           <div>
-            <h2 className="font-semibold">Person einladen</h2>
+            <h2 className="font-semibold">Person hinzufügen</h2>
             <p className="text-sm text-muted-foreground">
-              Wähle eine Person aus der Freundesliste oder gib einen Namen/eine
-              E-Mail-Adresse ein. Neue Einträge werden in deine Freundesliste
-              aufgenommen.
+              Wähle einen Kontakt aus oder gib Name und E-Mail-Adresse ein. Neue
+              Kontakte werden in deiner Freundesliste gespeichert.
+              Unregistrierte Personen bleiben ausstehend und werden nach einer
+              Registrierung mit bestätigter E-Mail automatisch verknüpft.
             </p>
           </div>
         </div>
         <form
-          className="flex flex-col gap-3 sm:flex-row"
+          className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault()
-            void handleCreateInvitation()
+            void handleAddMember()
           }}
         >
-          <label className="sr-only" htmlFor="new-member-name">
-            Person aus der Freundesliste suchen oder neu eintragen
-          </label>
-          <div className="relative min-w-0 flex-1">
-            <Input
-              aria-autocomplete="list"
-              aria-controls="member-contact-suggestions"
-              aria-expanded={
-                !selectedContactId && contactSuggestions.length > 0
-              }
-              autoComplete="off"
-              className="h-11 min-w-0 rounded-xl border border-border px-3.5 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
-              id="new-member-name"
-              maxLength={80}
-              onChange={(event) => {
-                setMemberName(event.target.value)
-                setSelectedContactId("")
-              }}
-              placeholder="Name oder E-Mail-Adresse eingeben oder suchen"
-              required
-              value={memberName}
-            />
-            {isLoadingContacts && memberName.trim() && (
-              <p className="mt-2 text-xs text-muted-foreground" role="status">
-                Freundesliste wird durchsucht ...
-              </p>
-            )}
-            {!selectedContactId &&
-              !isLoadingContacts &&
-              contactSuggestions.length > 0 && (
-                <div
-                  className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg"
-                  id="member-contact-suggestions"
-                  role="listbox"
-                  aria-label="Vorschläge aus deiner Freundesliste"
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="relative min-w-0">
+              <label className="sr-only" htmlFor="new-member-name">
+                Name oder Freundesliste durchsuchen
+              </label>
+              <Input
+                aria-autocomplete="list"
+                aria-controls="member-contact-suggestions"
+                aria-expanded={
+                  !selectedContactId && contactSuggestions.length > 0
+                }
+                autoComplete="off"
+                className="h-11 min-w-0 rounded-xl border border-border px-3.5 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
+                id="new-member-name"
+                maxLength={80}
+                onChange={(event) => {
+                  setMemberName(event.target.value)
+                  setSelectedContactId("")
+                }}
+                placeholder="Name (optional)"
+                value={memberName ?? ""}
+              />
+              {isLoadingContacts &&
+                (memberName?.trim() || memberEmail?.trim()) && (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground"
+                    role="status"
+                  >
+                    Freundesliste wird durchsucht ...
+                  </p>
+                )}
+              {!selectedContactId &&
+                !isLoadingContacts &&
+                contactSuggestions.length > 0 && (
+                  <div
+                    className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg"
+                    id="member-contact-suggestions"
+                    role="listbox"
+                    aria-label="Vorschläge aus deiner Freundesliste"
+                  >
+                    {contactSuggestions.map((contact) => (
+                      <Button
+                        aria-selected={selectedContactId === contact.id}
+                        className="h-auto w-full justify-start rounded-lg px-3 py-2 text-left"
+                        key={contact.id}
+                        onClick={() => {
+                          setMemberName(contact.displayName)
+                          setMemberEmail(contact.email)
+                          setSelectedContactId(contact.id)
+                        }}
+                        role="option"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium">
+                            {contact.displayName}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {contact.email}
+                          </span>
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+            </div>
+            <div className="flex min-w-0 gap-2">
+              <label className="sr-only" htmlFor="new-member-email">
+                E-Mail-Adresse
+              </label>
+              <Input
+                autoComplete="email"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-border px-3.5 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
+                id="new-member-email"
+                onChange={(event) => {
+                  setMemberEmail(event.target.value)
+                  setSelectedContactId("")
+                }}
+                placeholder="E-Mail-Adresse"
+                type="email"
+                value={memberEmail ?? ""}
+              />
+              {memberEmail?.trim() && (
+                <Button
+                  aria-label="App-Adresse kopieren"
+                  className="h-11 shrink-0 rounded-xl"
+                  onClick={() => void handleCopyAppAddress()}
+                  title="App-Adresse kopieren"
+                  type="button"
+                  variant="outline"
                 >
-                  {contactSuggestions.map((contact) => (
-                    <Button
-                      aria-selected={selectedContactId === contact.id}
-                      className="h-auto w-full justify-start rounded-lg px-3 py-2 text-left"
-                      key={contact.id}
-                      onClick={() => {
-                        setMemberName(contact.displayName)
-                        setSelectedContactId(contact.id)
-                      }}
-                      role="option"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">
-                          {contact.displayName}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {contact.email}
-                        </span>
-                      </span>
-                    </Button>
-                  ))}
-                </div>
+                  <Copy aria-hidden="true" className="size-4" />
+                  <span className="hidden sm:inline">App-Link kopieren</span>
+                </Button>
               )}
+            </div>
           </div>
           <Button
             className="h-11 rounded-xl bg-brand-primary px-5 text-white hover:bg-brand-primary-hover"
-            disabled={isAddingMember || !memberName.trim()}
+            disabled={
+              isAddingMember || (!memberEmail?.trim() && !memberName?.trim())
+            }
             type="submit"
           >
-            {isAddingMember
-              ? "Einladung wird erstellt ..."
-              : "Einladung erstellen"}
+            {isAddingMember ? "Wird hinzugefügt ..." : "Person hinzufügen"}
           </Button>
         </form>
-        {invitationLink && (
-          <div className="mt-4 rounded-2xl border border-border bg-brand-surface p-4">
-            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-brand-text">
-              <Clock3 aria-hidden="true" className="size-4" />
-              Der Link ist 14 Tage gültig und kann einmal angenommen werden.
-            </p>
-            <p className="mb-3 text-xs leading-5 text-muted-foreground">
-              Es wird keine E-Mail automatisch versendet. Teile diesen Link
-              selbst mit der eingeladenen Person.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                aria-label="Einladungslink"
-                className="h-10 min-w-0 flex-1 rounded-xl bg-card text-xs"
-                readOnly
-                value={invitationLink}
-              />
-              <Button
-                className="h-10 shrink-0 rounded-xl"
-                onClick={() => void handleCopyInvitationLink()}
-                type="button"
-                variant="outline"
-              >
-                <Copy aria-hidden="true" className="size-4" />
-                <span className="hidden sm:inline">Kopieren</span>
-              </Button>
-            </div>
-          </div>
-        )}
       </section>
     </div>
   )

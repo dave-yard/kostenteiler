@@ -10,6 +10,7 @@ import {
 import {
   createGroup as createGroupRecord,
   createPersonalContact as createPersonalContactRecord,
+  addGroupMember as addGroupMemberRecord,
   acceptGroupInvitation as acceptGroupInvitationRecord,
   archiveGroup as archiveGroupRecord,
   createGroupInvitation as createGroupInvitationRecord,
@@ -45,7 +46,11 @@ interface GroupOverviewContextValue {
   createGroup: (name: string) => Promise<string>
   saveGroupOrder: (groupIds: string[]) => Promise<void>
   getMyContacts: () => Promise<PersonalContact[]>
-  createPersonalContact: (displayName: string, email: string) => Promise<void>
+  createPersonalContact: (
+    displayName: string,
+    email: string | null
+  ) => Promise<void>
+  addGroupMember: (groupId: string, contactId: string) => Promise<void>
   removePersonalContact: (contactId: string) => Promise<void>
   renamePersonalContact: (
     contactId: string,
@@ -135,8 +140,13 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
 
   const getMyContacts = useCallback(() => getMyContactsRecord(), [])
   const createPersonalContact = useCallback(
-    (displayName: string, email: string) =>
+    (displayName: string, email: string | null) =>
       createPersonalContactRecord(displayName, email),
+    []
+  )
+  const addGroupMember = useCallback(
+    (groupId: string, contactId: string) =>
+      addGroupMemberRecord(groupId, contactId),
     []
   )
   const removePersonalContact = useCallback(
@@ -241,6 +251,7 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       saveGroupOrder,
       getMyContacts,
       createPersonalContact,
+      addGroupMember,
       removePersonalContact,
       renamePersonalContact,
       setMyDisplayName,
@@ -265,6 +276,7 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       saveGroupOrder,
       getMyContacts,
       createPersonalContact,
+      addGroupMember,
       removePersonalContact,
       renamePersonalContact,
       setMyDisplayName,

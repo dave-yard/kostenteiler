@@ -36,6 +36,16 @@ function readString(row: Record<string, unknown>, key: string) {
   return value
 }
 
+function readNullableString(row: Record<string, unknown>, key: string) {
+  const value = row[key]
+
+  if (value !== null && typeof value !== "string") {
+    throw new Error(`In der Gruppenmitglied-Antwort ist "${key}" ungültig.`)
+  }
+
+  return value
+}
+
 function readBoolean(row: Record<string, unknown>, key: string) {
   const value = row[key]
   if (typeof value !== "boolean") {
@@ -45,16 +55,14 @@ function readBoolean(row: Record<string, unknown>, key: string) {
   return value
 }
 
-function readNullableString(row: Record<string, unknown>, key: string) {
-  const value = row[key]
-  if (value !== null && typeof value !== "string") {
-    throw new Error(`In der Gruppenmitglied-Antwort ist "${key}" ungültig.`)
+export async function getMyGroups(): Promise<Group[]> {
+  const { error: linkError } = await getSupabaseClient().rpc(
+    "link_pending_group_members"
+  )
+  if (linkError) {
+    throw linkError
   }
 
-  return value
-}
-
-export async function getMyGroups(): Promise<Group[]> {
   const { data, error } = await getSupabaseClient().rpc("get_my_groups")
   if (error) {
     throw error
@@ -106,6 +114,8 @@ export async function saveMyGroupOrder(groupIds: string[]) {
 }
 
 export async function getMyContacts(): Promise<PersonalContact[]> {
+  console.log("getMyContact")
+
   const { data, error } = await getSupabaseClient()
     .from("personal_contacts")
     .select("id, display_name, email")
@@ -117,18 +127,37 @@ export async function getMyContacts(): Promise<PersonalContact[]> {
 
   return readRows(data).map((row) => ({
     id: readString(row, "id"),
-    displayName: readString(row, "display_name"),
-    email: readString(row, "email"),
+    displayName: readNullableString(row, "display_name"),
+    email: readNullableString(row, "email"),
   }))
 }
 
 export async function createPersonalContact(
   displayName: string,
-  email: string
+  email?: string | null
 ): Promise<void> {
-  const { error } = await getSupabaseClient()
-    .from("personal_contacts")
-    .insert({ display_name: displayName, email: email.toLowerCase() })
+  console.log("createPersonalContact")
+  const normalizedEmail = email?.trim().toLowerCase() || null
+
+  const { error } = await getSupabaseClient().from("personal_contacts").insert({
+    display_name: displayName.trim(),
+    email: normalizedEmail,
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function addGroupMember(
+  groupId: string,
+  contactId: string
+): Promise<void> {
+  console.log("addGroupMember")
+  const { error } = await getSupabaseClient().rpc("add_group_member", {
+    p_group_id: groupId,
+    p_contact_id: contactId,
+  })
 
   if (error) {
     throw error
@@ -316,6 +345,7 @@ function readMembershipStatus(
   row: Record<string, unknown>,
   key: string
 ): GroupMember["membershipStatus"] {
+  //console.log("readMembershipStatus", row, key)
   const value = readString(row, key)
   if (value !== "active" && value !== "pending" && value !== "legacy") {
     throw new Error("Supabase hat einen unbekannten Mitgliedsstatus geliefert.")
