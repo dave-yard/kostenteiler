@@ -161,7 +161,7 @@ export function PersonalContacts() {
 
     // Fallback auf den bestehenden Namen, falls immer noch leer
     if (!trimmedName) {
-      trimmedName = contact.displayName
+      trimmedName = contact?.displayName ?? ""
     }
 
     setErrorMessage(null)
@@ -373,7 +373,7 @@ export function PersonalContacts() {
                       disabled={isSaving}
                       onClick={() => {
                         setEditingContactId(contact.id)
-                        setEditingName(contact.displayName)
+                        setEditingName(contact.displayName ?? "")
                         setEditingEmail(contact.email ?? "")
                       }}
                       size="icon"
