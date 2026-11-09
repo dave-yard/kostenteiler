@@ -30,7 +30,8 @@ interface AuthContextValue {
   signInWithPassword: (email: string, password: string) => Promise<void>
   signUpWithPassword: (
     email: string,
-    password: string
+    password: string,
+    displayName: string
   ) => Promise<{ needsEmailConfirmation: boolean }>
   resendSignupConfirmation: (email: string) => Promise<void>
   sendMagicLink: (email: string) => Promise<void>
@@ -73,9 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signInWithPasswordRequest(email, password)
   }, [])
 
-  const signUp = useCallback((email: string, password: string) => {
-    return signUpWithPasswordRequest(email, password)
-  }, [])
+  const signUp = useCallback(
+    (email: string, password: string, displayName: string) => {
+      return signUpWithPasswordRequest(email, password, displayName)
+    },
+    []
+  )
 
   const resendSignupConfirmation = useCallback((email: string) => {
     return resendSignupConfirmationRequest(email)

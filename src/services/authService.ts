@@ -20,12 +20,22 @@ export async function signInWithPassword(email: string, password: string) {
   }
 }
 
-export async function signUpWithPassword(email: string, password: string) {
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  displayName: string
+) {
+  const trimmedName = displayName.trim()
+  if (!trimmedName || trimmedName.length > 80) {
+    throw new Error("Der Anzeigename muss zwischen 1 und 80 Zeichen lang sein.")
+  }
+
   const { data, error } = await getSupabaseClient().auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: getEmailRedirectUrl(),
+      data: { display_name: trimmedName },
     },
   })
 
@@ -55,6 +65,7 @@ export async function sendMagicLink(email: string) {
     email,
     options: {
       emailRedirectTo: getEmailRedirectUrl(),
+      shouldCreateUser: false,
     },
   })
 

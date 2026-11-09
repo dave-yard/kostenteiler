@@ -28,6 +28,7 @@
 ### 2.1 Benutzer-, Gruppen- und Einladungsmanagement
 
 - **FR-1.1 (Gruppen erstellen):** Registrierte Benutzer können neue Gruppen erstellen. Der Ersteller wird automatisch als Administrator der Gruppe definiert.
+- **FR-1.1.1 (Registrierung):** Bei der Registrierung mit E-Mail-Adresse und Passwort ist ein Anzeigename mit 1 bis 80 Zeichen erforderlich. Der Anmeldelink dient ausschließlich der Anmeldung bestehender Konten; neue Konten werden darüber nicht automatisch erstellt.
 - **FR-1.2 (Gruppenübersicht):** Benutzer können eine Übersicht aller Gruppen einsehen, denen sie fest zugeordnet sind.
 - **FR-1.2.1 (Gruppen sortieren):** Benutzer können die Reihenfolge ihrer Gruppenübersicht per Drag-and-drop anpassen. Die Sortierung ist pro Benutzer gespeichert und beeinflusst nicht die Ansicht anderer Gruppenmitglieder.
 - **FR-1.2.2 (Persönliche Freundesliste):** Benutzer können Kontakte mit Namen und E-Mail-Adresse in einer privaten, gruppenübergreifend verfügbaren Freundesliste speichern. Beim Hinzufügen eines Gruppenmitglieds werden passende eigene Kontakte vorgeschlagen. Neue Kontakte werden zuerst in der privaten Freundesliste angelegt; nur die für die Gruppe nötigen Kontaktangaben werden als Gruppenmitglied gespeichert. Die Freundesliste bleibt privat.

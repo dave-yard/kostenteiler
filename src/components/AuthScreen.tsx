@@ -59,6 +59,7 @@ export function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -106,13 +107,22 @@ export function AuthScreen() {
       return
     }
 
+    if (mode === "signup" && !displayName.trim()) {
+      setErrorMessage("Bitte gib einen Anzeigenamen ein.")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
       if (mode === "login") {
         await signInWithPassword(email, password)
       } else if (mode === "signup") {
-        const result = await signUpWithPassword(email, password)
+        const result = await signUpWithPassword(
+          email,
+          password,
+          displayName.trim()
+        )
         if (result.needsEmailConfirmation) {
           setSuccessMessage(
             "Fast geschafft! Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir gesendet haben."
@@ -258,9 +268,11 @@ export function AuthScreen() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {mode === "signup"
                   ? "Erstelle ein Konto, um mit deiner Gruppe loszulegen."
-                  : mode === "password-recovery"
-                    ? "Wir senden dir einen Link, mit dem du ein neues Passwort festlegen kannst."
-                    : "Melde dich an und behalte eure gemeinsamen Ausgaben im Blick."}
+                  : mode === "magic-link"
+                    ? "Melde dich mit einem bestehenden Konto per Anmeldelink an. Für ein neues Konto registriere dich zuerst."
+                    : mode === "password-recovery"
+                      ? "Wir senden dir einen Link, mit dem du ein neues Passwort festlegen kannst."
+                      : "Melde dich an und behalte eure gemeinsamen Ausgaben im Blick."}
               </p>
               {hasInvitation && (
                 <p className="mt-3 rounded-xl border border-border bg-brand-surface px-3 py-2 text-sm leading-5 text-brand-text">
@@ -301,6 +313,27 @@ export function AuthScreen() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
+              {mode === "signup" && (
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-medium"
+                    htmlFor="auth-display-name"
+                  >
+                    Anzeigename
+                  </label>
+                  <Input
+                    autoComplete="name"
+                    className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/10"
+                    id="auth-display-name"
+                    maxLength={80}
+                    name="displayName"
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder="Dein Anzeigename"
+                    required
+                    value={displayName}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="auth-email">
                   E-Mail-Adresse

@@ -3,6 +3,7 @@ import { getSupabaseClient } from "@/lib/supabase"
 import {
   sendMagicLink,
   sendPasswordRecoveryEmail,
+  signUpWithPassword,
   updatePassword,
 } from "./authService"
 
@@ -16,6 +17,7 @@ vi.mock("@/lib/supabase", () => ({
 // mit welchen Angaben der Service Supabase aufgerufen hätte.
 const auth = {
   signInWithOtp: vi.fn(),
+  signUp: vi.fn(),
   resetPasswordForEmail: vi.fn(),
   updateUser: vi.fn(),
 }
@@ -27,11 +29,61 @@ beforeEach(() => {
   vi.mocked(getSupabaseClient).mockReturnValue({ auth } as never)
   window.history.replaceState({}, "", "/")
   auth.signInWithOtp.mockResolvedValue({ error: null })
+  auth.signUp.mockResolvedValue({ data: { session: null }, error: null })
   auth.resetPasswordForEmail.mockResolvedValue({ error: null })
   auth.updateUser.mockResolvedValue({ error: null })
 })
 
 describe("authService", () => {
+  it("registers the trimmed display name in auth metadata before email confirmation", async () => {
+    await expect(
+      signUpWithPassword("person@example.com", "password123", "  Alex  ")
+    ).resolves.toEqual({ needsEmailConfirmation: true })
+
+    expect(auth.signUp).toHaveBeenCalledWith({
+      email: "person@example.com",
+      password: "password123",
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: { display_name: "Alex" },
+      },
+    })
+  })
+
+  it.each(["", "   ", "a".repeat(81)])(
+    "rejects an invalid registration display name",
+    async (displayName) => {
+      await expect(
+        signUpWithPassword("person@example.com", "password123", displayName)
+      ).rejects.toThrow(
+        "Der Anzeigename muss zwischen 1 und 80 Zeichen lang sein."
+      )
+      expect(auth.signUp).not.toHaveBeenCalled()
+    }
+  )
+
+  it("reports when signup returns an active session", async () => {
+    auth.signUp.mockResolvedValueOnce({
+      data: { session: { access_token: "test-token" } },
+      error: null,
+    })
+
+    await expect(
+      signUpWithPassword("person@example.com", "password123", "Alex")
+    ).resolves.toEqual({ needsEmailConfirmation: false })
+  })
+
+  it("surfaces registration errors", async () => {
+    auth.signUp.mockResolvedValueOnce({
+      data: { session: null },
+      error: new Error("Registration failed"),
+    })
+
+    await expect(
+      signUpWithPassword("person@example.com", "password123", "Alex")
+    ).rejects.toThrow("Registration failed")
+  })
+
   // Magic-Links führen an die konfigurierte App-Adresse zurück.
   it("requests a magic link with the app redirect URL", async () => {
     await sendMagicLink("person@example.com")
@@ -40,6 +92,7 @@ describe("authService", () => {
       email: "person@example.com",
       options: {
         emailRedirectTo: `${window.location.origin}/`,
+        shouldCreateUser: false,
       },
     })
   })

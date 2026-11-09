@@ -41,6 +41,52 @@ function renderAuthScreen() {
 }
 
 describe("AuthScreen", () => {
+  it("requires a nonblank display name and sends the trimmed name when registering", async () => {
+    const user = userEvent.setup()
+    authActions.signUpWithPassword.mockResolvedValueOnce({
+      needsEmailConfirmation: true,
+    })
+    renderAuthScreen()
+
+    await user.click(screen.getByRole("button", { name: "Registrieren" }))
+    const displayName = screen.getByRole("textbox", { name: "Anzeigename" })
+    expect(displayName.hasAttribute("required")).toBe(true)
+    expect(displayName.getAttribute("maxlength")).toBe("80")
+    await user.type(displayName, "   ")
+    await user.type(
+      screen.getByRole("textbox", { name: "E-Mail-Adresse" }),
+      "person@example.com"
+    )
+    await user.type(screen.getByLabelText("Passwort"), "password123")
+    await user.click(screen.getByRole("button", { name: "Konto erstellen" }))
+    expect(authActions.signUpWithPassword).not.toHaveBeenCalled()
+    expect(screen.getByText("Bitte gib einen Anzeigenamen ein.")).toBeTruthy()
+
+    await user.clear(displayName)
+    await user.type(displayName, "  Alex Beispiel  ")
+    await user.click(screen.getByRole("button", { name: "Konto erstellen" }))
+    expect(authActions.signUpWithPassword).toHaveBeenCalledWith(
+      "person@example.com",
+      "password123",
+      "Alex Beispiel"
+    )
+    expect(
+      await screen.findByText(/Bitte bestätige deine E-Mail-Adresse/)
+    ).toBeTruthy()
+  })
+
+  it("does not require a display name for login or magic-link login", async () => {
+    const user = userEvent.setup()
+    renderAuthScreen()
+
+    expect(screen.queryByLabelText("Anzeigename")).toBeNull()
+    await user.click(
+      screen.getByRole("button", { name: "Mit Anmeldelink anmelden" })
+    )
+    expect(screen.queryByLabelText("Anzeigename")).toBeNull()
+    expect(screen.getByText(/bestehenden Konto per Anmeldelink/)).toBeTruthy()
+  })
+
   // Prüft den Weg, den eine Person nimmt, um einen Magic-Link per E-Mail anzufordern.
   it("sends a magic link from the passwordless login form", async () => {
     const user = userEvent.setup()
