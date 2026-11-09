@@ -77,7 +77,7 @@ function AuthenticatedLayout() {
                     <CircleDollarSign aria-hidden="true" className="size-3.5" />
                   </span>
                   <span className="font-semibold tracking-tight">
-                    Kostenteiler X
+                    Kostenteiler
                   </span>
                 </Button>
                 {isNavigationMenuOpen && (
@@ -128,12 +128,6 @@ function AuthenticatedLayout() {
               <div className="flex items-center gap-2 text-sm text-primary-foreground">
                 <span className="hidden max-w-48 truncate sm:inline">
                   {session?.user.email ?? "Angemeldet"}
-                </span>
-                <span
-                  aria-label="Konto angemeldet"
-                  className="flex size-9 items-center justify-center rounded-full bg-brand-accent font-semibold text-brand-text"
-                >
-                  <Check aria-hidden="true" className="size-4" />
                 </span>
                 <Button
                   aria-label="Abmelden"
