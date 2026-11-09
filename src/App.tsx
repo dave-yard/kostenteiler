@@ -14,13 +14,7 @@ import { GroupOverview } from "@/pages/GroupOverview/GroupOverview"
 import { PasswordRecovery } from "@/pages/PasswordRecovery/PasswordRecovery"
 import { PersonalContacts } from "@/pages/PersonalContacts/PersonalContacts"
 import { useRef, useState } from "react"
-import {
-  Check,
-  CircleDollarSign,
-  ContactRound,
-  Home,
-  LogOut,
-} from "lucide-react"
+import { CircleDollarSign, ContactRound, Home, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ExpenseListDetailPage } from "./pages/ExpenseListDetail/ExpenseListDetailPage"
 import { GroupAdminPage } from "./pages/GroupAdmin/GroupAdminPage"
