@@ -918,845 +918,908 @@ export function ExpenseListDetail({
   }
 
   return (
-    <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:h-[calc(100dvh-8rem)] sm:p-10">
-      <div className="shrink-0">
-        <Button
-          className="mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
-          onClick={onBack}
-          type="button"
-          variant="ghost"
+    <>
+      {isScanning && (
+        <div
+          aria-busy="true"
+          aria-live="polite"
+          className="fixed inset-0 z-40 flex cursor-wait flex-col items-center justify-center bg-background/80 backdrop-blur-sm select-none"
+          onClick={(event) => event.stopPropagation()}
+          role="status"
         >
-          <ArrowLeft aria-hidden="true" className="size-4" />
-          Zu den Ausgabenlisten
-        </Button>
-
-        <div className="flex w-full items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{group.name}</p>
-            <h1 className="text-2xl font-semibold tracking-[-0.04em] break-words">
-              {list.name}
-            </h1>
-            <div className="flex flex-row gap-1">
-              <p className="mt-1 text-xs text-muted-foreground">
-                Erstellt am {dateFormat.format(new Date(list.createdAt))}
-                {list.completedAt &&
-                  ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
-                {list.paidAt &&
-                  ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
+          <div className="mx-4 flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center shadow-xl">
+            <LoaderCircle
+              aria-hidden="true"
+              className="size-8 shrink-0 animate-spin text-brand-primary"
+            />
+            <div className="space-y-1">
+              <p className="text-base font-semibold text-foreground">
+                Wird gescannt...
               </p>
-              <div className="relative">
-                <Button
-                  aria-label="Ansichts- und Sortieroptionen"
-                  className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
-                  onClick={() => setIsViewSettingsOpen((prev) => !prev)}
-                  type="button"
-                  variant="outline"
-                >
-                  <SlidersHorizontal className="size-4" />
-                </Button>
+              <p className="text-xs text-muted-foreground">
+                Der Bon wird analysiert und die Ausgaben werden erfasst. Bitte
+                warten...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-                {isViewSettingsOpen && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-foreground">
-                        Ansicht & Filter
-                      </p>
-                      {searchQuery && (
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
-                          Filter aktiv
-                        </span>
-                      )}
-                    </div>
+      <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:h-[calc(100dvh-8rem)] sm:p-10">
+        <div className="shrink-0">
+          <Button
+            className={
+              isScanning
+                ? "relative z-50 mb-8 inline-flex h-auto items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-medium text-brand-text shadow-md hover:bg-card hover:text-foreground"
+                : "mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
+            }
+            onClick={onBack}
+            type="button"
+            variant="ghost"
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+            Zu den Ausgabenlisten
+          </Button>
 
-                    <div className="mt-2.5 space-y-2.5 text-xs">
-                      {/* Volltext-Suche ganz oben */}
-                      <div>
-                        <label
-                          className="text-muted-foreground"
-                          htmlFor="item-search"
-                        >
-                          Positionen durchsuchen
-                        </label>
-                        <div className="relative mt-1">
-                          <Input
-                            id="item-search"
-                            placeholder="Name, Zahler, Bon-Posten..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-8 rounded-lg border-border bg-muted px-2.5 pr-7 text-xs"
-                            autoFocus
-                          />
-                          {searchQuery && (
-                            <button
-                              type="button"
-                              onClick={() => setSearchQuery("")}
-                              className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              aria-label="Suche zurücksetzen"
-                            >
-                              <X className="size-3.5" />
-                            </button>
-                          )}
+          <div className="flex w-full items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">{group.name}</p>
+              <h1 className="text-2xl font-semibold tracking-[-0.04em] break-words">
+                {list.name}
+              </h1>
+              <div className="flex flex-row gap-1">
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Erstellt am {dateFormat.format(new Date(list.createdAt))}
+                  {list.completedAt &&
+                    ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
+                  {list.paidAt &&
+                    ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
+                </p>
+                <div className="relative">
+                  <Button
+                    aria-label="Ansichts- und Sortieroptionen"
+                    className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
+                    onClick={() => setIsViewSettingsOpen((prev) => !prev)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <SlidersHorizontal className="size-4" />
+                  </Button>
+
+                  {isViewSettingsOpen && (
+                    <div className="absolute top-full left-0 z-20 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-foreground">
+                          Ansicht & Filter
+                        </p>
+                        {searchQuery && (
+                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
+                            Filter aktiv
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2.5 space-y-2.5 text-xs">
+                        {/* Volltext-Suche ganz oben */}
+                        <div>
+                          <label
+                            className="text-muted-foreground"
+                            htmlFor="item-search"
+                          >
+                            Positionen durchsuchen
+                          </label>
+                          <div className="relative mt-1">
+                            <Input
+                              id="item-search"
+                              placeholder="Name, Zahler, Bon-Posten..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="h-8 rounded-lg border-border bg-muted px-2.5 pr-7 text-xs"
+                              autoFocus
+                            />
+                            {searchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setSearchQuery("")}
+                                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                aria-label="Suche zurücksetzen"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <hr className="border-border" />
+
+                        {/* Uhrzeit-Umschalter */}
+                        <div>
+                          <label className="text-muted-foreground">
+                            Uhrzeit anzeigen
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowTime((prev) => !prev)}
+                            className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
+                          >
+                            {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
+                          </button>
+                        </div>
+
+                        {/* Sortierung */}
+                        <div>
+                          <label className="text-muted-foreground">
+                            Sortieren nach
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSortBy((prev) =>
+                                prev === "item_date" ? "createdAt" : "item_date"
+                              )
+                            }
+                            className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
+                          >
+                            {sortBy === "item_date"
+                              ? "📅 Belegdatum"
+                              : "🕒 Erfassungszeit"}
+                          </button>
                         </div>
                       </div>
-
-                      <hr className="border-border" />
-
-                      {/* Uhrzeit-Umschalter */}
-                      <div>
-                        <label className="text-muted-foreground">
-                          Uhrzeit anzeigen
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setShowTime((prev) => !prev)}
-                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
-                        >
-                          {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
-                        </button>
-                      </div>
-
-                      {/* Sortierung */}
-                      <div>
-                        <label className="text-muted-foreground">
-                          Sortieren nach
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSortBy((prev) =>
-                              prev === "item_date" ? "createdAt" : "item_date"
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
-                        >
-                          {sortBy === "item_date"
-                            ? "📅 Belegdatum"
-                            : "🕒 Erfassungszeit"}
-                        </button>
-                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <ExpenseListStatusBadge status={list.status} />
-        </div>
-
-        <div className="mt-1 flex items-center justify-between gap-3 border-b border-border pb-4">
-          <div className="flex items-center gap-2.5">
-            <h2 className="font-semibold">Positionen</h2>
-            {items.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">
-                  {formatCents(totalCents)}
-                </span>{" "}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {canDeleteItems && items.length > 0 && (
-              <Button
-                aria-label="Löschen aktivieren"
-                aria-pressed={deleteMode}
-                className={`size-9 shrink-0 rounded-xl p-0 ${
-                  deleteMode
-                    ? "bg-destructive text-white hover:bg-destructive/90"
-                    : "text-destructive"
-                }`}
-                onClick={() => setDeleteMode((current) => !current)}
-                type="button"
-                variant={deleteMode ? "default" : "outline"}
-              >
-                <Trash2 aria-hidden="true" className="size-4" />
-              </Button>
-            )}
-            {canAddItem && (
-              <div className="relative inline-block">
-                <input
-                  type="file"
-                  id="receipt-scan-input"
-                  accept="image/png, image/jpeg, application/pdf"
-                  capture="environment"
-                  className="hidden"
-                  disabled={isScanning}
-                  onChange={handleFileSelected}
-                />
-                <label
-                  htmlFor={isScanning ? undefined : "receipt-scan-input"}
-                  aria-label="Bon einscannen"
-                  className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand-primary px-3 text-white transition hover:bg-brand-primary-hover ${
-                    isScanning
-                      ? "cursor-not-allowed opacity-60"
-                      : "cursor-pointer"
-                  }`}
-                >
-                  {isScanning ? (
-                    <>
-                      <LoaderCircle className="size-4 shrink-0 animate-spin" />
-                      <span className="hidden sm:inline">Wird gescannt...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="size-4 shrink-0" />
-                      <span className="hidden sm:inline">Bon einscannen</span>
-                    </>
                   )}
-                </label>
+                </div>
               </div>
-            )}
-            {canAddItem && (
-              <Button
-                aria-label="Position hinzufügen"
-                className="size-9 shrink-0 rounded-xl bg-brand-primary p-0 text-white hover:bg-brand-primary-hover"
-                onClick={() => openDialog()}
-                type="button"
-              >
-                <Plus aria-hidden="true" className="size-4" />
-              </Button>
-            )}
+            </div>
+            <ExpenseListStatusBadge status={list.status} />
+          </div>
+
+          <div className="mt-1 flex items-center justify-between gap-3 border-b border-border pb-4">
+            <div className="flex items-center gap-2.5">
+              <h2 className="font-semibold">Positionen</h2>
+              {items.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">
+                    {formatCents(totalCents)}
+                  </span>{" "}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {canDeleteItems && items.length > 0 && (
+                <Button
+                  aria-label="Löschen aktivieren"
+                  aria-pressed={deleteMode}
+                  className={`size-9 shrink-0 rounded-xl p-0 ${
+                    deleteMode
+                      ? "bg-destructive text-white hover:bg-destructive/90"
+                      : "text-destructive"
+                  }`}
+                  onClick={() => setDeleteMode((current) => !current)}
+                  type="button"
+                  variant={deleteMode ? "default" : "outline"}
+                >
+                  <Trash2 aria-hidden="true" className="size-4" />
+                </Button>
+              )}
+              {canAddItem && (
+                <div className="relative inline-block">
+                  <input
+                    type="file"
+                    id="receipt-scan-input"
+                    accept="image/png, image/jpeg, application/pdf"
+                    capture="environment"
+                    className="hidden"
+                    disabled={isScanning}
+                    onChange={handleFileSelected}
+                  />
+                  <label
+                    htmlFor={isScanning ? undefined : "receipt-scan-input"}
+                    aria-label="Bon einscannen"
+                    className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand-primary px-3 text-white transition hover:bg-brand-primary-hover ${
+                      isScanning
+                        ? "cursor-not-allowed opacity-60"
+                        : "cursor-pointer"
+                    }`}
+                  >
+                    {isScanning ? (
+                      <>
+                        <LoaderCircle className="size-4 shrink-0 animate-spin" />
+                        <span className="hidden sm:inline">
+                          Wird gescannt...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="size-4 shrink-0" />
+                        <span className="hidden sm:inline">Bon einscannen</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+              )}
+              {canAddItem && (
+                <Button
+                  aria-label="Position hinzufügen"
+                  className="size-9 shrink-0 rounded-xl bg-brand-primary p-0 text-white hover:bg-brand-primary-hover"
+                  onClick={() => openDialog()}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" className="size-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {isDialogOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDialog()
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              closeDialog()
-            }
-          }}
-        >
+        {isDialogOpen && (
           <div
-            aria-labelledby="add-item-title"
-            aria-modal="true"
-            className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-6 shadow-xl"
-            role="dialog"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                closeDialog()
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                closeDialog()
+              }
+            }}
           >
-            <div className="flex items-start justify-between gap-4">
-              <h2 className="text-lg font-semibold" id="add-item-title">
-                {dialogParentId
-                  ? editingItem
-                    ? "Unterposition bearbeiten"
-                    : "Unterposition hinzufügen"
-                  : editingItem
-                    ? "Position bearbeiten"
-                    : "Position hinzufügen"}
-              </h2>
-              <Button
-                aria-label="Dialog schließen"
-                className="size-8 shrink-0 rounded-lg p-0 text-muted-foreground"
-                disabled={isSaving || isLoadingSplitRule}
-                onClick={closeDialog}
-                type="button"
-                variant="ghost"
-              >
-                <X aria-hidden="true" className="size-4" />
-              </Button>
-            </div>
-            <form
-              className="mt-5 space-y-4"
-              noValidate
-              onSubmit={(event) => void handleSubmit(event)}
+            <div
+              aria-labelledby="add-item-title"
+              aria-modal="true"
+              className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-6 shadow-xl"
+              role="dialog"
             >
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="item-name">
-                  Bezeichnung
-                </label>
-                <Input
-                  autoComplete="one-time-code"
-                  data-roboform-disable="true"
-                  autoFocus
-                  className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                  id="item-name"
-                  maxLength={120}
-                  onChange={(event) => setItemName(event.target.value)}
-                  value={itemName}
-                />
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-lg font-semibold" id="add-item-title">
+                  {dialogParentId
+                    ? editingItem
+                      ? "Unterposition bearbeiten"
+                      : "Unterposition hinzufügen"
+                    : editingItem
+                      ? "Position bearbeiten"
+                      : "Position hinzufügen"}
+                </h2>
+                <Button
+                  aria-label="Dialog schließen"
+                  className="size-8 shrink-0 rounded-lg p-0 text-muted-foreground"
+                  disabled={isSaving || isLoadingSplitRule}
+                  onClick={closeDialog}
+                  type="button"
+                  variant="ghost"
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </Button>
               </div>
-              <div className="flex flex-row gap-1">
-                <div className="flex-1 space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="item-amount">
-                    Betrag in €
+              <form
+                className="mt-5 space-y-4"
+                noValidate
+                onSubmit={(event) => void handleSubmit(event)}
+              >
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="item-name">
+                    Bezeichnung
                   </label>
                   <Input
                     autoComplete="one-time-code"
                     data-roboform-disable="true"
+                    autoFocus
                     className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                    id="item-amount"
-                    inputMode="decimal"
-                    onChange={(event) => setAmountText(event.target.value)}
-                    placeholder="12,50"
-                    value={amountText}
+                    id="item-name"
+                    maxLength={120}
+                    onChange={(event) => setItemName(event.target.value)}
+                    value={itemName}
                   />
                 </div>
-                {!dialogParentId && (
+                <div className="flex flex-row gap-1">
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-sm font-medium" htmlFor="item-date">
-                      Datum
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="item-amount"
+                    >
+                      Betrag in €
                     </label>
                     <Input
+                      autoComplete="one-time-code"
+                      data-roboform-disable="true"
                       className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                      id="item-date"
-                      onChange={handlePositionDateChange}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="TT.MM.JJJJ"
-                      value={item_dateText}
+                      id="item-amount"
+                      inputMode="decimal"
+                      onChange={(event) => setAmountText(event.target.value)}
+                      placeholder="12,50"
+                      value={amountText}
                     />
                   </div>
-                )}
-              </div>
-              <div className="flex flex-row gap-1">
-                {dialogParent ? (
-                  <p className="text-sm text-muted-foreground">
-                    Teil des Bons „{dialogParent.name}“. Was nicht als
-                    Unterposition erfasst ist, wird nach Zahler und Verteilung
-                    des Bons verrechnet.
-                  </p>
-                ) : (
-                  <div className="w-1/2 space-y-1.5">
-                    <label className="text-sm font-medium" htmlFor="item-type">
-                      Art der Position
-                    </label>
-                    <select
-                      className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                      disabled={editingHasChildren}
-                      id="item-type"
-                      onChange={(event) =>
-                        setIsReceiptDraft(event.target.value === "receipt")
-                      }
-                      value={isReceiptDraft ? "receipt" : "single"}
-                    >
-                      <option value="single">Einzelposition</option>
-                      <option value="receipt">
-                        Bon (Summe mit Unterpositionen)
-                      </option>
-                    </select>
-                    {editingHasChildren && (
-                      <p className="text-xs text-muted-foreground">
-                        Ein Bon mit Unterpositionen kann nicht zur
-                        Einzelposition werden.
-                      </p>
-                    )}
-                  </div>
-                )}
-                <div className="flex-1 space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="item-payer">
-                    Bezahlt von
-                  </label>
-                  <select
-                    className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                    id="item-payer"
-                    onChange={(event) => setPaidByMemberId(event.target.value)}
-                    value={paidByMemberId}
-                  >
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <hr className="border-border" />
-              <section aria-labelledby="item-split-title" className="space-y-3">
-                <div>
-                  <h3 className="text-sm font-semibold" id="item-split-title">
-                    Verteilung
-                  </h3>
-                  <p
-                    aria-live="polite"
-                    className="mt-1 text-xs text-muted-foreground"
-                    role="status"
-                  >
-                    {isGroupDistribution
-                      ? "Gruppenverteilung"
-                      : "Individuelle Verteilung"}
-                    {" · Gruppenstandard: "}
-                    {splitRuleLabel(groupDefaultSplitRule)}
-                  </p>
-                </div>
-                {canEditSplits && (
-                  <>
-                    <label className="sr-only" htmlFor="item-split-mode">
-                      Aufteilungsmodus
-                    </label>
-                    <select
-                      className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                      id="item-split-mode"
-                      onChange={(event) =>
-                        changeCustomSplitMode(
-                          event.target.value as
-                            "complete" | "percentage" | "fixed"
-                        )
-                      }
-                      value={customSplitMode}
-                    >
-                      <option value="equal">
-                        Gleichmäßig auf alle Gruppenmitglieder
-                      </option>
-                      <option value="complete">Komplett für eine Person</option>
-                      <option value="percentage">Prozentual</option>
-                      <option value="fixed">Fester Betrag</option>
-                    </select>
-                    {customSplitMode === "equal" ||
-                    customSplitMode === "complete" ? (
-                      members.length <= 4 ? (
-                        <fieldset className="space-y-1.5">
-                          <legend className="text-sm font-medium">
-                            Übernimmt den gesamten Betrag
-                          </legend>
-                          <div className="grid grid-cols-2 gap-2">
-                            {members.map((member) => (
-                              <label
-                                className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
-                                htmlFor={`item-split-member-${member.id}`}
-                                key={member.id}
-                              >
-                                <input
-                                  checked={
-                                    customSplitMode === "complete" &&
-                                    completeMemberId === member.id
-                                  }
-                                  id={`item-split-member-${member.id}`}
-                                  name="item-split-member"
-                                  onChange={() => {
-                                    changeCustomSplitMode("complete")
-                                    setCompleteMemberId(member.id)
-                                  }}
-                                  type="radio"
-                                  value={member.id}
-                                />
-                                <span className="truncate">
-                                  {member.displayName}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </fieldset>
-                      ) : (
-                        <div className="space-y-1.5">
-                          <label
-                            className="text-sm font-medium"
-                            htmlFor="item-split-member"
-                          >
-                            Übernimmt den gesamten Betrag
-                          </label>
-                          <select
-                            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                            id="item-split-member"
-                            onChange={(event) => {
-                              changeCustomSplitMode("complete")
-                              setCompleteMemberId(event.target.value)
-                            }}
-                            value={
-                              customSplitMode === "complete"
-                                ? completeMemberId
-                                : ""
-                            }
-                          >
-                            <option disabled value="">
-                              Person wählen
-                            </option>
-                            {members.map((member) => (
-                              <option key={member.id} value={member.id}>
-                                {member.displayName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )
-                    ) : (
-                      <div className="space-y-2">
-                        {members.map((member) => (
-                          <div
-                            className="flex items-center justify-between gap-3"
-                            key={member.id}
-                          >
-                            <label
-                              className="min-w-0 flex-1 truncate text-sm"
-                              htmlFor={`split-${member.id}`}
-                            >
-                              {member.displayName}
-                            </label>
-                            <div className="flex w-36 shrink-0 items-center gap-2">
-                              <Input
-                                className="h-10 rounded-xl border-border px-3 text-right text-sm"
-                                id={`split-${member.id}`}
-                                inputMode="decimal"
-                                onChange={(event) =>
-                                  setSplitInputs((current) => ({
-                                    ...current,
-                                    [member.id]: event.target.value,
-                                  }))
-                                }
-                                placeholder={
-                                  customSplitMode === "percentage"
-                                    ? "0,00"
-                                    : "0,00"
-                                }
-                                value={splitInputs[member.id] ?? ""}
-                              />
-                              <span className="text-sm text-muted-foreground">
-                                {customSplitMode === "percentage" ? "%" : "€"}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-                {splitPreviewError && (
-                  <p className="text-sm text-danger-text" role="alert">
-                    {splitPreviewError}
-                  </p>
-                )}
-                {splitPreview && (
-                  <ul
-                    aria-label="Vorschau der Verteilung"
-                    className="space-y-1 rounded-xl bg-muted p-3 text-sm"
-                  >
-                    {splitPreview.map((allocation) => (
-                      <li
-                        className="flex justify-between gap-3"
-                        key={allocation.memberId}
+                  {!dialogParentId && (
+                    <div className="flex-1 space-y-1.5">
+                      <label
+                        className="text-sm font-medium"
+                        htmlFor="item-date"
                       >
-                        <span>
-                          {memberNames.get(allocation.memberId) ?? "Unbekannt"}
-                        </span>
-                        <span className="font-medium">
-                          {formatCents(allocation.amountCents)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                        Datum
+                      </label>
+                      <Input
+                        className="h-11 rounded-xl border-border bg-card px-4 text-sm"
+                        id="item-date"
+                        onChange={handlePositionDateChange}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="TT.MM.JJJJ"
+                        value={item_dateText}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-row gap-1">
+                  {dialogParent ? (
+                    <p className="text-sm text-muted-foreground">
+                      Teil des Bons „{dialogParent.name}“. Was nicht als
+                      Unterposition erfasst ist, wird nach Zahler und Verteilung
+                      des Bons verrechnet.
+                    </p>
+                  ) : (
+                    <div className="w-1/2 space-y-1.5">
+                      <label
+                        className="text-sm font-medium"
+                        htmlFor="item-type"
+                      >
+                        Art der Position
+                      </label>
+                      <select
+                        className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                        disabled={editingHasChildren}
+                        id="item-type"
+                        onChange={(event) =>
+                          setIsReceiptDraft(event.target.value === "receipt")
+                        }
+                        value={isReceiptDraft ? "receipt" : "single"}
+                      >
+                        <option value="single">Einzelposition</option>
+                        <option value="receipt">
+                          Bon (Summe mit Unterpositionen)
+                        </option>
+                      </select>
+                      {editingHasChildren && (
+                        <p className="text-xs text-muted-foreground">
+                          Ein Bon mit Unterpositionen kann nicht zur
+                          Einzelposition werden.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="item-payer">
+                      Bezahlt von
+                    </label>
+                    <select
+                      className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                      id="item-payer"
+                      onChange={(event) =>
+                        setPaidByMemberId(event.target.value)
+                      }
+                      value={paidByMemberId}
+                    >
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <hr className="border-border" />
+                <section
+                  aria-labelledby="item-split-title"
+                  className="space-y-3"
+                >
+                  <div>
+                    <h3 className="text-sm font-semibold" id="item-split-title">
+                      Verteilung
+                    </h3>
+                    <p
+                      aria-live="polite"
+                      className="mt-1 text-xs text-muted-foreground"
+                      role="status"
+                    >
+                      {isGroupDistribution
+                        ? "Gruppenverteilung"
+                        : "Individuelle Verteilung"}
+                      {" · Gruppenstandard: "}
+                      {splitRuleLabel(groupDefaultSplitRule)}
+                    </p>
+                  </div>
+                  {canEditSplits && (
+                    <>
+                      <label className="sr-only" htmlFor="item-split-mode">
+                        Aufteilungsmodus
+                      </label>
+                      <select
+                        className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                        id="item-split-mode"
+                        onChange={(event) =>
+                          changeCustomSplitMode(
+                            event.target.value as
+                              "complete" | "percentage" | "fixed"
+                          )
+                        }
+                        value={customSplitMode}
+                      >
+                        <option value="equal">
+                          Gleichmäßig auf alle Gruppenmitglieder
+                        </option>
+                        <option value="complete">
+                          Komplett für eine Person
+                        </option>
+                        <option value="percentage">Prozentual</option>
+                        <option value="fixed">Fester Betrag</option>
+                      </select>
+                      {customSplitMode === "equal" ||
+                      customSplitMode === "complete" ? (
+                        members.length <= 4 ? (
+                          <fieldset className="space-y-1.5">
+                            <legend className="text-sm font-medium">
+                              Übernimmt den gesamten Betrag
+                            </legend>
+                            <div className="grid grid-cols-2 gap-2">
+                              {members.map((member) => (
+                                <label
+                                  className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                                  htmlFor={`item-split-member-${member.id}`}
+                                  key={member.id}
+                                >
+                                  <input
+                                    checked={
+                                      customSplitMode === "complete" &&
+                                      completeMemberId === member.id
+                                    }
+                                    id={`item-split-member-${member.id}`}
+                                    name="item-split-member"
+                                    onChange={() => {
+                                      changeCustomSplitMode("complete")
+                                      setCompleteMemberId(member.id)
+                                    }}
+                                    type="radio"
+                                    value={member.id}
+                                  />
+                                  <span className="truncate">
+                                    {member.displayName}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <label
+                              className="text-sm font-medium"
+                              htmlFor="item-split-member"
+                            >
+                              Übernimmt den gesamten Betrag
+                            </label>
+                            <select
+                              className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                              id="item-split-member"
+                              onChange={(event) => {
+                                changeCustomSplitMode("complete")
+                                setCompleteMemberId(event.target.value)
+                              }}
+                              value={
+                                customSplitMode === "complete"
+                                  ? completeMemberId
+                                  : ""
+                              }
+                            >
+                              <option disabled value="">
+                                Person wählen
+                              </option>
+                              {members.map((member) => (
+                                <option key={member.id} value={member.id}>
+                                  {member.displayName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )
+                      ) : (
+                        <div className="space-y-2">
+                          {members.map((member) => (
+                            <div
+                              className="flex items-center justify-between gap-3"
+                              key={member.id}
+                            >
+                              <label
+                                className="min-w-0 flex-1 truncate text-sm"
+                                htmlFor={`split-${member.id}`}
+                              >
+                                {member.displayName}
+                              </label>
+                              <div className="flex w-36 shrink-0 items-center gap-2">
+                                <Input
+                                  className="h-10 rounded-xl border-border px-3 text-right text-sm"
+                                  id={`split-${member.id}`}
+                                  inputMode="decimal"
+                                  onChange={(event) =>
+                                    setSplitInputs((current) => ({
+                                      ...current,
+                                      [member.id]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder={
+                                    customSplitMode === "percentage"
+                                      ? "0,00"
+                                      : "0,00"
+                                  }
+                                  value={splitInputs[member.id] ?? ""}
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  {customSplitMode === "percentage" ? "%" : "€"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {splitPreviewError && (
+                    <p className="text-sm text-danger-text" role="alert">
+                      {splitPreviewError}
+                    </p>
+                  )}
+                  {splitPreview && (
+                    <ul
+                      aria-label="Vorschau der Verteilung"
+                      className="space-y-1 rounded-xl bg-muted p-3 text-sm"
+                    >
+                      {splitPreview.map((allocation) => (
+                        <li
+                          className="flex justify-between gap-3"
+                          key={allocation.memberId}
+                        >
+                          <span>
+                            {memberNames.get(allocation.memberId) ??
+                              "Unbekannt"}
+                          </span>
+                          <span className="font-medium">
+                            {formatCents(allocation.amountCents)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+                {dialogError && (
+                  <p className="text-sm text-danger-text" role="alert">
+                    {dialogError}
+                  </p>
                 )}
-              </section>
-              {dialogError && (
-                <p className="text-sm text-danger-text" role="alert">
-                  {dialogError}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    disabled={isSaving || isLoadingSplitRule}
+                    onClick={closeDialog}
+                    type="button"
+                    variant="outline"
+                  >
+                    Abbrechen
+                  </Button>
+                  <Button
+                    className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
+                    disabled={isSaving || isLoadingSplitRule}
+                    type="submit"
+                  >
+                    {isSaving && (
+                      <LoaderCircle
+                        aria-hidden="true"
+                        className="size-4 animate-spin"
+                      />
+                    )}
+                    {isSaving
+                      ? "Speichert ..."
+                      : editingItem
+                        ? "Speichern"
+                        : "Hinzufügen"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {deletingItem && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                closeDeleteDialog()
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                closeDeleteDialog()
+              }
+            }}
+          >
+            <div
+              aria-labelledby="delete-item-title"
+              aria-modal="true"
+              className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl"
+              role="alertdialog"
+            >
+              <h2 className="text-lg font-semibold" id="delete-item-title">
+                Position löschen?
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                „{deletingItem.name}“ wird dauerhaft aus dieser Liste entfernt.
+              </p>
+              {deleteError && (
+                <p className="mt-3 text-sm text-danger-text" role="alert">
+                  {deleteError}
                 </p>
               )}
-              <div className="flex justify-end gap-2">
+              <div className="mt-5 flex justify-end gap-2">
                 <Button
-                  disabled={isSaving || isLoadingSplitRule}
-                  onClick={closeDialog}
+                  disabled={isDeleting}
+                  onClick={closeDeleteDialog}
                   type="button"
                   variant="outline"
                 >
                   Abbrechen
                 </Button>
                 <Button
-                  className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-                  disabled={isSaving || isLoadingSplitRule}
-                  type="submit"
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                  disabled={isDeleting}
+                  onClick={() => void handleDelete()}
+                  type="button"
                 >
-                  {isSaving && (
+                  {isDeleting && (
                     <LoaderCircle
                       aria-hidden="true"
                       className="size-4 animate-spin"
                     />
                   )}
-                  {isSaving
-                    ? "Speichert ..."
-                    : editingItem
-                      ? "Speichern"
-                      : "Hinzufügen"}
+                  {isDeleting ? "Löscht ..." : "Löschen"}
                 </Button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {deletingItem && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDeleteDialog()
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              closeDeleteDialog()
-            }
-          }}
-        >
-          <div
-            aria-labelledby="delete-item-title"
-            aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl"
-            role="alertdialog"
-          >
-            <h2 className="text-lg font-semibold" id="delete-item-title">
-              Position löschen?
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              „{deletingItem.name}“ wird dauerhaft aus dieser Liste entfernt.
-            </p>
-            {deleteError && (
-              <p className="mt-3 text-sm text-danger-text" role="alert">
-                {deleteError}
-              </p>
-            )}
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                disabled={isDeleting}
-                onClick={closeDeleteDialog}
-                type="button"
-                variant="outline"
-              >
-                Abbrechen
-              </Button>
-              <Button
-                className="bg-destructive text-white hover:bg-destructive/90"
-                disabled={isDeleting}
-                onClick={() => void handleDelete()}
-                type="button"
-              >
-                {isDeleting && (
-                  <LoaderCircle
-                    aria-hidden="true"
-                    className="size-4 animate-spin"
-                  />
-                )}
-                {isDeleting ? "Löscht ..." : "Löschen"}
-              </Button>
             </div>
-          </div>
-        </div>
-      )}
-      <Toast message={successMessage} onClose={() => setSuccessMessage(null)} />
-      <Toast
-        message={scanWarningMessage}
-        onClose={() => setScanWarningMessage(null)}
-        variant="error"
-      />
-
-      <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        {isLoading ? (
-          <p
-            className="flex items-center gap-2 text-sm text-muted-foreground"
-            role="status"
-          >
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-            Positionen werden geladen …
-          </p>
-        ) : errorMessage ? (
-          <div
-            className="rounded-2xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-text"
-            role="alert"
-          >
-            <p>{errorMessage}</p>
-            <Button
-              className="mt-3"
-              onClick={() => setReloadNumber((current) => current + 1)}
-              variant="outline"
-            >
-              Erneut versuchen
-            </Button>
-          </div>
-        ) : items.length > 0 ? (
-          <ul className="divide-y divide-border">
-            {sortedNodes.map((node) => {
-              const { item } = node
-              const isExpanded = expandedIds.has(item.id)
-
-              return (
-                <li key={item.id}>
-                  {renderItemRow(item)}
-                  {item.isReceipt && (
-                    <div className="pb-3">
-                      <button
-                        aria-expanded={isExpanded}
-                        aria-label={`Unterpositionen von ${item.name} ${
-                          isExpanded ? "ausblenden" : "anzeigen"
-                        }`}
-                        className="flex w-full items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
-                        onClick={() =>
-                          setExpandedIds((current) => {
-                            const next = new Set(current)
-                            if (next.has(item.id)) {
-                              next.delete(item.id)
-                            } else {
-                              next.add(item.id)
-                            }
-                            return next
-                          })
-                        }
-                        type="button"
-                      >
-                        <span>
-                          Bon · {node.children.length}{" "}
-                          {node.children.length === 1
-                            ? "Unterposition"
-                            : "Unterpositionen"}
-                          {" · "}
-                          {node.remainderCents < 0
-                            ? `${formatCents(-node.remainderCents)} über der Bon-Summe`
-                            : `Rest ${formatCents(node.remainderCents)}`}
-                        </span>
-                        {isExpanded ? (
-                          <ChevronUp aria-hidden="true" className="size-4" />
-                        ) : (
-                          <ChevronDown aria-hidden="true" className="size-4" />
-                        )}
-                      </button>
-                      {isExpanded && (
-                        <div className="mt-2 ml-3 border-l-2 border-border pl-3">
-                          <ul className="divide-y divide-border">
-                            {node.children.map((child) => (
-                              <li key={child.id}>{renderItemRow(child)}</li>
-                            ))}
-                          </ul>
-                          {node.remainderCents > 0 && (
-                            <p className="py-2 text-xs text-muted-foreground">
-                              Rest {formatCents(node.remainderCents)} wird nach
-                              Zahler und Verteilung des Bons verrechnet.
-                            </p>
-                          )}
-                          {node.remainderCents < 0 && (
-                            <p
-                              className="py-2 text-xs text-danger-text"
-                              role="alert"
-                            >
-                              Die Unterpositionen übersteigen die Bon-Summe um{" "}
-                              {formatCents(-node.remainderCents)}. Bitte
-                              Positionen oder Bon-Summe korrigieren.
-                            </p>
-                          )}
-                          {canAddItem && (
-                            <Button
-                              className="my-2 h-8 rounded-lg text-xs"
-                              onClick={() => void openDialog(null, item)}
-                              type="button"
-                              variant="outline"
-                            >
-                              <Plus aria-hidden="true" className="size-3.5" />
-                              Unterposition hinzufügen
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-muted px-5 py-10 text-center">
-            <ReceiptText
-              aria-hidden="true"
-              className="mx-auto mb-2 size-6 text-muted-foreground"
-            />
-            <p className="font-medium">Noch keine Positionen</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Zu dieser Liste wurden noch keine Positionen erfasst.
-            </p>
           </div>
         )}
-      </div>
+        <Toast
+          message={successMessage}
+          onClose={() => setSuccessMessage(null)}
+        />
+        <Toast
+          message={scanWarningMessage}
+          onClose={() => setScanWarningMessage(null)}
+          variant="error"
+        />
 
-      {!isLoading && !errorMessage && (
-        <section
-          aria-label="Abrechnung"
-          className="mt-4 shrink-0 border-t border-border pt-3"
-        >
-          <button
-            aria-controls="settlement-details"
-            aria-expanded={isSettlementOpen}
-            className="flex w-full items-center justify-between gap-3 rounded-xl py-1 text-left text-sm"
-            onClick={() => setIsSettlementOpen((current) => !current)}
-            type="button"
-          >
-            <span className="min-w-0 font-medium">
-              {settlementError
-                ? "Abrechnung nicht verfügbar"
-                : !settlement || items.length === 0
-                  ? "Noch nichts abzurechnen"
-                  : topCreditor
-                    ? `${memberNames.get(topCreditor.memberId) ?? "Unbekannt"} bekommt am meisten zurück: ${formatCents(topCreditor.balanceCents)}`
-                    : "Alles ausgeglichen"}
-            </span>
-            {isSettlementOpen ? (
-              <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
-            ) : (
-              <ChevronUp aria-hidden="true" className="size-4 shrink-0" />
-            )}
-          </button>
-          {isSettlementOpen && (
-            <div
-              className="mt-3 max-h-64 space-y-3 overflow-y-auto"
-              id="settlement-details"
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+          {isLoading ? (
+            <p
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+              role="status"
             >
-              {settlementError ? (
-                <p className="text-sm text-danger-text" role="alert">
-                  {settlementError}
-                </p>
-              ) : settlement && settlement.transfers.length > 0 ? (
-                <ul
-                  aria-label="Erstattungen"
-                  className="space-y-1.5 rounded-xl bg-muted p-3 text-sm"
-                >
-                  {settlement.transfers.map((transfer) => (
-                    <li key={`${transfer.fromMemberId}-${transfer.toMemberId}`}>
-                      <span className="font-medium">
-                        {memberNames.get(transfer.toMemberId) ?? "Unbekannt"}
-                      </span>{" "}
-                      bekommt{" "}
-                      <span className="font-semibold">
-                        {formatCents(transfer.amountCents)}
-                      </span>{" "}
-                      von{" "}
-                      <span className="font-medium">
-                        {memberNames.get(transfer.fromMemberId) ?? "Unbekannt"}
-                      </span>{" "}
-                      zurück
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Es sind keine Erstattungen nötig.
-                </p>
-              )}
-              {closeError && (
-                <p className="text-sm text-danger-text" role="alert">
-                  {closeError}
-                </p>
-              )}
-              {canCloseList && (
-                <div className="flex justify-end">
-                  <Button
-                    className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-                    disabled={isClosing || Boolean(settlementError)}
-                    onClick={() => void handleCloseList()}
-                    type="button"
-                  >
-                    {isClosing && (
-                      <LoaderCircle
-                        aria-hidden="true"
-                        className="size-4 animate-spin"
-                      />
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
+              Positionen werden geladen …
+            </p>
+          ) : errorMessage ? (
+            <div
+              className="rounded-2xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger-text"
+              role="alert"
+            >
+              <p>{errorMessage}</p>
+              <Button
+                className="mt-3"
+                onClick={() => setReloadNumber((current) => current + 1)}
+                variant="outline"
+              >
+                Erneut versuchen
+              </Button>
+            </div>
+          ) : items.length > 0 ? (
+            <ul className="divide-y divide-border">
+              {sortedNodes.map((node) => {
+                const { item } = node
+                const isExpanded = expandedIds.has(item.id)
+
+                return (
+                  <li key={item.id}>
+                    {renderItemRow(item)}
+                    {item.isReceipt && (
+                      <div className="pb-3">
+                        <button
+                          aria-expanded={isExpanded}
+                          aria-label={`Unterpositionen von ${item.name} ${
+                            isExpanded ? "ausblenden" : "anzeigen"
+                          }`}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
+                          onClick={() =>
+                            setExpandedIds((current) => {
+                              const next = new Set(current)
+                              if (next.has(item.id)) {
+                                next.delete(item.id)
+                              } else {
+                                next.add(item.id)
+                              }
+                              return next
+                            })
+                          }
+                          type="button"
+                        >
+                          <span>
+                            Bon · {node.children.length}{" "}
+                            {node.children.length === 1
+                              ? "Unterposition"
+                              : "Unterpositionen"}
+                            {" · "}
+                            {node.remainderCents < 0
+                              ? `${formatCents(-node.remainderCents)} über der Bon-Summe`
+                              : `Rest ${formatCents(node.remainderCents)}`}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp aria-hidden="true" className="size-4" />
+                          ) : (
+                            <ChevronDown
+                              aria-hidden="true"
+                              className="size-4"
+                            />
+                          )}
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-2 ml-3 border-l-2 border-border pl-3">
+                            <ul className="divide-y divide-border">
+                              {node.children.map((child) => (
+                                <li key={child.id}>{renderItemRow(child)}</li>
+                              ))}
+                            </ul>
+                            {node.remainderCents > 0 && (
+                              <p className="py-2 text-xs text-muted-foreground">
+                                Rest {formatCents(node.remainderCents)} wird
+                                nach Zahler und Verteilung des Bons verrechnet.
+                              </p>
+                            )}
+                            {node.remainderCents < 0 && (
+                              <p
+                                className="py-2 text-xs text-danger-text"
+                                role="alert"
+                              >
+                                Die Unterpositionen übersteigen die Bon-Summe um{" "}
+                                {formatCents(-node.remainderCents)}. Bitte
+                                Positionen oder Bon-Summe korrigieren.
+                              </p>
+                            )}
+                            {canAddItem && (
+                              <Button
+                                className="my-2 h-8 rounded-lg text-xs"
+                                onClick={() => void openDialog(null, item)}
+                                type="button"
+                                variant="outline"
+                              >
+                                <Plus aria-hidden="true" className="size-3.5" />
+                                Unterposition hinzufügen
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    Abschluss
-                  </Button>
-                </div>
-              )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-muted px-5 py-10 text-center">
+              <ReceiptText
+                aria-hidden="true"
+                className="mx-auto mb-2 size-6 text-muted-foreground"
+              />
+              <p className="font-medium">Noch keine Positionen</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Zu dieser Liste wurden noch keine Positionen erfasst.
+              </p>
             </div>
           )}
-        </section>
-      )}
-    </section>
+        </div>
+
+        {!isLoading && !errorMessage && (
+          <section
+            aria-label="Abrechnung"
+            className="mt-4 shrink-0 border-t border-border pt-3"
+          >
+            <button
+              aria-controls="settlement-details"
+              aria-expanded={isSettlementOpen}
+              className="flex w-full items-center justify-between gap-3 rounded-xl py-1 text-left text-sm"
+              onClick={() => setIsSettlementOpen((current) => !current)}
+              type="button"
+            >
+              <span className="min-w-0 font-medium">
+                {settlementError
+                  ? "Abrechnung nicht verfügbar"
+                  : !settlement || items.length === 0
+                    ? "Noch nichts abzurechnen"
+                    : topCreditor
+                      ? `${memberNames.get(topCreditor.memberId) ?? "Unbekannt"} bekommt am meisten zurück: ${formatCents(topCreditor.balanceCents)}`
+                      : "Alles ausgeglichen"}
+              </span>
+              {isSettlementOpen ? (
+                <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
+              ) : (
+                <ChevronUp aria-hidden="true" className="size-4 shrink-0" />
+              )}
+            </button>
+            {isSettlementOpen && (
+              <div
+                className="mt-3 max-h-64 space-y-3 overflow-y-auto"
+                id="settlement-details"
+              >
+                {settlementError ? (
+                  <p className="text-sm text-danger-text" role="alert">
+                    {settlementError}
+                  </p>
+                ) : settlement && settlement.transfers.length > 0 ? (
+                  <ul
+                    aria-label="Erstattungen"
+                    className="space-y-1.5 rounded-xl bg-muted p-3 text-sm"
+                  >
+                    {settlement.transfers.map((transfer) => (
+                      <li
+                        key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
+                      >
+                        <span className="font-medium">
+                          {memberNames.get(transfer.toMemberId) ?? "Unbekannt"}
+                        </span>{" "}
+                        bekommt{" "}
+                        <span className="font-semibold">
+                          {formatCents(transfer.amountCents)}
+                        </span>{" "}
+                        von{" "}
+                        <span className="font-medium">
+                          {memberNames.get(transfer.fromMemberId) ??
+                            "Unbekannt"}
+                        </span>{" "}
+                        zurück
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Es sind keine Erstattungen nötig.
+                  </p>
+                )}
+                {closeError && (
+                  <p className="text-sm text-danger-text" role="alert">
+                    {closeError}
+                  </p>
+                )}
+                {canCloseList && (
+                  <div className="flex justify-end">
+                    <Button
+                      className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
+                      disabled={isClosing || Boolean(settlementError)}
+                      onClick={() => void handleCloseList()}
+                      type="button"
+                    >
+                      {isClosing && (
+                        <LoaderCircle
+                          aria-hidden="true"
+                          className="size-4 animate-spin"
+                        />
+                      )}
+                      Abschluss
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+      </section>
+    </>
   )
 }
 

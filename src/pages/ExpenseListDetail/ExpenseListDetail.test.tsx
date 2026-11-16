@@ -673,4 +673,59 @@ describe("ExpenseListDetail", () => {
     expect(await screen.findByText("Die Position wurde gelöscht.")).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
   })
+
+  it("zeigt während des Scannens das Overlay und erlaubt weiterhin die Navigation zur Liste", async () => {
+    const user = userEvent.setup()
+    const onBack = vi.fn()
+    let resolveScan!: (value: unknown) => void
+    const uploadAndProcessReceipt = vi.fn().mockReturnValue(
+      new Promise((resolve) => {
+        resolveScan = resolve
+      })
+    )
+
+    vi.mocked(useExpenseLists).mockReturnValue({
+      getExpenseItems,
+      getExpenseItemSplitRule,
+      getExpenseListSplitRules,
+      getItemAccess,
+      completeExpenseList,
+      createExpenseItem,
+      updateExpenseItem,
+      deleteExpenseItem,
+      uploadAndProcessReceipt,
+    } as never)
+
+    getExpenseItems.mockResolvedValue([])
+    mockAccess()
+    renderDetail(onBack, { ...list, status: "open", completedAt: null })
+
+    await screen.findByText("Noch keine Positionen")
+
+    // Vor dem Scan: kein Overlay
+    expect(screen.queryByText("Wird gescannt...")).toBeNull()
+
+    const file = new File(["dummy"], "receipt.png", { type: "image/png" })
+    const input = document.getElementById("receipt-scan-input") as HTMLInputElement
+    await user.upload(input, file)
+
+    // Während des Scans: Overlay aktiv
+    expect(screen.getByText("Wird gescannt...")).toBeTruthy()
+    expect(
+      screen.getByText(
+        "Der Bon wird analysiert und die Ausgaben werden erfasst. Bitte warten..."
+      )
+    ).toBeTruthy()
+
+    // Navigation zur Liste ist weiterhin klickbar
+    const backButton = screen.getByRole("button", {
+      name: "Zu den Ausgabenlisten",
+    })
+    expect(backButton).toBeTruthy()
+    await user.click(backButton)
+    expect(onBack).toHaveBeenCalled()
+
+    // Scan abschließen
+    resolveScan({ needsReview: false })
+  })
 })
