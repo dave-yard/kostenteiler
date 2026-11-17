@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { getSupabaseClient } from "@/lib/supabase"
 import {
+  clearReceiptImageCache,
   createExpenseItem,
   deleteExpenseItem,
   getExpenseItems,
   getExpenseItemSplitRule,
   getExpenseListSplitRules,
+  getReceiptImage,
   updateExpenseItem,
 } from "./itemService"
 
@@ -21,6 +23,7 @@ const query = {
 }
 const from = vi.fn()
 const rpc = vi.fn()
+const invoke = vi.fn()
 
 const input = {
   name: "Socken",
@@ -38,11 +41,17 @@ function mockRows(rows: Record<string, unknown>[]) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  clearReceiptImageCache()
   query.select.mockReturnValue(query)
   query.eq.mockReturnValue(query)
   query.order.mockReturnValue(query)
   from.mockReturnValue(query)
-  vi.mocked(getSupabaseClient).mockReturnValue({ from, rpc } as never)
+  invoke.mockResolvedValue({ data: null, error: null })
+  vi.mocked(getSupabaseClient).mockReturnValue({
+    from,
+    rpc,
+    functions: { invoke },
+  } as never)
   rpc.mockResolvedValue({ data: "item-id", error: null })
 })
 
@@ -183,5 +192,45 @@ describe("itemService", () => {
     rpc.mockResolvedValue({ data: null, error })
 
     await expect(deleteExpenseItem("item-1")).rejects.toBe(error)
+  })
+
+  describe("getReceiptImage", () => {
+    it("fetches receipt image URL and detects image vs pdf", async () => {
+      invoke.mockResolvedValue({
+        data: { url: "https://example.com/receipt.png" },
+        error: null,
+      })
+
+      const imageResult = await getReceiptImage("item-1")
+      expect(invoke).toHaveBeenCalledWith("get-receipt-image", {
+        body: { id: "item-1" },
+      })
+      expect(imageResult).toEqual({
+        url: "https://example.com/receipt.png",
+        isPdf: false,
+      })
+
+      clearReceiptImageCache()
+      invoke.mockResolvedValue({
+        data: { signedUrl: "https://example.com/doc.pdf?token=123" },
+        error: null,
+      })
+
+      const pdfResult = await getReceiptImage("item-2")
+      expect(pdfResult).toEqual({
+        url: "https://example.com/doc.pdf?token=123",
+        isPdf: true,
+      })
+    })
+
+    it("returns null when no image exists or error occurs", async () => {
+      invoke.mockResolvedValue({
+        data: null,
+        error: new Error("Receipt not found"),
+      })
+
+      const result = await getReceiptImage("item-missing")
+      expect(result).toBeNull()
+    })
   })
 })

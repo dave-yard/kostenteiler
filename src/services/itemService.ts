@@ -628,3 +628,118 @@ export async function deleteExpenseItem(itemId: string): Promise<void> {
     throw error
   }
 }
+
+export interface ReceiptImageResult {
+  url: string
+  isPdf: boolean
+}
+
+const receiptImageCache = new Map<string, Promise<ReceiptImageResult | null>>()
+
+export async function getReceiptImage(
+  expenseItemId: string
+): Promise<ReceiptImageResult | null> {
+  if (!expenseItemId) return null
+
+  if (receiptImageCache.has(expenseItemId)) {
+    return receiptImageCache.get(expenseItemId)!
+  }
+
+  const fetchPromise = (async () => {
+    const supabase = getSupabaseClient()
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "get-receipt-image",
+        {
+          body: { item_id: expenseItemId },
+        }
+      )
+
+      if (error) {
+        const response = (error as { context?: Response }).context
+        const body = response ? await response.clone().text() : error.message
+
+        console.warn("get-receipt-image:", response?.status, body)
+        return null
+      }
+
+      console.log("picture-Date", data)
+      if (!data) return null
+
+      let url: string | null = null
+      let contentType: string | null = null
+
+      if (typeof data === "string" && data.trim()) {
+        url = data.trim()
+      } else if (typeof data === "object" && data !== null) {
+        const record = data as Record<string, unknown>
+
+        const findString = (values: unknown[]): string | null => {
+          const value = values.find(
+            (candidate): candidate is string =>
+              typeof candidate === "string" && candidate.trim().length > 0
+          )
+          return value?.trim() ?? null
+        }
+
+        url = findString([
+          record.url,
+          record.signedUrl,
+          record.signed_url,
+          record.publicUrl,
+          record.public_url,
+          record.data,
+        ])
+
+        if (typeof record.contentType === "string") {
+          contentType = record.contentType
+        } else if (typeof record.content_type === "string") {
+          contentType = record.content_type
+        }
+
+        if (record.data && typeof record.data === "object") {
+          const nested = record.data as Record<string, unknown>
+
+          url ??= findString([
+            nested.url,
+            nested.signedUrl,
+            nested.signed_url,
+            nested.publicUrl,
+            nested.public_url,
+          ])
+
+          if (!contentType && typeof nested.contentType === "string") {
+            contentType = nested.contentType
+          } else if (!contentType && typeof nested.content_type === "string") {
+            contentType = nested.content_type
+          }
+        }
+      }
+
+      console.log("url", url)
+      if (!url) return null
+
+      const cleanUrl = url.split("?")[0].toLowerCase()
+      const isPdf =
+        Boolean(contentType?.toLowerCase().includes("pdf")) ||
+        cleanUrl.endsWith(".pdf")
+
+      return { url, isPdf }
+    } catch (err) {
+      console.warn("Fehler beim Abrufen des Belegs:", err)
+      return null
+    }
+  })()
+
+  receiptImageCache.set(expenseItemId, fetchPromise)
+
+  const result = await fetchPromise
+  if (!result && receiptImageCache.get(expenseItemId) === fetchPromise) {
+    receiptImageCache.delete(expenseItemId)
+  }
+  return result
+}
+
+export function clearReceiptImageCache() {
+  receiptImageCache.clear()
+}

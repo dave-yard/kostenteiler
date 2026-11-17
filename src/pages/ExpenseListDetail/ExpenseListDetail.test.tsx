@@ -66,6 +66,7 @@ const completeExpenseList = vi.fn()
 const createExpenseItem = vi.fn()
 const updateExpenseItem = vi.fn()
 const deleteExpenseItem = vi.fn()
+const getReceiptImage = vi.fn()
 
 function renderDetail(
   onBack = vi.fn(),
@@ -81,6 +82,7 @@ function renderDetail(
     createExpenseItem,
     updateExpenseItem,
     deleteExpenseItem,
+    getReceiptImage,
   } as never)
 
   return render(
@@ -95,6 +97,7 @@ function renderDetail(
 
 beforeEach(() => {
   getExpenseListSplitRules.mockResolvedValue({})
+  getReceiptImage.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -107,6 +110,7 @@ afterEach(() => {
   createExpenseItem.mockReset()
   updateExpenseItem.mockReset()
   deleteExpenseItem.mockReset()
+  getReceiptImage.mockReset()
 })
 
 function mockAccess() {
@@ -727,5 +731,89 @@ describe("ExpenseListDetail", () => {
 
     // Scan abschließen
     resolveScan({ needsReview: false })
+  })
+
+  it("zeigt im Bearbeitungsdialog die Beleg-Vorschau oder 'Keine Datei vorhanden'", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([items[0]])
+    getReceiptImage.mockResolvedValue({
+      url: "https://example.com/receipt.jpg",
+      isPdf: false,
+    })
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    // Öffne Dialog für item i1
+    await user.click(await screen.findByText("Socken"))
+    expect(await screen.findByRole("dialog")).toBeTruthy()
+
+    // Beleg sollte geladen und angezeigt werden
+    expect(await screen.findByText("Beleg (Bild)")).toBeTruthy()
+    const img = screen.getByAltText("Beleg") as HTMLImageElement
+    expect(img.src).toBe("https://example.com/receipt.jpg")
+    expect(
+      screen.getByRole("link", { name: /In neuem Tab öffnen/ })
+    ).toBeTruthy()
+
+    // Schließe Dialog
+    await user.click(screen.getByRole("button", { name: "Dialog schließen" }))
+
+    // Nun für ein Item ohne Beleg
+    getReceiptImage.mockResolvedValue(null)
+    await user.click(await screen.findByText("Socken"))
+    expect(await screen.findByText("Keine Datei vorhanden")).toBeTruthy()
+  })
+
+  it("zeigt beim Öffnen von Unterpositionen die Belegvorschau", async () => {
+    const user = userEvent.setup()
+    const receiptParent: ExpenseItem = {
+      id: "parent-1",
+      listId: "l1",
+      name: "Supermarkt",
+      amountCents: 2000,
+      paidByMemberId: "m1",
+      isReceipt: true,
+      parentItemId: null,
+      item_date: "2026-01-03",
+      createdAt: "2026-01-03T10:00:00Z",
+    }
+    const receiptChild: ExpenseItem = {
+      id: "child-1",
+      listId: "l1",
+      name: "Milch",
+      amountCents: 150,
+      paidByMemberId: "m1",
+      isReceipt: false,
+      parentItemId: "parent-1",
+      item_date: "2026-01-03",
+      createdAt: "2026-01-03T10:01:00Z",
+    }
+
+    getExpenseItems.mockResolvedValue([receiptParent, receiptChild])
+    getReceiptImage.mockImplementation(async (id: string) => {
+      if (id === "parent-1") {
+        return {
+          url: "https://example.com/supermarkt.pdf",
+          isPdf: true,
+        }
+      }
+      return null
+    })
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    // Klick auf den Bon-Toggle um Unterpositionen anzuzeigen
+    const toggle = await screen.findByRole("button", {
+      name: /Unterpositionen von Supermarkt anzeigen/,
+    })
+    await user.click(toggle)
+
+    // Unterposition Milch sichtbar
+    expect(await screen.findByText("Milch")).toBeTruthy()
+
+    // Beleg (PDF) sollte geladen und angezeigt werden
+    expect(await screen.findByText("Beleg (PDF)")).toBeTruthy()
+    const iframe = screen.getByTitle("Belegvorschau (PDF)") as HTMLIFrameElement
+    expect(iframe.src).toBe("https://example.com/supermarkt.pdf")
   })
 })

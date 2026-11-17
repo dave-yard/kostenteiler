@@ -14,9 +14,11 @@ import {
   getExpenseItems as getExpenseItemsRecord,
   getExpenseListMemberNames as getExpenseListMemberNamesRecord,
   getExpenseListSplitRules as getExpenseListSplitRulesRecord,
+  getReceiptImage as getReceiptImageRecord,
   updateExpenseItem as updateExpenseItemRecord,
   uploadAndProcessReceipt as uploadAndProcessReceiptRecord,
   type ExpenseItemInput,
+  type ReceiptImageResult,
   type UploadAndProcessReceiptResult,
 } from "@/services/itemService"
 import {
@@ -73,6 +75,9 @@ interface ExpenseListContextValue {
     group: Group,
     list?: ExpenseList
   ) => Promise<ExpenseItemAccess>
+  getReceiptImage: (
+    expenseItemId: string
+  ) => Promise<ReceiptImageResult | null>
 }
 
 const ExpenseListContext = createContext<ExpenseListContextValue | undefined>(
@@ -161,6 +166,11 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const getReceiptImage = useCallback(
+    (expenseItemId: string) => getReceiptImageRecord(expenseItemId),
+    []
+  )
+
   const getItemAccess = useCallback(
     async (group: Group, list?: ExpenseList): Promise<ExpenseItemAccess> => {
       const frozenNames =
@@ -218,6 +228,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getExpenseItemSplitRule,
       getExpenseListSplitRules,
       getItemAccess,
+      getReceiptImage,
     }),
     [
       getExpenseLists,
@@ -233,6 +244,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getExpenseItemSplitRule,
       getExpenseListSplitRules,
       getItemAccess,
+      getReceiptImage,
     ]
   )
 

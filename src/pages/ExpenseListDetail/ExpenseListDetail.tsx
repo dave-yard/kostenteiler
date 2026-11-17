@@ -23,6 +23,7 @@ import {
   type ExpenseItemAccess,
 } from "@/components/contexts/ExpenseListContext"
 import { ExpenseListStatusBadge } from "@/components/ExpenseListStatusBadge"
+import { ReceiptPreview } from "./ReceiptPreview"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Toast } from "@/components/ui/toast"
@@ -1169,7 +1170,7 @@ export function ExpenseListDetail({
             <div
               aria-labelledby="add-item-title"
               aria-modal="true"
-              className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-6 shadow-xl"
+              className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-6 shadow-xl md:max-w-lg"
               role="dialog"
             >
               <div className="flex items-start justify-between gap-4">
@@ -1490,6 +1491,17 @@ export function ExpenseListDetail({
                     </ul>
                   )}
                 </section>
+                {(editingItem || dialogParentId) && (
+                  <div className="space-y-1.5 border-t border-border pt-3">
+                    <p className="text-sm font-medium">Beleg</p>
+                    <ReceiptPreview
+                      fallbackItemId={
+                        editingItem?.parentItemId ?? dialogParentId
+                      }
+                      itemId={editingItem?.id}
+                    />
+                  </div>
+                )}
                 {dialogError && (
                   <p className="text-sm text-danger-text" role="alert">
                     {dialogError}
@@ -1671,38 +1683,52 @@ export function ExpenseListDetail({
                         </button>
                         {isExpanded && (
                           <div className="mt-2 ml-3 border-l-2 border-border pl-3">
-                            <ul className="divide-y divide-border">
-                              {node.children.map((child) => (
-                                <li key={child.id}>{renderItemRow(child)}</li>
-                              ))}
-                            </ul>
-                            {node.remainderCents > 0 && (
-                              <p className="py-2 text-xs text-muted-foreground">
-                                Rest {formatCents(node.remainderCents)} wird
-                                nach Zahler und Verteilung des Bons verrechnet.
-                              </p>
-                            )}
-                            {node.remainderCents < 0 && (
-                              <p
-                                className="py-2 text-xs text-danger-text"
-                                role="alert"
-                              >
-                                Die Unterpositionen übersteigen die Bon-Summe um{" "}
-                                {formatCents(-node.remainderCents)}. Bitte
-                                Positionen oder Bon-Summe korrigieren.
-                              </p>
-                            )}
-                            {canAddItem && (
-                              <Button
-                                className="my-2 h-8 rounded-lg text-xs"
-                                onClick={() => void openDialog(null, item)}
-                                type="button"
-                                variant="outline"
-                              >
-                                <Plus aria-hidden="true" className="size-3.5" />
-                                Unterposition hinzufügen
-                              </Button>
-                            )}
+                            <div className="flex flex-col gap-4 lg:flex-row">
+                              <div className="min-w-0 flex-1">
+                                <ul className="divide-y divide-border">
+                                  {node.children.map((child) => (
+                                    <li key={child.id}>
+                                      {renderItemRow(child)}
+                                    </li>
+                                  ))}
+                                </ul>
+                                {node.remainderCents > 0 && (
+                                  <p className="py-2 text-xs text-muted-foreground">
+                                    Rest {formatCents(node.remainderCents)} wird
+                                    nach Zahler und Verteilung des Bons
+                                    verrechnet.
+                                  </p>
+                                )}
+                                {node.remainderCents < 0 && (
+                                  <p
+                                    className="py-2 text-xs text-danger-text"
+                                    role="alert"
+                                  >
+                                    Die Unterpositionen übersteigen die
+                                    Bon-Summe um{" "}
+                                    {formatCents(-node.remainderCents)}. Bitte
+                                    Positionen oder Bon-Summe korrigieren.
+                                  </p>
+                                )}
+                                {canAddItem && (
+                                  <Button
+                                    className="my-2 h-8 rounded-lg text-xs"
+                                    onClick={() => void openDialog(null, item)}
+                                    type="button"
+                                    variant="outline"
+                                  >
+                                    <Plus
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                    />
+                                    Unterposition hinzufügen
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="min-w-0 w-full lg:flex-1">
+                                <ReceiptPreview itemId={item.id} />
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
