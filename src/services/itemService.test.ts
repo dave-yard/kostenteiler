@@ -203,7 +203,7 @@ describe("itemService", () => {
 
       const imageResult = await getReceiptImage("item-1")
       expect(invoke).toHaveBeenCalledWith("get-receipt-image", {
-        body: { id: "item-1" },
+        body: { item_id: "item-1" },
       })
       expect(imageResult).toEqual({
         url: "https://example.com/receipt.png",
@@ -231,6 +231,27 @@ describe("itemService", () => {
 
       const result = await getReceiptImage("item-missing")
       expect(result).toBeNull()
+    })
+
+    it("fetches a fresh URL when explicitly requested", async () => {
+      invoke
+        .mockResolvedValueOnce({
+          data: { url: "https://example.com/expired.jpg" },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: { url: "https://example.com/fresh.jpg" },
+          error: null,
+        })
+
+      await getReceiptImage("item-1")
+      const refreshed = await getReceiptImage("item-1", true)
+
+      expect(refreshed).toEqual({
+        url: "https://example.com/fresh.jpg",
+        isPdf: false,
+      })
+      expect(invoke).toHaveBeenCalledTimes(2)
     })
   })
 })

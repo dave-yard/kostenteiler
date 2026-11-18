@@ -637,9 +637,14 @@ export interface ReceiptImageResult {
 const receiptImageCache = new Map<string, Promise<ReceiptImageResult | null>>()
 
 export async function getReceiptImage(
-  expenseItemId: string
+  expenseItemId: string,
+  forceRefresh = false
 ): Promise<ReceiptImageResult | null> {
   if (!expenseItemId) return null
+
+  if (forceRefresh) {
+    receiptImageCache.delete(expenseItemId)
+  }
 
   if (receiptImageCache.has(expenseItemId)) {
     return receiptImageCache.get(expenseItemId)!

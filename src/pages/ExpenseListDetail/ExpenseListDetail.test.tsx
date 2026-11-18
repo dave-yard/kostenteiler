@@ -1,9 +1,17 @@
-import { cleanup, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import { getSupabaseClient } from "@/lib/supabase"
+import type { UploadAndProcessReceiptResult } from "@/services/itemService"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
 vi.mock("@/lib/supabase", () => ({
@@ -67,6 +75,7 @@ const createExpenseItem = vi.fn()
 const updateExpenseItem = vi.fn()
 const deleteExpenseItem = vi.fn()
 const getReceiptImage = vi.fn()
+const uploadAndProcessReceipt = vi.fn()
 
 function renderDetail(
   onBack = vi.fn(),
@@ -83,6 +92,7 @@ function renderDetail(
     updateExpenseItem,
     deleteExpenseItem,
     getReceiptImage,
+    uploadAndProcessReceipt,
   } as never)
 
   return render(
@@ -102,6 +112,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   getExpenseItems.mockReset()
   getExpenseItemSplitRule.mockReset()
   getExpenseListSplitRules.mockReset()
@@ -111,6 +122,7 @@ afterEach(() => {
   updateExpenseItem.mockReset()
   deleteExpenseItem.mockReset()
   getReceiptImage.mockReset()
+  uploadAndProcessReceipt.mockReset()
 })
 
 function mockAccess() {
@@ -681,24 +693,12 @@ describe("ExpenseListDetail", () => {
   it("zeigt während des Scannens das Overlay und erlaubt weiterhin die Navigation zur Liste", async () => {
     const user = userEvent.setup()
     const onBack = vi.fn()
-    let resolveScan!: (value: unknown) => void
-    const uploadAndProcessReceipt = vi.fn().mockReturnValue(
-      new Promise((resolve) => {
+    let resolveScan!: (value: UploadAndProcessReceiptResult) => void
+    uploadAndProcessReceipt.mockReturnValue(
+      new Promise<UploadAndProcessReceiptResult>((resolve) => {
         resolveScan = resolve
       })
     )
-
-    vi.mocked(useExpenseLists).mockReturnValue({
-      getExpenseItems,
-      getExpenseItemSplitRule,
-      getExpenseListSplitRules,
-      getItemAccess,
-      completeExpenseList,
-      createExpenseItem,
-      updateExpenseItem,
-      deleteExpenseItem,
-      uploadAndProcessReceipt,
-    } as never)
 
     getExpenseItems.mockResolvedValue([])
     mockAccess()
@@ -710,13 +710,18 @@ describe("ExpenseListDetail", () => {
     expect(screen.queryByText("Wird gescannt...")).toBeNull()
 
     const file = new File(["dummy"], "receipt.png", { type: "image/png" })
-    const input = document.getElementById("receipt-scan-input") as HTMLInputElement
+    const input = document.getElementById(
+      "receipt-scan-input"
+    ) as HTMLInputElement
     await user.upload(input, file)
 
     // Während des Scans: Overlay aktiv
-    expect(screen.getByText("Wird gescannt...")).toBeTruthy()
+    expect(uploadAndProcessReceipt).toHaveBeenCalledWith("l1", file, "m1")
+    const overlay = screen.getByRole("status")
+    expect(overlay.getAttribute("aria-busy")).toBe("true")
+    expect(within(overlay).getByText("Wird gescannt...")).toBeTruthy()
     expect(
-      screen.getByText(
+      within(overlay).getByText(
         "Der Bon wird analysiert und die Ausgaben werden erfasst. Bitte warten..."
       )
     ).toBeTruthy()
@@ -730,7 +735,15 @@ describe("ExpenseListDetail", () => {
     expect(onBack).toHaveBeenCalled()
 
     // Scan abschließen
-    resolveScan({ needsReview: false })
+    await act(async () => {
+      resolveScan({ receiptId: "receipt-1", needsReview: false })
+    })
+    expect(screen.queryByText("Wird gescannt...")).toBeNull()
+    expect(
+      await screen.findByText(
+        "Der Bon wurde erfolgreich gescannt und angelegt."
+      )
+    ).toBeTruthy()
   })
 
   it("zeigt im Bearbeitungsdialog die Beleg-Vorschau oder 'Keine Datei vorhanden'", async () => {
@@ -815,5 +828,35 @@ describe("ExpenseListDetail", () => {
     expect(await screen.findByText("Beleg (PDF)")).toBeTruthy()
     const iframe = screen.getByTitle("Belegvorschau (PDF)") as HTMLIFrameElement
     expect(iframe.src).toBe("https://example.com/supermarkt.pdf")
+
+    getReceiptImage.mockResolvedValue({
+      url: "https://example.com/supermarkt-fresh.pdf",
+      isPdf: true,
+    })
+    const newTab = Object.create(window)
+    Object.defineProperty(newTab, "location", {
+      value: { href: "about:blank" },
+      configurable: true,
+    })
+    Object.defineProperty(newTab, "opener", {
+      value: window,
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(newTab, "close", {
+      value: vi.fn(),
+      configurable: true,
+    })
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(newTab)
+
+    await user.click(screen.getByRole("link", { name: /In neuem Tab öffnen/ }))
+
+    await waitFor(() => {
+      expect(newTab.location.href).toBe(
+        "https://example.com/supermarkt-fresh.pdf"
+      )
+    })
+    expect(getReceiptImage).toHaveBeenLastCalledWith("parent-1", true)
+    expect(openSpy).toHaveBeenCalledWith("about:blank", "_blank")
   })
 })

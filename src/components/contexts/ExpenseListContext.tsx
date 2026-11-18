@@ -76,7 +76,8 @@ interface ExpenseListContextValue {
     list?: ExpenseList
   ) => Promise<ExpenseItemAccess>
   getReceiptImage: (
-    expenseItemId: string
+    expenseItemId: string,
+    forceRefresh?: boolean
   ) => Promise<ReceiptImageResult | null>
 }
 
@@ -167,7 +168,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
   )
 
   const getReceiptImage = useCallback(
-    (expenseItemId: string) => getReceiptImageRecord(expenseItemId),
+    (expenseItemId: string, forceRefresh?: boolean) =>
+      getReceiptImageRecord(expenseItemId, forceRefresh),
     []
   )
 
