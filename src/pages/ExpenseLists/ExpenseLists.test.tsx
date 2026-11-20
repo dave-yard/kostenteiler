@@ -155,12 +155,12 @@ describe("ExpenseLists", () => {
 
   it("completes an open list after confirmation and reloads", async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, "confirm").mockReturnValue(true)
     getExpenseLists.mockResolvedValueOnce([openList]).mockResolvedValueOnce([])
     completeExpenseList.mockResolvedValue(undefined)
     renderExpenseLists()
 
     await user.click(await screen.findByRole("button", { name: "Abschließen" }))
+    await user.click(screen.getByRole("button", { name: "Bestätigen" }))
 
     expect(completeExpenseList).toHaveBeenCalledWith("list-open")
     expect((await screen.findByRole("status")).textContent).toContain(
@@ -171,18 +171,17 @@ describe("ExpenseLists", () => {
 
   it("does nothing when the confirmation is declined", async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, "confirm").mockReturnValue(false)
     getExpenseLists.mockResolvedValue([openList])
     renderExpenseLists()
 
     await user.click(await screen.findByRole("button", { name: "Abschließen" }))
+    await user.click(screen.getByRole("button", { name: "Abbrechen" }))
 
     expect(completeExpenseList).not.toHaveBeenCalled()
   })
 
   it("marks a completed list as paid and offers no action for paid lists", async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, "confirm").mockReturnValue(true)
     const completedList: ExpenseList = {
       ...openList,
       id: "list-completed",
@@ -199,13 +198,13 @@ describe("ExpenseLists", () => {
     })
     expect(buttons).toHaveLength(1)
     await user.click(buttons[0])
+    await user.click(screen.getByRole("button", { name: "Bestätigen" }))
 
     expect(markExpenseListPaid).toHaveBeenCalledWith("list-completed")
   })
 
   it("shows status errors as an error toast", async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, "confirm").mockReturnValue(true)
     getExpenseLists.mockResolvedValue([openList])
     completeExpenseList.mockRejectedValue({
       message: "You are not allowed to complete this expense list.",
@@ -213,6 +212,7 @@ describe("ExpenseLists", () => {
     renderExpenseLists()
 
     await user.click(await screen.findByRole("button", { name: "Abschließen" }))
+    await user.click(screen.getByRole("button", { name: "Bestätigen" }))
 
     expect((await screen.findByRole("alert")).textContent).toContain(
       "You are not allowed to complete this expense list."
@@ -308,6 +308,8 @@ describe("ExpenseLists", () => {
     expect(
       screen.getByRole("dialog", { name: "Neue Ausgabenliste" })
     ).toBeTruthy()
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("dialog")).toBeNull()
     expect(screen.getByRole("heading", { name: "Wocheneinkauf" })).toBeTruthy()
   })
 })

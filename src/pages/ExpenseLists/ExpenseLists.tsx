@@ -1,17 +1,17 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState } from "react"
 import {
   ArrowLeft,
   ChevronRight,
   CircleDollarSign,
   LoaderCircle,
   Plus,
-  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ExpenseListStatusBadge } from "@/components/ExpenseListStatusBadge"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
-import { Input } from "@/components/ui/input"
+import { useConfirmDialog } from "@/components/ui/confirm-dialog"
+import { ExpenseListDialog } from "@/components/dialogs/ExpenseListDialog"
 import { Toast } from "@/components/ui/toast"
 import { getActionErrorMessage } from "@/lib/errorMessage"
 import type { ExpenseList, Group } from "@/types/group"
@@ -45,17 +45,21 @@ function ExpenseListCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold">
-            <button
-              className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-brand-text"
-
+            <Button
+              className="group inline-flex h-auto max-w-full min-w-0 items-center gap-1 border-b border-transparent p-0 text-left text-xl font-semibold hover:border-current hover:bg-transparent hover:text-brand-text"
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpen()
+              }}
               type="button"
+              variant="ghost"
             >
               <span className="truncate">{list.name}</span>
               <ChevronRight
                 aria-hidden="true"
                 className="size-5 shrink-0 text-muted-foreground group-hover:text-brand-text"
               />
-            </button>
+            </Button>
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Erstellt am{" "}
@@ -107,21 +111,18 @@ export function ExpenseLists({
 }) {
   const {
     getExpenseLists,
-    createExpenseList,
     completeExpenseList,
     markExpenseListPaid,
     canCloseExpenseLists,
   } = useExpenseLists()
   const [reloadNumber, setReloadNumber] = useState(0)
   const [result, setResult] = useState<ExpenseListsResult | null>(null)
-  const [listName, setListName] = useState("")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyListId, setBusyListId] = useState<string | null>(null)
   const [canClose, setCanClose] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const requestKey = `${group.id}:${includeCompleted}:${reloadNumber}`
 
   useEffect(() => {
@@ -178,7 +179,7 @@ export function ExpenseLists({
 
   async function handleStatusChange(list: ExpenseList) {
     const isCompleting = list.status === "open"
-    const confirmed = window.confirm(
+    const confirmed = await confirm(
       isCompleting
         ? `Liste „${list.name}“ abschließen? Danach kann sie nicht mehr als offen geführt werden.`
         : `Liste „${list.name}“ als bezahlt markieren?`
@@ -210,28 +211,9 @@ export function ExpenseLists({
     }
   }
 
-  async function handleCreateExpenseList(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setCreateError(null)
-    setCreateSuccess(null)
-    setIsCreating(true)
-
-    try {
-      await createExpenseList(group.id, listName.trim())
-      setListName("")
-      setIsCreateModalOpen(false)
-      setCreateSuccess("Die Ausgabenliste wurde erstellt.")
-      setIncludeCompleted(false)
-      setReloadNumber((current) => current + 1)
-    } catch (error) {
-      setCreateError(getActionErrorMessage(error))
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
   return (
     <section className="flex min-h-0 flex-1 flex-col border border-border bg-card p-3 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:p-10">
+      {confirmDialog}
       <div className="shrink-0">
         <Button
           className="mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
@@ -282,10 +264,8 @@ export function ExpenseLists({
             <Button
               aria-label="Neue Ausgabenliste hinzufügen"
               className="size-9 shrink-0 rounded-xl bg-brand-primary p-0 text-white hover:bg-brand-primary-hover"
-              disabled={isCreating}
               onClick={() => {
                 setIsCreateModalOpen(true)
-                setCreateError(null)
                 setCreateSuccess(null)
               }}
               type="button"
@@ -296,100 +276,19 @@ export function ExpenseLists({
         </div>
       </div>
 
-      {group.currentUserIsAdmin && !group.archivedAt && isCreateModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !isCreating) {
-              setIsCreateModalOpen(false)
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && !isCreating) {
-              setIsCreateModalOpen(false)
-            }
-          }}
-        >
-          <div
-            aria-labelledby="create-expense-list-title"
-            aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl"
-            role="dialog"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2
-                  className="text-lg font-semibold"
-                  id="create-expense-list-title"
-                >
-                  Neue Ausgabenliste
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Vergib einen Namen für die Liste.
-                </p>
-              </div>
-              <Button
-                aria-label="Dialog schließen"
-                className="size-8 shrink-0 rounded-lg p-0 text-muted-foreground"
-                disabled={isCreating}
-                onClick={() => setIsCreateModalOpen(false)}
-                type="button"
-                variant="ghost"
-              >
-                <X aria-hidden="true" className="size-4" />
-              </Button>
-            </div>
-            <form
-              className="mt-5 space-y-4"
-              onSubmit={(event) => void handleCreateExpenseList(event)}
-            >
-              <label className="sr-only" htmlFor="expense-list-name">
-                Name der neuen Ausgabenliste
-              </label>
-              <Input
-                autoComplete="off"
-                autoFocus
-                className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                id="expense-list-name"
-                maxLength={80}
-                minLength={1}
-                onChange={(event) => setListName(event.target.value)}
-                placeholder="Name der neuen Liste"
-                required
-                value={listName}
-              />
-              {createError && (
-                <p className="text-sm text-danger-text" role="alert">
-                  {createError}
-                </p>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button
-                  disabled={isCreating}
-                  onClick={() => setIsCreateModalOpen(false)}
-                  type="button"
-                  variant="outline"
-                >
-                  Abbrechen
-                </Button>
-                <Button
-                  className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-                  disabled={isCreating || !listName.trim()}
-                  type="submit"
-                >
-                  {isCreating ? (
-                    <LoaderCircle
-                      aria-hidden="true"
-                      className="size-4 animate-spin"
-                    />
-                  ) : null}
-                  {isCreating ? "Erstellt ..." : "Erstellen"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ExpenseListDialog
+        open={
+          Boolean(group.currentUserIsAdmin && !group.archivedAt && isCreateModalOpen)
+        }
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={(message) => {
+          setIsCreateModalOpen(false)
+          setCreateSuccess(message)
+          setIncludeCompleted(false)
+          setReloadNumber((current) => current + 1)
+        }}
+        groupId={group.id}
+      />
       <Toast message={createSuccess} onClose={() => setCreateSuccess(null)} />
       <Toast
         message={actionError}

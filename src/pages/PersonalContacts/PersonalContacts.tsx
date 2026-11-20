@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Toast } from "@/components/ui/toast"
 import { useAuth } from "@/components/contexts/AuthContext"
 import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
@@ -45,6 +46,7 @@ export function PersonalContacts() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [hasLoadError, setHasLoadError] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
 
   const loadContacts = useCallback(async () => {
     setErrorMessage(null)
@@ -182,7 +184,7 @@ export function PersonalContacts() {
   }
 
   async function handleRemoveContact(contact: PersonalContact) {
-    const confirmed = window.confirm(
+    const confirmed = await confirm(
       `${contact.displayName} aus deiner persönlichen Freundesliste entfernen? Bereits angelegte Gruppenmitglieder bleiben erhalten.`
     )
     if (!confirmed) {
@@ -209,6 +211,7 @@ export function PersonalContacts() {
 
   return (
     <section className="mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-5 sm:p-7">
+      {confirmDialog}
       <div className="mb-5 flex items-center gap-3">
         <div className="flex size-10 items-center justify-center rounded-xl bg-brand-surface text-brand-text">
           <ContactRound aria-hidden="true" className="size-5" />

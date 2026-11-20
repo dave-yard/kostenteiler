@@ -13,17 +13,21 @@ import { GroupOverviewProvider } from "@/components/contexts/GroupOverviewContex
 import { GroupOverview } from "@/pages/GroupOverview/GroupOverview"
 import { PasswordRecovery } from "@/pages/PasswordRecovery/PasswordRecovery"
 import { PersonalContacts } from "@/pages/PersonalContacts/PersonalContacts"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { CircleDollarSign, ContactRound, Home, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ExpenseListDetailPage } from "./pages/ExpenseListDetail/ExpenseListDetailPage"
 import { GroupAdminPage } from "./pages/GroupAdmin/GroupAdminPage"
 
 // Geschütztes Layout für eingeloggte Bereiche
 function AuthenticatedLayout() {
   const navigate = useNavigate()
-  const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false)
-  const navigationMenuRef = useRef<HTMLDivElement>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
 
@@ -57,15 +61,16 @@ function AuthenticatedLayout() {
         <main className="flex min-h-dvh flex-col bg-app-bg text-foreground">
           <header className="z-20 shrink-0 border-b border-black/5 bg-brand-primary backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-              <div className="relative" ref={navigationMenuRef}>
-                <Button
-                  aria-expanded={isNavigationMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label="Navigation öffnen"
-                  className="h-9 gap-2.5 rounded-full border border-white/40 bg-brand-primary px-3 py-1 text-primary-foreground shadow-sm transition-colors hover:bg-brand-primary-hover hover:text-primary-foreground"
-                  onClick={() => setIsNavigationMenuOpen((isOpen) => !isOpen)}
-                  type="button"
-                  variant="ghost"
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      aria-label="Navigation öffnen"
+                      className="h-9 gap-2.5 rounded-full border border-white/40 bg-brand-primary px-3 py-1 text-primary-foreground shadow-sm transition-colors hover:bg-brand-primary-hover hover:text-primary-foreground"
+                      type="button"
+                      variant="ghost"
+                    />
+                  }
                 >
                   <span className="text-primary-foreground] flex size-6 items-center justify-center rounded-full">
                     <CircleDollarSign aria-hidden="true" className="size-3.5" />
@@ -73,52 +78,28 @@ function AuthenticatedLayout() {
                   <span className="font-semibold tracking-tight">
                     Kostenteiler
                   </span>
-                </Button>
-                {isNavigationMenuOpen && (
-                  <nav
-                    aria-label="Hauptnavigation"
-                    className="absolute top-full left-0 z-30 mt-2 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl"
-                    role="menu"
+                </DropdownMenuTrigger>
+                <DropdownMenuContent aria-label="Hauptnavigation">
+                  <DropdownMenuItem
+                    className="h-11 w-full justify-start gap-3 rounded-xl text-brand-text"
+                    onClick={() => navigate("/")}
                   >
-                    <Button
-                      className="h-11 w-full justify-start gap-3 rounded-xl text-brand-text"
-                      onClick={() => {
-                        // setSelectedGroup(null)
-                        // setAdminGroupId(null)
-                        // setIsShowingContacts(false)
-                        navigate("/")
-                        setIsNavigationMenuOpen(false)
-                      }}
-                      role="menuitem"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Home aria-hidden="true" className="size-4" />
-                      Gruppen
-                    </Button>
-                    <div
-                      aria-hidden="true"
-                      className="my-1 border-t border-border"
-                    />
-                    <Button
-                      className="h-11 w-full justify-start gap-3 rounded-xl text-brand-text"
-                      onClick={() => {
-                        // setSelectedGroup(null)
-                        // setAdminGroupId(null)
-                        // setIsShowingContacts(true)
-                        navigate("/contacts")
-                        setIsNavigationMenuOpen(false)
-                      }}
-                      role="menuitem"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <ContactRound aria-hidden="true" className="size-4" />
-                      Freundesliste
-                    </Button>
-                  </nav>
-                )}
-              </div>
+                    <Home aria-hidden="true" className="size-4" />
+                    Gruppen
+                  </DropdownMenuItem>
+                  <div
+                    aria-hidden="true"
+                    className="my-1 border-t border-border"
+                  />
+                  <DropdownMenuItem
+                    className="h-11 w-full justify-start gap-3 rounded-xl text-brand-text"
+                    onClick={() => navigate("/contacts")}
+                  >
+                    <ContactRound aria-hidden="true" className="size-4" />
+                    Freundesliste
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <div className="flex items-center gap-2 text-sm text-primary-foreground">
                 <span className="hidden max-w-48 truncate sm:inline">
                   {session?.user.email ?? "Angemeldet"}

@@ -2,7 +2,7 @@ import {
   useEffect,
   useState,
   useMemo,
-  type FormEvent,
+  useRef,
   type ReactNode,
 } from "react"
 import { SlidersHorizontal } from "lucide-react"
@@ -26,23 +26,23 @@ import { ExpenseListStatusBadge } from "@/components/ExpenseListStatusBadge"
 import { ReceiptPreview } from "./ReceiptPreview"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Toast } from "@/components/ui/toast"
 import {
-  calculateExpenseSplit,
-  createEqualPercentageDrafts,
-  parseNonNegativeCents,
-  parsePercentageToBasisPoints,
-  type ExpenseSplitRule,
-} from "@/lib/expenseSplit"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { ExpenseItemDialog } from "@/components/dialogs/ExpenseItemDialog"
+import { DeleteExpenseItemDialog } from "@/components/dialogs/DeleteExpenseItemDialog"
+import { Toast } from "@/components/ui/toast"
+import { type ExpenseSplitRule } from "@/lib/expenseSplit"
 import { getActionErrorMessage } from "@/lib/errorMessage"
-import { formatCents, parseAmountToCents } from "@/lib/money"
+import { formatCents } from "@/lib/money"
 import {
   buildItemNodes,
   sumTopLevelCents,
-  toSettlementItems,
   type ItemNode,
 } from "@/lib/itemHierarchy"
-import { calculateSettlement, type Settlement } from "@/lib/settlement"
+import { SettlementSection } from "./components/SettlementSection"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
@@ -140,66 +140,6 @@ function formatitem_date(isoDate: string, showTime = false) {
   return formattedDate
 }
 
-function areSplitRulesEqual(first: ExpenseSplitRule, second: ExpenseSplitRule) {
-  if (first.mode !== second.mode) {
-    return false
-  }
-
-  if (first.mode === "equal" && second.mode === "equal") {
-    return true
-  }
-  if (first.mode === "complete" && second.mode === "complete") {
-    return first.memberId === second.memberId
-  }
-  if (first.mode === "percentage" && second.mode === "percentage") {
-    const firstShares = [...first.shares].sort((a, b) =>
-      a.memberId.localeCompare(b.memberId)
-    )
-    const secondShares = [...second.shares].sort((a, b) =>
-      a.memberId.localeCompare(b.memberId)
-    )
-    return (
-      firstShares.length === secondShares.length &&
-      firstShares.every(
-        (share, index) =>
-          share.memberId === secondShares[index].memberId &&
-          share.basisPoints === secondShares[index].basisPoints
-      )
-    )
-  }
-  if (first.mode === "fixed" && second.mode === "fixed") {
-    const firstShares = [...first.shares].sort((a, b) =>
-      a.memberId.localeCompare(b.memberId)
-    )
-    const secondShares = [...second.shares].sort((a, b) =>
-      a.memberId.localeCompare(b.memberId)
-    )
-    return (
-      firstShares.length === secondShares.length &&
-      firstShares.every(
-        (share, index) =>
-          share.memberId === secondShares[index].memberId &&
-          share.amountCents === secondShares[index].amountCents
-      )
-    )
-  }
-
-  return false
-}
-
-function splitRuleLabel(rule: ExpenseSplitRule) {
-  switch (rule.mode) {
-    case "equal":
-      return "Gleichmäßig auf alle Gruppenmitglieder"
-    case "complete":
-      return "Komplett für eine Person"
-    case "percentage":
-      return "Prozentual"
-    case "fixed":
-      return "Fester Betrag"
-  }
-}
-
 function highlightSearchMatch(text: string, searchQuery: string): ReactNode {
   const query = searchQuery.trim()
   if (!query) return text
@@ -284,47 +224,26 @@ export function ExpenseListDetail({
 }) {
   const {
     getExpenseItems,
-    getExpenseItemSplitRule,
     getExpenseListSplitRules,
     getItemAccess,
-    completeExpenseList,
-    createExpenseItem,
-    updateExpenseItem,
     uploadAndProcessReceipt,
-    deleteExpenseItem,
   } = useExpenseLists()
   const [reloadNumber, setReloadNumber] = useState(0)
   const [result, setResult] = useState<ItemsResult | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null)
-  const [itemName, setItemName] = useState("")
-  const [amountText, setAmountText] = useState("")
-  const [item_dateText, setitem_dateText] = useState(
-    isoToGermanDateTime(todayIsoDate())
-  )
+  const [dialogParent, setDialogParent] = useState<ExpenseItem | null>(null)
   const [isViewSettingsOpen, setIsViewSettingsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [showTime, setShowTime] = useState(false)
   const [sortBy, setSortBy] = useState<"item_date" | "createdAt">("item_date")
-  const [paidByMemberId, setPaidByMemberId] = useState("")
-  const [customSplitMode, setCustomSplitMode] =
-    useState<ExpenseSplitRule["mode"]>("equal")
-  const [completeMemberId, setCompleteMemberId] = useState("")
-  const [splitInputs, setSplitInputs] = useState<Record<string, string>>({})
-  const [isSaving, setIsSaving] = useState(false)
-  const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
-  const [dialogError, setDialogError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [scanWarningMessage, setScanWarningMessage] = useState<string | null>(
     null
   )
   const [deletingItem, setDeletingItem] = useState<ExpenseItem | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
-  const [isSettlementOpen, setIsSettlementOpen] = useState(false)
-  const [isClosing, setIsClosing] = useState(false)
-  const [closeError, setCloseError] = useState<string | null>(null)
+  const receiptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let isCurrent = true
@@ -404,8 +323,6 @@ export function ExpenseListDetail({
     list.status === "open" &&
     !group.archivedAt
   const [deleteMode, setDeleteMode] = useState(false)
-  const [isReceiptDraft, setIsReceiptDraft] = useState(false)
-  const [newParentId, setNewParentId] = useState<string | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const canDeleteItems =
     !isLoading &&
@@ -421,7 +338,6 @@ export function ExpenseListDetail({
     mode: "equal" as const,
   }
 
-  const amountForPreview = parseAmountToCents(amountText)
   const nodes = buildItemNodes(items)
 
   const sortedNodes = useMemo(() => {
@@ -443,11 +359,6 @@ export function ExpenseListDetail({
   ])
 
   const totalCents = sumTopLevelCents(nodes)
-  const dialogParentId = editingItem ? editingItem.parentItemId : newParentId
-  const dialogParent = items.find((item) => item.id === dialogParentId)
-  const editingHasChildren = editingItem
-    ? items.some((item) => item.parentItemId === editingItem.id)
-    : false
 
   function renderItemRow(item: ExpenseItem) {
     const splitHint = getSplitHint(
@@ -466,23 +377,33 @@ export function ExpenseListDetail({
         onClick={() => openDialog(item)}
       >
         <div className="min-w-0">
-          <p className="font-medium break-words">
-            {highlightSearchMatch(item.name, searchQuery)}
-            {!item.parentItemId && item.item_date && (
-              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                •{" "}
-                {highlightSearchMatch(
-                  formatitem_date(item.item_date, showTime),
-                  searchQuery
-                )}
-              </span>
-            )}
-            {item.isReceipt && (
-              <span className="ml-2 rounded-full bg-brand-surface px-2 py-0.5 align-middle text-xs font-medium text-brand-text">
-                Bon
-              </span>
-            )}
-          </p>
+          <Button
+            className="h-auto max-w-full justify-start p-0 text-left font-medium break-words whitespace-normal hover:bg-transparent"
+            onClick={(event) => {
+              event.stopPropagation()
+              void openDialog(item)
+            }}
+            type="button"
+            variant="ghost"
+          >
+            <span>
+              {highlightSearchMatch(item.name, searchQuery)}
+              {!item.parentItemId && item.item_date && (
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                  •{" "}
+                  {highlightSearchMatch(
+                    formatitem_date(item.item_date, showTime),
+                    searchQuery
+                  )}
+                </span>
+              )}
+              {item.isReceipt && (
+                <span className="ml-2 rounded-full bg-brand-surface px-2 py-0.5 align-middle text-xs font-medium text-brand-text">
+                  Bon
+                </span>
+              )}
+            </span>
+          </Button>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Bezahlt von {highlightSearchMatch(payerName, searchQuery)}
           </p>
@@ -502,7 +423,10 @@ export function ExpenseListDetail({
             <Button
               aria-label={`Position bearbeiten: ${item.name}`}
               className="size-8 p-0 text-muted-foreground"
-              onClick={() => void openDialog(item)}
+              onClick={(event) => {
+                event.stopPropagation()
+                void openDialog(item)
+              }}
               type="button"
               variant="ghost"
             >
@@ -516,7 +440,6 @@ export function ExpenseListDetail({
               onClick={(event) => {
                 event.stopPropagation()
                 setDeletingItem(item)
-                setDeleteError(null)
               }}
               type="button"
               variant="ghost"
@@ -529,360 +452,43 @@ export function ExpenseListDetail({
     )
   }
 
-  let settlement: Settlement | null = null
-  let settlementError: string | null = result?.rulesErrorMessage ?? null
-  if (!isLoading && !errorMessage && result?.rules && !settlementError) {
-    try {
-      settlement = calculateSettlement(
-        toSettlementItems(nodes),
-        result.rules,
-        members.map((member) => member.id),
-        groupDefaultSplitRule
-      )
-    } catch (error) {
-      settlementError = getActionErrorMessage(error)
-    }
-  }
-  const topCreditor = settlement?.balances
-    .filter((balance) => balance.balanceCents > 0)
-    .sort(
-      (a, b) =>
-        b.balanceCents - a.balanceCents || a.memberId.localeCompare(b.memberId)
-    )[0]
   const canCloseList =
     Boolean(result?.access?.canCloseLists) &&
     list.status === "open" &&
     !group.archivedAt
-  let previewRule: ExpenseSplitRule | null
-  if (customSplitMode === "equal") {
-    previewRule = { mode: "equal" }
-  } else if (customSplitMode === "complete") {
-    previewRule = { mode: "complete", memberId: completeMemberId }
-  } else if (customSplitMode === "percentage") {
-    const shares = members.map((member) => ({
-      memberId: member.id,
-      basisPoints: parsePercentageToBasisPoints(splitInputs[member.id] ?? ""),
-    }))
-    previewRule = shares.some((share) => share.basisPoints === null)
-      ? null
-      : {
-          mode: "percentage",
-          shares: shares.filter(
-            (share): share is { memberId: string; basisPoints: number } =>
-              share.basisPoints !== null
-          ),
-        }
-  } else {
-    const shares = members.map((member) => ({
-      memberId: member.id,
-      amountCents: parseNonNegativeCents(splitInputs[member.id] ?? ""),
-    }))
-    previewRule = shares.some((share) => share.amountCents === null)
-      ? null
-      : {
-          mode: "fixed",
-          shares: shares.filter(
-            (share): share is { memberId: string; amountCents: number } =>
-              share.amountCents !== null
-          ),
-        }
-  }
-  const isGroupDistribution =
-    previewRule !== null &&
-    areSplitRulesEqual(previewRule, groupDefaultSplitRule)
-  let splitPreview: ReturnType<typeof calculateExpenseSplit> | null = null
-  let splitPreviewError: string | null = null
-  if (amountForPreview !== null && previewRule && members.length > 0) {
-    try {
-      splitPreview = calculateExpenseSplit(
-        amountForPreview,
-        members.map((member) => member.id),
-        previewRule,
-        groupDefaultSplitRule
-      )
-    } catch (error) {
-      splitPreviewError = getActionErrorMessage(error)
-    }
-  }
 
-  async function openDialog(
+  function openDialog(
     item: ExpenseItem | null = null,
     parent: ExpenseItem | null = null
   ) {
     setEditingItem(item)
-    setIsReceiptDraft(item?.isReceipt ?? false)
-    setNewParentId(parent?.id ?? null)
-    setItemName(item?.name ?? "")
-    setitem_dateText(isoToGermanDateTime(item?.item_date ?? todayIsoDate()))
-    setAmountText(
-      item ? (item.amountCents / 100).toFixed(2).replace(".", ",") : ""
-    )
-    setPaidByMemberId(
-      item?.paidByMemberId ??
-        result?.access?.currentMemberId ??
-        members[0]?.id ??
-        ""
-    )
-    setDialogError(null)
+    const resolvedParent =
+      parent ??
+      (item?.parentItemId
+        ? items.find((i) => i.id === item.parentItemId) ?? null
+        : null)
+    setDialogParent(resolvedParent)
     setIsDialogOpen(true)
-    setSplitDraft(result?.access?.groupDefaultSplitRule ?? { mode: "equal" })
-    if (item) {
-      setIsLoadingSplitRule(true)
-      try {
-        const savedRule = await getExpenseItemSplitRule(item.id)
-        setSplitDraft(savedRule)
-      } catch (error) {
-        setDialogError(getActionErrorMessage(error))
-      } finally {
-        setIsLoadingSplitRule(false)
-      }
-    }
-  }
-
-  function handlePositionDateChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const formatted = formatGermanDateTimeInput(e.target.value)
-    setitem_dateText(formatted)
-  }
-
-  function setSplitDraft(rule: ExpenseSplitRule) {
-    setCustomSplitMode(rule.mode)
-    if (rule.mode === "complete") {
-      setCompleteMemberId(rule.memberId)
-    } else if (rule.mode === "percentage") {
-      const shares = new Map(
-        rule.shares.map((share) => [share.memberId, share.basisPoints])
-      )
-      setSplitInputs(
-        Object.fromEntries(
-          members.map((member) => [
-            member.id,
-            ((shares.get(member.id) ?? 0) / 100).toFixed(2).replace(".", ","),
-          ])
-        )
-      )
-    } else if (rule.mode === "fixed") {
-      const shares = new Map(
-        rule.shares.map((share) => [share.memberId, share.amountCents])
-      )
-      setSplitInputs(
-        Object.fromEntries(
-          members.map((member) => [
-            member.id,
-            ((shares.get(member.id) ?? 0) / 100).toFixed(2).replace(".", ","),
-          ])
-        )
-      )
-    } else {
-      setSplitInputs({})
-    }
-  }
-
-  function changeCustomSplitMode(mode: ExpenseSplitRule["mode"]) {
-    setCustomSplitMode(mode)
-    if (mode === "complete") {
-      setCompleteMemberId(
-        (current) =>
-          current || result?.access?.currentMemberId || members[0]?.id || ""
-      )
-    } else if (mode === "percentage") {
-      setSplitInputs(
-        createEqualPercentageDrafts(members.map((member) => member.id))
-      )
-    } else if (mode === "fixed") {
-      setSplitInputs(
-        Object.fromEntries(members.map((member) => [member.id, "0,00"]))
-      )
-    } else {
-      setSplitInputs({})
-    }
   }
 
   function closeDialog() {
-    if (!isSaving) {
-      setIsDialogOpen(false)
-    }
+    setIsDialogOpen(false)
+    setEditingItem(null)
+    setDialogParent(null)
   }
 
-  function closeDeleteDialog() {
-    if (!isDeleting) {
-      setDeletingItem(null)
-      setDeleteError(null)
+  function handleDialogSuccess(
+    message: string,
+    parentItemId: string | null
+  ) {
+    closeDialog()
+    if (parentItemId) {
+      setExpandedIds((current) => new Set(current).add(parentItemId))
     }
+    setSuccessMessage(message)
+    setReloadNumber((current) => current + 1)
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const name = itemName.trim()
-    const amountCents = parseAmountToCents(amountText)
-
-    if (!name) {
-      setDialogError("Bitte eine Bezeichnung eingeben.")
-      return
-    }
-    if (amountCents === null) {
-      setDialogError("Bitte einen gültigen Betrag eingeben, z. B. 12,50.")
-      return
-    }
-    if (!paidByMemberId) {
-      setDialogError("Bitte auswählen, wer bezahlt hat.")
-      return
-    }
-
-    let splitRule: ExpenseSplitRule | null = null
-    if (canEditSplits) {
-      if (customSplitMode === "equal") {
-        splitRule = { mode: "equal" }
-      } else if (customSplitMode === "complete") {
-        splitRule = { mode: "complete", memberId: completeMemberId }
-      } else if (customSplitMode === "percentage") {
-        const shares = members.map((member) => ({
-          memberId: member.id,
-          basisPoints: parsePercentageToBasisPoints(
-            splitInputs[member.id] ?? ""
-          ),
-        }))
-        if (shares.some((share) => share.basisPoints === null)) {
-          setDialogError(
-            "Bitte gültige Prozentanteile mit höchstens zwei Nachkommastellen eingeben."
-          )
-          return
-        }
-        splitRule = {
-          mode: "percentage",
-          shares: shares.filter(
-            (share): share is { memberId: string; basisPoints: number } =>
-              share.basisPoints !== null
-          ),
-        }
-      } else {
-        const shares = members.map((member) => ({
-          memberId: member.id,
-          amountCents: parseNonNegativeCents(splitInputs[member.id] ?? ""),
-        }))
-        if (shares.some((share) => share.amountCents === null)) {
-          setDialogError("Bitte gültige Festbeträge in Euro eingeben.")
-          return
-        }
-        splitRule = {
-          mode: "fixed",
-          shares: shares.filter(
-            (share): share is { memberId: string; amountCents: number } =>
-              share.amountCents !== null
-          ),
-        }
-      }
-
-      try {
-        calculateExpenseSplit(
-          amountCents,
-          members.map((member) => member.id),
-          splitRule,
-          groupDefaultSplitRule
-        )
-        if (areSplitRulesEqual(splitRule, groupDefaultSplitRule)) {
-          splitRule = editingItem ? groupDefaultSplitRule : null
-        }
-      } catch (error) {
-        setDialogError(getActionErrorMessage(error))
-        return
-      }
-    }
-
-    const item_dateIso = item_dateText
-      ? germanToIsoDateTime(item_dateText)
-      : null
-    if (item_dateText && !item_dateIso) {
-      setDialogError(
-        "Bitte ein gültiges Datum im Format TT.MM.JJJJ HH:MM eingeben."
-      )
-      return
-    }
-
-    setIsSaving(true)
-    setDialogError(null)
-    try {
-      if (editingItem) {
-        await updateExpenseItem(editingItem.id, {
-          name,
-          amountCents,
-          paidByMemberId,
-          splitRule,
-          isReceipt: dialogParentId ? false : isReceiptDraft,
-          item_date: item_dateIso,
-        })
-      } else {
-        await createExpenseItem(list.id, {
-          name,
-          amountCents,
-          paidByMemberId,
-          splitRule,
-          isReceipt: dialogParentId ? false : isReceiptDraft,
-          parentItemId: dialogParentId,
-          item_date: item_dateIso,
-        })
-      }
-      setIsDialogOpen(false)
-      setEditingItem(null)
-      if (dialogParentId) {
-        setExpandedIds((current) => new Set(current).add(dialogParentId))
-      }
-      setSuccessMessage(
-        editingItem
-          ? "Die Position wurde aktualisiert."
-          : "Die Position wurde hinzugefügt."
-      )
-      setReloadNumber((current) => current + 1)
-    } catch (error) {
-      setDialogError(getActionErrorMessage(error))
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  async function handleCloseList() {
-    if (
-      !window.confirm(
-        `Liste „${list.name}“ abschließen? Danach kann sie nicht mehr als offen geführt werden.`
-      )
-    ) {
-      return
-    }
-
-    setIsClosing(true)
-    setCloseError(null)
-    try {
-      await completeExpenseList(list.id)
-      setSuccessMessage("Die Ausgabenliste wurde abgeschlossen.")
-      onListChange?.({
-        ...list,
-        status: "completed",
-        completedAt: new Date().toISOString(),
-      })
-    } catch (error) {
-      setCloseError(getActionErrorMessage(error))
-    } finally {
-      setIsClosing(false)
-    }
-  }
-
-  async function handleDelete() {
-    if (!deletingItem) {
-      return
-    }
-
-    setIsDeleting(true)
-    setDeleteError(null)
-    try {
-      await deleteExpenseItem(deletingItem.id)
-      setDeletingItem(null)
-      setSuccessMessage("Die Position wurde gelöscht.")
-      setReloadNumber((current) => current + 1)
-    } catch (error) {
-      setDeleteError(getActionErrorMessage(error))
-    } finally {
-      setIsDeleting(false)
-    }
-  }
   const handleFileSelected = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -911,7 +517,7 @@ export function ExpenseListDetail({
       setReloadNumber((current) => current + 1)
     } catch (err) {
       console.error("Fehler beim Scannen des Bons:", err)
-      setDialogError(getActionErrorMessage(err))
+      setScanWarningMessage(getActionErrorMessage(err))
     } finally {
       setIsScanning(false)
       event.target.value = ""
@@ -976,100 +582,107 @@ export function ExpenseListDetail({
                   {list.paidAt &&
                     ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
                 </p>
-                <div className="relative">
-                  <Button
-                    aria-label="Ansichts- und Sortieroptionen"
-                    className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
-                    onClick={() => setIsViewSettingsOpen((prev) => !prev)}
-                    type="button"
-                    variant="outline"
+                <Popover
+                  open={isViewSettingsOpen}
+                  onOpenChange={setIsViewSettingsOpen}
+                >
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        aria-label="Ansichts- und Sortieroptionen"
+                        className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
+                        type="button"
+                        variant="outline"
+                      />
+                    }
                   >
                     <SlidersHorizontal className="size-4" />
-                  </Button>
+                  </PopoverTrigger>
 
-                  {isViewSettingsOpen && (
-                    <div className="absolute top-full left-0 z-20 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-foreground">
-                          Ansicht & Filter
-                        </p>
-                        {searchQuery && (
-                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
-                            Filter aktiv
-                          </span>
-                        )}
+                  <PopoverContent className="w-64">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-foreground">
+                        Ansicht & Filter
+                      </p>
+                      {searchQuery && (
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
+                          Filter aktiv
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 space-y-2.5 text-xs">
+                      {/* Volltext-Suche ganz oben */}
+                      <div>
+                        <label
+                          className="text-muted-foreground"
+                          htmlFor="item-search"
+                        >
+                          Positionen durchsuchen
+                        </label>
+                        <div className="relative mt-1">
+                          <Input
+                            id="item-search"
+                            placeholder="Name, Zahler, Bon-Posten..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-8 rounded-lg border-border bg-muted px-2.5 pr-7 text-xs"
+                            autoFocus
+                          />
+                          {searchQuery && (
+                            <Button
+                              type="button"
+                              onClick={() => setSearchQuery("")}
+                              className="absolute top-1/2 right-2 size-auto -translate-y-1/2 p-0 text-muted-foreground hover:text-foreground"
+                              aria-label="Suche zurücksetzen"
+                              variant="ghost"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="mt-2.5 space-y-2.5 text-xs">
-                        {/* Volltext-Suche ganz oben */}
-                        <div>
-                          <label
-                            className="text-muted-foreground"
-                            htmlFor="item-search"
-                          >
-                            Positionen durchsuchen
-                          </label>
-                          <div className="relative mt-1">
-                            <Input
-                              id="item-search"
-                              placeholder="Name, Zahler, Bon-Posten..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="h-8 rounded-lg border-border bg-muted px-2.5 pr-7 text-xs"
-                              autoFocus
-                            />
-                            {searchQuery && (
-                              <button
-                                type="button"
-                                onClick={() => setSearchQuery("")}
-                                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                aria-label="Suche zurücksetzen"
-                              >
-                                <X className="size-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                      <hr className="border-border" />
 
-                        <hr className="border-border" />
+                      {/* Uhrzeit-Umschalter */}
+                      <div>
+                        <label className="text-muted-foreground">
+                          Uhrzeit anzeigen
+                        </label>
+                        <Button
+                          type="button"
+                          onClick={() => setShowTime((prev) => !prev)}
+                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
+                          variant="ghost"
+                        >
+                          {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
+                        </Button>
+                      </div>
 
-                        {/* Uhrzeit-Umschalter */}
-                        <div>
-                          <label className="text-muted-foreground">
-                            Uhrzeit anzeigen
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setShowTime((prev) => !prev)}
-                            className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
-                          >
-                            {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
-                          </button>
-                        </div>
-
-                        {/* Sortierung */}
-                        <div>
-                          <label className="text-muted-foreground">
-                            Sortieren nach
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSortBy((prev) =>
-                                prev === "item_date" ? "createdAt" : "item_date"
-                              )
-                            }
-                            className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
-                          >
-                            {sortBy === "item_date"
-                              ? "📅 Belegdatum"
-                              : "🕒 Erfassungszeit"}
-                          </button>
-                        </div>
+                      {/* Sortierung */}
+                      <div>
+                        <label className="text-muted-foreground">
+                          Sortieren nach
+                        </label>
+                        <Button
+                          type="button"
+                          onClick={() =>
+                            setSortBy((prev) =>
+                              prev === "item_date" ? "createdAt" : "item_date"
+                            )
+                          }
+                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
+                          variant="ghost"
+                        >
+                          {sortBy === "item_date"
+                            ? "📅 Belegdatum"
+                            : "🕒 Erfassungszeit"}
+                        </Button>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <ExpenseListStatusBadge status={list.status} />
@@ -1105,7 +718,8 @@ export function ExpenseListDetail({
               )}
               {canAddItem && (
                 <div className="relative inline-block">
-                  <input
+                  <Input
+                    ref={receiptInputRef}
                     type="file"
                     id="receipt-scan-input"
                     accept="image/png, image/jpeg, application/pdf"
@@ -1114,14 +728,12 @@ export function ExpenseListDetail({
                     disabled={isScanning}
                     onChange={handleFileSelected}
                   />
-                  <label
-                    htmlFor={isScanning ? undefined : "receipt-scan-input"}
+                  <Button
                     aria-label="Bon einscannen"
-                    className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand-primary px-3 text-white transition hover:bg-brand-primary-hover ${
-                      isScanning
-                        ? "cursor-not-allowed opacity-60"
-                        : "cursor-pointer"
-                    }`}
+                    className="h-9 rounded-xl bg-brand-primary px-3 text-white hover:bg-brand-primary-hover"
+                    disabled={isScanning}
+                    onClick={() => receiptInputRef.current?.click()}
+                    type="button"
                   >
                     {isScanning ? (
                       <>
@@ -1136,7 +748,7 @@ export function ExpenseListDetail({
                         <span className="hidden sm:inline">Bon einscannen</span>
                       </>
                     )}
-                  </label>
+                  </Button>
                 </div>
               )}
               {canAddItem && (
@@ -1153,449 +765,28 @@ export function ExpenseListDetail({
           </div>
         </div>
 
-        {isDialogOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                closeDialog()
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                closeDialog()
-              }
-            }}
-          >
-            <div
-              aria-labelledby="add-item-title"
-              aria-modal="true"
-              className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-6 shadow-xl md:max-w-lg"
-              role="dialog"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <h2 className="text-lg font-semibold" id="add-item-title">
-                  {dialogParentId
-                    ? editingItem
-                      ? "Unterposition bearbeiten"
-                      : "Unterposition hinzufügen"
-                    : editingItem
-                      ? "Position bearbeiten"
-                      : "Position hinzufügen"}
-                </h2>
-                <Button
-                  aria-label="Dialog schließen"
-                  className="size-8 shrink-0 rounded-lg p-0 text-muted-foreground"
-                  disabled={isSaving || isLoadingSplitRule}
-                  onClick={closeDialog}
-                  type="button"
-                  variant="ghost"
-                >
-                  <X aria-hidden="true" className="size-4" />
-                </Button>
-              </div>
-              <form
-                className="mt-5 space-y-4"
-                noValidate
-                onSubmit={(event) => void handleSubmit(event)}
-              >
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="item-name">
-                    Bezeichnung
-                  </label>
-                  <Input
-                    autoComplete="one-time-code"
-                    data-roboform-disable="true"
-                    autoFocus
-                    className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                    id="item-name"
-                    maxLength={120}
-                    onChange={(event) => setItemName(event.target.value)}
-                    value={itemName}
-                  />
-                </div>
-                <div className="flex flex-row gap-1">
-                  <div className="flex-1 space-y-1.5">
-                    <label
-                      className="text-sm font-medium"
-                      htmlFor="item-amount"
-                    >
-                      Betrag in €
-                    </label>
-                    <Input
-                      autoComplete="one-time-code"
-                      data-roboform-disable="true"
-                      className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                      id="item-amount"
-                      inputMode="decimal"
-                      onChange={(event) => setAmountText(event.target.value)}
-                      placeholder="12,50"
-                      value={amountText}
-                    />
-                  </div>
-                  {!dialogParentId && (
-                    <div className="flex-1 space-y-1.5">
-                      <label
-                        className="text-sm font-medium"
-                        htmlFor="item-date"
-                      >
-                        Datum
-                      </label>
-                      <Input
-                        className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                        id="item-date"
-                        onChange={handlePositionDateChange}
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="TT.MM.JJJJ"
-                        value={item_dateText}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-row gap-1">
-                  {dialogParent ? (
-                    <p className="text-sm text-muted-foreground">
-                      Teil des Bons „{dialogParent.name}“. Was nicht als
-                      Unterposition erfasst ist, wird nach Zahler und Verteilung
-                      des Bons verrechnet.
-                    </p>
-                  ) : (
-                    <div className="w-1/2 space-y-1.5">
-                      <label
-                        className="text-sm font-medium"
-                        htmlFor="item-type"
-                      >
-                        Art der Position
-                      </label>
-                      <select
-                        className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                        disabled={editingHasChildren}
-                        id="item-type"
-                        onChange={(event) =>
-                          setIsReceiptDraft(event.target.value === "receipt")
-                        }
-                        value={isReceiptDraft ? "receipt" : "single"}
-                      >
-                        <option value="single">Einzelposition</option>
-                        <option value="receipt">
-                          Bon (Summe mit Unterpositionen)
-                        </option>
-                      </select>
-                      {editingHasChildren && (
-                        <p className="text-xs text-muted-foreground">
-                          Ein Bon mit Unterpositionen kann nicht zur
-                          Einzelposition werden.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex-1 space-y-1.5">
-                    <label className="text-sm font-medium" htmlFor="item-payer">
-                      Bezahlt von
-                    </label>
-                    <select
-                      className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                      id="item-payer"
-                      onChange={(event) =>
-                        setPaidByMemberId(event.target.value)
-                      }
-                      value={paidByMemberId}
-                    >
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <hr className="border-border" />
-                <section
-                  aria-labelledby="item-split-title"
-                  className="space-y-3"
-                >
-                  <div>
-                    <h3 className="text-sm font-semibold" id="item-split-title">
-                      Verteilung
-                    </h3>
-                    <p
-                      aria-live="polite"
-                      className="mt-1 text-xs text-muted-foreground"
-                      role="status"
-                    >
-                      {isGroupDistribution
-                        ? "Gruppenverteilung"
-                        : "Individuelle Verteilung"}
-                      {" · Gruppenstandard: "}
-                      {splitRuleLabel(groupDefaultSplitRule)}
-                    </p>
-                  </div>
-                  {canEditSplits && (
-                    <>
-                      <label className="sr-only" htmlFor="item-split-mode">
-                        Aufteilungsmodus
-                      </label>
-                      <select
-                        className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                        id="item-split-mode"
-                        onChange={(event) =>
-                          changeCustomSplitMode(
-                            event.target.value as
-                              "complete" | "percentage" | "fixed"
-                          )
-                        }
-                        value={customSplitMode}
-                      >
-                        <option value="equal">
-                          Gleichmäßig auf alle Gruppenmitglieder
-                        </option>
-                        <option value="complete">
-                          Komplett für eine Person
-                        </option>
-                        <option value="percentage">Prozentual</option>
-                        <option value="fixed">Fester Betrag</option>
-                      </select>
-                      {customSplitMode === "equal" ||
-                      customSplitMode === "complete" ? (
-                        members.length <= 4 ? (
-                          <fieldset className="space-y-1.5">
-                            <legend className="text-sm font-medium">
-                              Übernimmt den gesamten Betrag
-                            </legend>
-                            <div className="grid grid-cols-2 gap-2">
-                              {members.map((member) => (
-                                <label
-                                  className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
-                                  htmlFor={`item-split-member-${member.id}`}
-                                  key={member.id}
-                                >
-                                  <input
-                                    checked={
-                                      customSplitMode === "complete" &&
-                                      completeMemberId === member.id
-                                    }
-                                    id={`item-split-member-${member.id}`}
-                                    name="item-split-member"
-                                    onChange={() => {
-                                      changeCustomSplitMode("complete")
-                                      setCompleteMemberId(member.id)
-                                    }}
-                                    type="radio"
-                                    value={member.id}
-                                  />
-                                  <span className="truncate">
-                                    {member.displayName}
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          </fieldset>
-                        ) : (
-                          <div className="space-y-1.5">
-                            <label
-                              className="text-sm font-medium"
-                              htmlFor="item-split-member"
-                            >
-                              Übernimmt den gesamten Betrag
-                            </label>
-                            <select
-                              className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                              id="item-split-member"
-                              onChange={(event) => {
-                                changeCustomSplitMode("complete")
-                                setCompleteMemberId(event.target.value)
-                              }}
-                              value={
-                                customSplitMode === "complete"
-                                  ? completeMemberId
-                                  : ""
-                              }
-                            >
-                              <option disabled value="">
-                                Person wählen
-                              </option>
-                              {members.map((member) => (
-                                <option key={member.id} value={member.id}>
-                                  {member.displayName}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )
-                      ) : (
-                        <div className="space-y-2">
-                          {members.map((member) => (
-                            <div
-                              className="flex items-center justify-between gap-3"
-                              key={member.id}
-                            >
-                              <label
-                                className="min-w-0 flex-1 truncate text-sm"
-                                htmlFor={`split-${member.id}`}
-                              >
-                                {member.displayName}
-                              </label>
-                              <div className="flex w-36 shrink-0 items-center gap-2">
-                                <Input
-                                  className="h-10 rounded-xl border-border px-3 text-right text-sm"
-                                  id={`split-${member.id}`}
-                                  inputMode="decimal"
-                                  onChange={(event) =>
-                                    setSplitInputs((current) => ({
-                                      ...current,
-                                      [member.id]: event.target.value,
-                                    }))
-                                  }
-                                  placeholder={
-                                    customSplitMode === "percentage"
-                                      ? "0,00"
-                                      : "0,00"
-                                  }
-                                  value={splitInputs[member.id] ?? ""}
-                                />
-                                <span className="text-sm text-muted-foreground">
-                                  {customSplitMode === "percentage" ? "%" : "€"}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {splitPreviewError && (
-                    <p className="text-sm text-danger-text" role="alert">
-                      {splitPreviewError}
-                    </p>
-                  )}
-                  {splitPreview && (
-                    <ul
-                      aria-label="Vorschau der Verteilung"
-                      className="space-y-1 rounded-xl bg-muted p-3 text-sm"
-                    >
-                      {splitPreview.map((allocation) => (
-                        <li
-                          className="flex justify-between gap-3"
-                          key={allocation.memberId}
-                        >
-                          <span>
-                            {memberNames.get(allocation.memberId) ??
-                              "Unbekannt"}
-                          </span>
-                          <span className="font-medium">
-                            {formatCents(allocation.amountCents)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-                {(editingItem || dialogParentId) && (
-                  <div className="space-y-1.5 border-t border-border pt-3">
-                    <p className="text-sm font-medium">Beleg</p>
-                    <ReceiptPreview
-                      fallbackItemId={
-                        editingItem?.parentItemId ?? dialogParentId
-                      }
-                      itemId={editingItem?.id}
-                    />
-                  </div>
-                )}
-                {dialogError && (
-                  <p className="text-sm text-danger-text" role="alert">
-                    {dialogError}
-                  </p>
-                )}
-                <div className="flex justify-end gap-2">
-                  <Button
-                    disabled={isSaving || isLoadingSplitRule}
-                    onClick={closeDialog}
-                    type="button"
-                    variant="outline"
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button
-                    className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-                    disabled={isSaving || isLoadingSplitRule}
-                    type="submit"
-                  >
-                    {isSaving && (
-                      <LoaderCircle
-                        aria-hidden="true"
-                        className="size-4 animate-spin"
-                      />
-                    )}
-                    {isSaving
-                      ? "Speichert ..."
-                      : editingItem
-                        ? "Speichern"
-                        : "Hinzufügen"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-        {deletingItem && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                closeDeleteDialog()
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                closeDeleteDialog()
-              }
-            }}
-          >
-            <div
-              aria-labelledby="delete-item-title"
-              aria-modal="true"
-              className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl"
-              role="alertdialog"
-            >
-              <h2 className="text-lg font-semibold" id="delete-item-title">
-                Position löschen?
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                „{deletingItem.name}“ wird dauerhaft aus dieser Liste entfernt.
-              </p>
-              {deleteError && (
-                <p className="mt-3 text-sm text-danger-text" role="alert">
-                  {deleteError}
-                </p>
-              )}
-              <div className="mt-5 flex justify-end gap-2">
-                <Button
-                  disabled={isDeleting}
-                  onClick={closeDeleteDialog}
-                  type="button"
-                  variant="outline"
-                >
-                  Abbrechen
-                </Button>
-                <Button
-                  className="bg-destructive text-white hover:bg-destructive/90"
-                  disabled={isDeleting}
-                  onClick={() => void handleDelete()}
-                  type="button"
-                >
-                  {isDeleting && (
-                    <LoaderCircle
-                      aria-hidden="true"
-                      className="size-4 animate-spin"
-                    />
-                  )}
-                  {isDeleting ? "Löscht ..." : "Löschen"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ExpenseItemDialog
+          open={isDialogOpen}
+          onClose={closeDialog}
+          onSuccess={handleDialogSuccess}
+          listId={list.id}
+          editingItem={editingItem}
+          parentItem={dialogParent}
+          items={items}
+          members={members}
+          groupDefaultSplitRule={groupDefaultSplitRule}
+          canEditSplits={canEditSplits}
+          currentMemberId={result?.access?.currentMemberId ?? null}
+        />
+        <DeleteExpenseItemDialog
+          item={deletingItem}
+          onClose={() => setDeletingItem(null)}
+          onSuccess={() => {
+            setDeletingItem(null)
+            setSuccessMessage("Die Position wurde gelöscht.")
+            setReloadNumber((current) => current + 1)
+          }}
+        />
         <Toast
           message={successMessage}
           onClose={() => setSuccessMessage(null)}
@@ -1643,12 +834,12 @@ export function ExpenseListDetail({
                     {renderItemRow(item)}
                     {item.isReceipt && (
                       <div className="pb-3">
-                        <button
+                        <Button
                           aria-expanded={isExpanded}
                           aria-label={`Unterpositionen von ${item.name} ${
                             isExpanded ? "ausblenden" : "anzeigen"
                           }`}
-                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
+                          className="flex h-auto w-full items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-left text-xs text-muted-foreground"
                           onClick={() =>
                             setExpandedIds((current) => {
                               const next = new Set(current)
@@ -1661,6 +852,7 @@ export function ExpenseListDetail({
                             })
                           }
                           type="button"
+                          variant="ghost"
                         >
                           <span>
                             Bon · {node.children.length}{" "}
@@ -1680,7 +872,7 @@ export function ExpenseListDetail({
                               className="size-4"
                             />
                           )}
-                        </button>
+                        </Button>
                         {isExpanded && (
                           <div className="mt-2 ml-3 border-l-2 border-border pl-3">
                             <div className="flex flex-col gap-4 lg:flex-row">
@@ -1725,7 +917,7 @@ export function ExpenseListDetail({
                                   </Button>
                                 )}
                               </div>
-                              <div className="min-w-0 w-full lg:flex-1">
+                              <div className="w-full min-w-0 lg:flex-1">
                                 <ReceiptPreview itemId={item.id} />
                               </div>
                             </div>
@@ -1752,130 +944,23 @@ export function ExpenseListDetail({
         </div>
 
         {!isLoading && !errorMessage && (
-          <section
-            aria-label="Abrechnung"
-            className="mt-4 shrink-0 border-t border-border pt-3"
-          >
-            <button
-              aria-controls="settlement-details"
-              aria-expanded={isSettlementOpen}
-              className="flex w-full items-center justify-between gap-3 rounded-xl py-1 text-left text-sm"
-              onClick={() => setIsSettlementOpen((current) => !current)}
-              type="button"
-            >
-              <span className="min-w-0 font-medium">
-                {settlementError
-                  ? "Abrechnung nicht verfügbar"
-                  : !settlement || items.length === 0
-                    ? "Noch nichts abzurechnen"
-                    : topCreditor
-                      ? `${memberNames.get(topCreditor.memberId) ?? "Unbekannt"} bekommt am meisten zurück: ${formatCents(topCreditor.balanceCents)}`
-                      : "Alles ausgeglichen"}
-              </span>
-              {isSettlementOpen ? (
-                <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
-              ) : (
-                <ChevronUp aria-hidden="true" className="size-4 shrink-0" />
-              )}
-            </button>
-            {isSettlementOpen && (
-              <div
-                className="mt-3 max-h-64 space-y-3 overflow-y-auto"
-                id="settlement-details"
-              >
-                {settlementError ? (
-                  <p className="text-sm text-danger-text" role="alert">
-                    {settlementError}
-                  </p>
-                ) : settlement && settlement.transfers.length > 0 ? (
-                  <ul
-                    aria-label="Erstattungen"
-                    className="space-y-1.5 rounded-xl bg-muted p-3 text-sm"
-                  >
-                    {settlement.transfers.map((transfer) => (
-                      <li
-                        key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
-                      >
-                        <span className="font-medium">
-                          {memberNames.get(transfer.toMemberId) ?? "Unbekannt"}
-                        </span>{" "}
-                        bekommt{" "}
-                        <span className="font-semibold">
-                          {formatCents(transfer.amountCents)}
-                        </span>{" "}
-                        von{" "}
-                        <span className="font-medium">
-                          {memberNames.get(transfer.fromMemberId) ??
-                            "Unbekannt"}
-                        </span>{" "}
-                        zurück
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Es sind keine Erstattungen nötig.
-                  </p>
-                )}
-                {closeError && (
-                  <p className="text-sm text-danger-text" role="alert">
-                    {closeError}
-                  </p>
-                )}
-                {canCloseList && (
-                  <div className="flex justify-end">
-                    <Button
-                      className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-                      disabled={isClosing || Boolean(settlementError)}
-                      onClick={() => void handleCloseList()}
-                      type="button"
-                    >
-                      {isClosing && (
-                        <LoaderCircle
-                          aria-hidden="true"
-                          className="size-4 animate-spin"
-                        />
-                      )}
-                      Abschluss
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
+          <SettlementSection
+            list={list}
+            items={items}
+            nodes={nodes}
+            members={members}
+            memberNames={memberNames}
+            groupDefaultSplitRule={groupDefaultSplitRule}
+            rules={result?.rules}
+            rulesErrorMessage={result?.rulesErrorMessage ?? null}
+            canCloseList={canCloseList}
+            onListChange={onListChange}
+            onSuccess={setSuccessMessage}
+          />
         )}
       </section>
     </>
   )
-}
-
-const formatGermanDateTimeInput = (value: string) => {
-  // Nur Ziffern erlauben, maximal 12 Ziffern (8 für Datum, 4 für Uhrzeit)
-  const numbers = value.replace(/\D/g, "").slice(0, 12)
-
-  const day = numbers.slice(0, 2)
-  const month = numbers.slice(2, 4)
-  const year = numbers.slice(4, 8)
-  const hour = numbers.slice(8, 10)
-  const minute = numbers.slice(10, 12)
-
-  let result = day
-
-  if (month.length > 0) {
-    result += `.${month}`
-  }
-  if (year.length > 0) {
-    result += `.${year}`
-  }
-  if (hour.length > 0) {
-    // Sobald Ziffern für die Uhrzeit kommen, fügen wir ein Leerzeichen ein
-    result += ` ${hour}`
-  }
-  if (minute.length > 0) {
-    result += `:${minute}`
-  }
-
-  return result
 }
 
 interface GetSortedNodesParams {

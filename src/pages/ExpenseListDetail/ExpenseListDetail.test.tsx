@@ -147,7 +147,6 @@ describe("ExpenseListDetail", () => {
     const onListChange = vi.fn()
     getExpenseItems.mockResolvedValue(items)
     completeExpenseList.mockResolvedValue(undefined)
-    vi.spyOn(window, "confirm").mockReturnValue(true)
     mockAccess()
     renderDetail(
       vi.fn(),
@@ -167,6 +166,7 @@ describe("ExpenseListDetail", () => {
     ).toMatch(/Ben bekommt 3,75\s€ von Anna zurück/)
 
     await user.click(screen.getByRole("button", { name: "Abschluss" }))
+    await user.click(screen.getByRole("button", { name: "Bestätigen" }))
 
     expect(completeExpenseList).toHaveBeenCalledWith("l1")
     expect(onListChange).toHaveBeenCalledWith(
@@ -469,7 +469,8 @@ describe("ExpenseListDetail", () => {
     await user.type(screen.getByLabelText("Bezeichnung"), "  Brot ")
     await user.type(screen.getByLabelText("Betrag in €"), "1.234,50")
 
-    await user.selectOptions(screen.getByLabelText("Bezahlt von"), "m2")
+    await user.click(screen.getByRole("combobox", { name: "Bezahlt von" }))
+    await user.click(screen.getByRole("option", { name: "Ben" }))
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
 
     const todayString = new Date().toISOString().slice(0, 10) // Liefert z. B. "2026-10-30"
@@ -502,17 +503,33 @@ describe("ExpenseListDetail", () => {
     await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
     await user.type(screen.getByLabelText("Betrag in €"), "10,00")
     const splitMode = screen.getByLabelText("Aufteilungsmodus")
-    await user.selectOptions(splitMode, "percentage")
+    splitMode.focus()
+    await user.keyboard("{Enter}")
+    await user.click(screen.getByRole("option", { name: "Prozentual" }))
+    await waitFor(() =>
+      expect(splitMode.getAttribute("aria-expanded")).toBe("false")
+    )
     expect(
       screen
         .getByRole("status")
         .textContent?.includes("Individuelle Verteilung")
     ).toBeTruthy()
-    await user.selectOptions(splitMode, "equal")
+    splitMode.focus()
+    await user.keyboard("{Enter}")
+    await user.click(
+      screen.getByRole("option", {
+        name: "Gleichmäßig auf alle Gruppenmitglieder",
+      })
+    )
+    await waitFor(() =>
+      expect(splitMode.getAttribute("aria-expanded")).toBe("false")
+    )
     expect(
       screen.getByRole("status").textContent?.includes("Gruppenverteilung")
     ).toBeTruthy()
-    await user.selectOptions(splitMode, "percentage")
+    splitMode.focus()
+    await user.keyboard("{Enter}")
+    await user.click(screen.getByRole("option", { name: "Prozentual" }))
     await user.clear(screen.getByLabelText("Anna"))
     await user.type(screen.getByLabelText("Anna"), "100")
     await user.clear(screen.getByLabelText("Ben"))
@@ -570,8 +587,8 @@ describe("ExpenseListDetail", () => {
       (screen.getByLabelText("Betrag in €") as HTMLInputElement).value
     ).toBe("5,00")
     expect(
-      (screen.getByLabelText("Bezahlt von") as HTMLSelectElement).value
-    ).toBe("m1")
+      screen.getByRole("combobox", { name: "Bezahlt von" }).textContent
+    ).toContain("Anna")
 
     await user.clear(screen.getByLabelText("Bezeichnung"))
     await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
@@ -650,9 +667,10 @@ describe("ExpenseListDetail", () => {
     await user.click(
       await screen.findByRole("button", { name: "Position hinzufügen" })
     )
-    await user.selectOptions(
-      screen.getByLabelText("Art der Position"),
-      "receipt"
+    screen.getByRole("combobox", { name: "Art der Position" }).focus()
+    await user.keyboard("{Enter}")
+    await user.click(
+      screen.getByRole("option", { name: "Bon (Summe mit Unterpositionen)" })
     )
     await user.type(screen.getByLabelText("Bezeichnung"), "REWE")
     await user.type(screen.getByLabelText("Betrag in €"), "50")
@@ -688,6 +706,32 @@ describe("ExpenseListDetail", () => {
     expect(deleteExpenseItem).toHaveBeenCalledWith("i1")
     expect(await screen.findByText("Die Position wurde gelöscht.")).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("öffnet die Dateiauswahl über den Scan-Button auch bei geöffneten Ansichtsoptionen", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([])
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await screen.findByText("Noch keine Positionen")
+    const input = document.getElementById("receipt-scan-input")
+    expect(input).toBeInstanceOf(HTMLInputElement)
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error("Dateiauswahl fehlt")
+    }
+    const openFilePicker = vi.spyOn(input, "click").mockImplementation(() => {})
+    const scanButton = screen.getByRole("button", { name: "Bon einscannen" })
+
+    await user.click(scanButton)
+    expect(openFilePicker).toHaveBeenCalledTimes(1)
+
+    await user.click(
+      screen.getByRole("button", { name: "Ansichts- und Sortieroptionen" })
+    )
+    expect(screen.getByLabelText("Positionen durchsuchen")).toBeTruthy()
+    await user.click(scanButton)
+    expect(openFilePicker).toHaveBeenCalledTimes(2)
   })
 
   it("zeigt während des Scannens das Overlay und erlaubt weiterhin die Navigation zur Liste", async () => {

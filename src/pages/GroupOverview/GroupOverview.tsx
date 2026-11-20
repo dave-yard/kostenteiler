@@ -76,17 +76,21 @@ function SortableGroupCard({
           </div>
           <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">
-              <button
-                className="group inline-flex max-w-full min-w-0 items-center gap-1 border-b border-transparent text-left hover:border-current hover:text-brand-text"
-                onClick={onOpen}
+              <Button
+                className="group inline-flex h-auto max-w-full min-w-0 items-center gap-1 border-b border-transparent p-0 text-left text-xl font-semibold hover:border-current hover:bg-transparent hover:text-brand-text"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpen()
+                }}
                 type="button"
+                variant="ghost"
               >
                 <span className="truncate">{group.name}</span>
                 <ChevronRight
                   aria-hidden="true"
                   className="size-5 shrink-0 text-muted-foreground group-hover:text-brand-text"
                 />
-              </button>
+              </Button>
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {group.memberCount}{" "}
