@@ -553,6 +553,54 @@ describe("ExpenseListDetail", () => {
     })
   })
 
+  it("ergänzt bei zwei Personen automatisch den Rest als festen Betrag", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([])
+    createExpenseItem.mockResolvedValue("i4")
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position hinzufügen" })
+    )
+    await user.type(screen.getByLabelText("Bezeichnung"), "Brot")
+    await user.type(screen.getByLabelText("Betrag in €"), "10,00")
+    const splitMode = screen.getByLabelText("Aufteilungsmodus")
+    splitMode.focus()
+    await user.keyboard("{Enter}")
+    await user.click(screen.getByRole("option", { name: "Fester Betrag" }))
+    await user.clear(screen.getByLabelText("Anna"))
+    await user.type(screen.getByLabelText("Anna"), "4,25")
+
+    expect((screen.getByLabelText("Ben") as HTMLInputElement).value).toBe(
+      "5,75"
+    )
+
+    await user.clear(screen.getByLabelText("Betrag in €"))
+    await user.type(screen.getByLabelText("Betrag in €"), "12,50")
+    expect((screen.getByLabelText("Ben") as HTMLInputElement).value).toBe(
+      "8,25"
+    )
+
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
+
+    expect(createExpenseItem).toHaveBeenCalledWith("l1", {
+      name: "Brot",
+      amountCents: 1250,
+      paidByMemberId: "m1",
+      isReceipt: false,
+      parentItemId: null,
+      item_date: expect.any(String),
+      splitRule: {
+        mode: "fixed",
+        shares: [
+          { memberId: "m1", amountCents: 425 },
+          { memberId: "m2", amountCents: 825 },
+        ],
+      },
+    })
+  })
+
   it("meldet einen ungültigen Betrag, ohne zu speichern", async () => {
     const user = userEvent.setup()
     getExpenseItems.mockResolvedValue([])

@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react"
@@ -160,6 +161,7 @@ export function ExpenseItemDialog({
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
+  const lastEditedFixedMemberId = useRef<string | null>(null)
 
   const dialogParentId = editingItem ? editingItem.parentItemId : parentItem?.id ?? null
   const dialogParent = parentItem ?? (dialogParentId ? items.find((item) => item.id === dialogParentId) : null)
@@ -217,6 +219,7 @@ export function ExpenseItemDialog({
         createEqualPercentageDrafts(members.map((member) => member.id))
       )
     } else if (mode === "fixed") {
+      lastEditedFixedMemberId.current = null
       setSplitInputs(
         Object.fromEntries(members.map((member) => [member.id, "0,00"]))
       )
@@ -228,6 +231,42 @@ export function ExpenseItemDialog({
   function handlePositionDateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const formatted = formatGermanDateTimeInput(e.target.value)
     setItemDateText(formatted)
+  }
+
+  function handleAmountChange(rawValue: string) {
+    setAmountText(rawValue)
+
+    const editedMemberId = lastEditedFixedMemberId.current
+    const amountCents = parseAmountToCents(rawValue)
+    if (
+      customSplitMode !== "fixed" ||
+      members.length !== 2 ||
+      !editedMemberId ||
+      amountCents === null
+    ) {
+      return
+    }
+
+    setSplitInputs((current) => {
+      const editedAmountCents = parseNonNegativeCents(
+        current[editedMemberId] ?? ""
+      )
+      const otherMember = members.find((member) => member.id !== editedMemberId)
+      if (
+        editedAmountCents === null ||
+        editedAmountCents > amountCents ||
+        !otherMember
+      ) {
+        return current
+      }
+
+      return {
+        ...current,
+        [otherMember.id]: ((amountCents - editedAmountCents) / 100)
+          .toFixed(2)
+          .replace(".", ","),
+      }
+    })
   }
 
   function handleSplitInputChange(memberId: string, rawValue: string) {
@@ -243,6 +282,22 @@ export function ExpenseItemDialog({
             next[otherMember.id] = (otherBp / 100).toFixed(2).replace(".", ",")
           }
         }
+      } else if (customSplitMode === "fixed" && members.length === 2) {
+        lastEditedFixedMemberId.current = memberId
+        const otherMember = members.find((m) => m.id !== memberId)
+        const sanitized = rawValue.trim().replace(/[,.]$/, "")
+        const amountCents = parseNonNegativeCents(sanitized)
+        const itemAmountCents = parseAmountToCents(amountText)
+        if (
+          otherMember &&
+          amountCents !== null &&
+          itemAmountCents !== null &&
+          amountCents <= itemAmountCents
+        ) {
+          next[otherMember.id] = ((itemAmountCents - amountCents) / 100)
+            .toFixed(2)
+            .replace(".", ",")
+        }
       }
       return next
     })
@@ -254,6 +309,7 @@ export function ExpenseItemDialog({
     }
 
     let isCurrent = true
+    lastEditedFixedMemberId.current = null
     setItemName(editingItem?.name ?? "")
     setAmountText(
       editingItem
@@ -560,7 +616,7 @@ export function ExpenseItemDialog({
                 className="h-11 rounded-xl border-border bg-card px-4 text-sm"
                 id="item-amount"
                 inputMode="decimal"
-                onChange={(event) => setAmountText(event.target.value)}
+                onChange={(event) => handleAmountChange(event.target.value)}
                 placeholder="12,50"
                 value={amountText}
               />
