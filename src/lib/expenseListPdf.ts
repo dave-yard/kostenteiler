@@ -18,6 +18,15 @@ export interface ExpenseListPdfRow {
   includeInTotals: boolean
 }
 
+export type ExpenseListPdfEntry =
+  | { kind: "item"; row: ExpenseListPdfRow }
+  | {
+      kind: "subtotal"
+      label: string
+      amountCents: number
+      sharesByMemberId: Map<string, number>
+    }
+
 interface BuildExpenseListPdfRowsOptions {
   nodes: ItemNode[]
   members: GroupMember[]
@@ -174,8 +183,11 @@ export function buildExpenseListPdfRows({
 
   mainRows.sort((a, b) => {
     if (sort === "alphabetical") {
+      const aName = a.name.normalize("NFC").toLocaleLowerCase("de")
+      const bName = b.name.normalize("NFC").toLocaleLowerCase("de")
       return (
-        a.name.localeCompare(b.name, "de", { sensitivity: "base" }) ||
+        aName.localeCompare(bName, "de") ||
+        (aName < bName ? -1 : aName > bName ? 1 : 0) ||
         b.date.localeCompare(a.date)
       )
     }
@@ -183,6 +195,124 @@ export function buildExpenseListPdfRows({
   })
 
   return mainRows.flatMap(({ detailRows, ...row }) => [row, ...detailRows])
+}
+
+function getIsoWeek(value: string) {
+  const dateOnly = value.slice(0, 10)
+  const date = new Date(`${dateOnly}T00:00:00Z`)
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ||
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== dateOnly
+  ) {
+    throw new Error(`Ungültiges Positionsdatum für das PDF: ${value}`)
+  }
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7))
+  const year = date.getUTCFullYear()
+  const yearStart = new Date(Date.UTC(year, 0, 1))
+  const week = Math.ceil(
+    ((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+  )
+  return `${year}-${String(week).padStart(2, "0")}`
+}
+
+export function buildExpenseListPdfEntries(
+  rows: ExpenseListPdfRow[],
+  sort: ExpenseListPdfSort
+): ExpenseListPdfEntry[] {
+  const entries: ExpenseListPdfEntry[] = []
+  const groups: { main: ExpenseListPdfRow; details: ExpenseListPdfRow[] }[] = []
+  for (const row of rows) {
+    if (row.includeInTotals) {
+      groups.push({ main: row, details: [] })
+    } else {
+      const group = groups[groups.length - 1]
+      if (!group || row.parentId !== group.main.id) {
+        throw new Error("Unterposition ohne zugehörige Hauptposition im PDF.")
+      }
+      group.details.push(row)
+    }
+  }
+
+  const addItems = (group: (typeof groups)[number]) => {
+    entries.push({ kind: "item", row: group.main })
+    for (const row of group.details) entries.push({ kind: "item", row })
+  }
+  const addSubtotal = (label: string, subtotalRows: ExpenseListPdfRow[]) => {
+    const sharesByMemberId = new Map<string, number>()
+    let amountCents = 0
+    for (const row of subtotalRows) {
+      amountCents += row.amountCents
+      for (const [memberId, share] of row.sharesByMemberId) {
+        sharesByMemberId.set(
+          memberId,
+          (sharesByMemberId.get(memberId) ?? 0) + share
+        )
+      }
+    }
+    entries.push({ kind: "subtotal", label, amountCents, sharesByMemberId })
+  }
+
+  if (sort === "date") {
+    let week = ""
+    let weekRows: ExpenseListPdfRow[] = []
+    for (const group of groups) {
+      const nextWeek = getIsoWeek(group.main.date)
+      if (week && nextWeek !== week) {
+        addSubtotal(
+          `Zwischensumme KW ${week.slice(5)}/${week.slice(0, 4)}`,
+          weekRows
+        )
+        weekRows = []
+      }
+      week = nextWeek
+      addItems(group)
+      weekRows.push(group.main)
+    }
+    if (weekRows.length) {
+      addSubtotal(
+        `Zwischensumme KW ${week.slice(5)}/${week.slice(0, 4)}`,
+        weekRows
+      )
+    }
+  } else {
+    let otherRows: ExpenseListPdfRow[] = []
+    const nameKey = (name: string) =>
+      name.normalize("NFC").toLocaleLowerCase("de")
+    for (let i = 0; i < groups.length;) {
+      let end = i + 1
+      while (
+        end < groups.length &&
+        nameKey(groups[end].main.name) === nameKey(groups[i].main.name)
+      )
+        end += 1
+      const nameGroups = groups.slice(i, end)
+      for (const group of nameGroups) {
+        addItems(group)
+        if (nameGroups.length < 5) {
+          otherRows.push(group.main)
+          if (otherRows.length === 10) {
+            addSubtotal("Zwischensumme übrige Positionen (10)", otherRows)
+            otherRows = []
+          }
+        }
+      }
+      if (nameGroups.length >= 5) {
+        addSubtotal(
+          `Zwischensumme ${groups[i].main.name}`,
+          nameGroups.map((group) => group.main)
+        )
+      }
+      i = end
+    }
+    if (otherRows.length) {
+      addSubtotal(
+        `Zwischensumme übrige Positionen (${otherRows.length})`,
+        otherRows
+      )
+    }
+  }
+  return entries
 }
 
 function formatPdfDate(value: string) {
@@ -272,6 +402,7 @@ export async function createExpenseListPdf({
     groupDefaultSplitRule,
     sort,
   })
+  const entries = buildExpenseListPdfEntries(rows, sort)
   const orientation = members.length > 4 ? "landscape" : "portrait"
   const format = members.length > 7 ? "a3" : "a4"
   const { jsPDF } = await import("jspdf")
@@ -363,7 +494,50 @@ export async function createExpenseListPdf({
 
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
-  for (const row of rows) {
+  for (const entry of entries) {
+    if (entry.kind === "subtotal") {
+      const rowHeight = 9
+      if (y + rowHeight > pageHeight - 18) {
+        doc.addPage()
+        drawHeader()
+        y = 31
+        drawTableHeader(y)
+        y += 10
+      }
+      doc.setFillColor(238, 241, 237)
+      doc.rect(margin, y, contentWidth, rowHeight, "F")
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7.5)
+      doc.text(
+        fitText(
+          doc,
+          entry.label,
+          dateWidth + positionWidth + payerWidth - 3,
+          2
+        ),
+        margin + 1.5,
+        y + 3.8
+      )
+      let x = margin + dateWidth + positionWidth + payerWidth
+      const amounts = [
+        entry.amountCents,
+        ...members.map((member) => entry.sharesByMemberId.get(member.id) ?? 0),
+      ]
+      amounts.forEach((amount, index) => {
+        const width = index === 0 ? amountWidth : shareWidth
+        doc.text(
+          formatCents(amount).replace(/\u00A0/g, " "),
+          x + width - 1.5,
+          y + 5.8,
+          { align: "right" }
+        )
+        x += width
+      })
+      y += rowHeight
+      doc.setFont("helvetica", "normal")
+      continue
+    }
+    const row = entry.row
     const isSubitem = row.parentId !== null
     const positionLabel = isSubitem
       ? `Unterposition: ${row.name} (im Gesamtbetrag enthalten)`
