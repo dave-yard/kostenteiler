@@ -1,5 +1,10 @@
 import { getSupabaseClient } from "@/lib/supabase"
-import type { ExpenseList } from "@/types/group"
+import type {
+  CreateExpenseListParams,
+  ExpenseList,
+  ExpenseListType,
+  RecurringInterval,
+} from "@/types/group"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
@@ -53,19 +58,53 @@ export async function getExpenseLists(
   }
 
   return data.map((row) => {
-    const status = readString(row, "status")
+    const record = row as Record<string, unknown>
+    const status = readString(record, "status")
     if (status !== "open" && status !== "completed" && status !== "isPaid") {
       throw new Error("Supabase hat einen unbekannten Listenstatus geliefert.")
     }
 
+    const listType =
+      record.list_type === "recurring" || record.list_type === "one_off"
+        ? (record.list_type as ExpenseListType)
+        : "one_off"
+    const interval =
+      record.interval === "monthly" ||
+      record.interval === "quarterly" ||
+      record.interval === "yearly"
+        ? (record.interval as RecurringInterval)
+        : null
+    const dayOfMonth =
+      typeof record.day_of_month === "number" ? record.day_of_month : null
+    const autoClose = record.auto_close === true
+    const createdByUserId =
+      typeof record.created_by_user_id === "string"
+        ? record.created_by_user_id
+        : null
+    const completedByUserId =
+      typeof record.completed_by_user_id === "string"
+        ? record.completed_by_user_id
+        : null
+    const paidByUserId =
+      typeof record.paid_by_user_id === "string"
+        ? record.paid_by_user_id
+        : null
+
     return {
-      id: readString(row, "id"),
-      groupId: readString(row, "group_id"),
-      name: readString(row, "name"),
+      id: readString(record, "id"),
+      groupId: readString(record, "group_id"),
+      name: readString(record, "name"),
       status,
-      createdAt: readString(row, "created_at"),
-      completedAt: readNullableString(row, "completed_at"),
-      paidAt: readNullableString(row, "paid_at"),
+      createdAt: readString(record, "created_at"),
+      createdByUserId,
+      completedAt: readNullableString(record, "completed_at"),
+      completedByUserId,
+      paidAt: readNullableString(record, "paid_at"),
+      paidByUserId,
+      listType,
+      interval,
+      dayOfMonth,
+      autoClose,
     }
   })
 }
@@ -92,12 +131,48 @@ export async function markExpenseListPaid(listId: string): Promise<void> {
 
 export async function createExpenseList(
   groupId: string,
-  name: string
+  params: string | CreateExpenseListParams,
+  options?: Partial<CreateExpenseListParams>
 ): Promise<string> {
-  const { data, error } = await getSupabaseClient().rpc("create_expense_list", {
+  const name = typeof params === "string" ? params.trim() : params.name.trim()
+  const listType =
+    typeof params === "object"
+      ? params.listType ?? "one_off"
+      : options?.listType ?? "one_off"
+  const interval =
+    typeof params === "object"
+      ? params.interval ?? null
+      : options?.interval ?? null
+  const dayOfMonth =
+    typeof params === "object"
+      ? params.dayOfMonth ?? null
+      : options?.dayOfMonth ?? null
+  const autoClose =
+    typeof params === "object"
+      ? params.autoClose ?? false
+      : options?.autoClose ?? false
+
+  const rpcPayload: Record<string, unknown> = {
     p_group_id: groupId,
     p_name: name,
-  })
+  }
+  if (listType !== "one_off") {
+    rpcPayload.p_list_type = listType
+  }
+  if (interval) {
+    rpcPayload.p_interval = interval
+  }
+  if (dayOfMonth !== null && dayOfMonth !== undefined) {
+    rpcPayload.p_day_of_month = dayOfMonth
+  }
+  if (autoClose) {
+    rpcPayload.p_auto_close = autoClose
+  }
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "create_expense_list",
+    rpcPayload
+  )
 
   if (error) {
     throw error
@@ -108,3 +183,35 @@ export async function createExpenseList(
 
   return data
 }
+
+export interface UpdateExpenseListTypeParams {
+  listType: ExpenseListType
+  interval?: RecurringInterval | null
+  dayOfMonth?: number | null
+  autoClose?: boolean
+}
+
+export async function updateExpenseListType(
+  listId: string,
+  params: UpdateExpenseListTypeParams
+): Promise<void> {
+  const updateData = {
+    list_type: params.listType,
+    interval:
+      params.listType === "recurring" ? params.interval ?? "monthly" : null,
+    day_of_month:
+      params.listType === "recurring" ? params.dayOfMonth ?? 1 : null,
+    auto_close:
+      params.listType === "recurring" ? params.autoClose ?? false : false,
+  }
+
+  const { error } = await getSupabaseClient()
+    .from("expense_lists")
+    .update(updateData)
+    .eq("id", listId)
+
+  if (error) {
+    throw error
+  }
+}
+

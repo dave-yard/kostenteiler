@@ -12,7 +12,9 @@ import { ExpenseListStatusBadge } from "@/components/ExpenseListStatusBadge"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ExpenseListDialog } from "@/components/dialogs/ExpenseListDialog"
+import { ConvertExpenseListDialog } from "@/components/dialogs/ConvertExpenseListDialog"
 import { Toast } from "@/components/ui/toast"
+import { calculateNextPeriodDate } from "@/lib/recurringSchedule"
 import { getActionErrorMessage } from "@/lib/errorMessage"
 import type { ExpenseList, Group } from "@/types/group"
 
@@ -25,17 +27,21 @@ interface ExpenseListsResult {
 function ExpenseListCard({
   list,
   canClose,
+  isAdmin,
   isBusy,
   onOpen,
   onComplete,
   onMarkPaid,
+  onConvert,
 }: {
   list: ExpenseList
   canClose: boolean
+  isAdmin: boolean
   isBusy: boolean
   onOpen: () => void
   onComplete: (e: React.MouseEvent<HTMLButtonElement>) => void
   onMarkPaid: (e: React.MouseEvent<HTMLButtonElement>) => void
+  onConvert?: () => void
 }) {
   return (
     <article
@@ -61,19 +67,74 @@ function ExpenseListCard({
               />
             </Button>
           </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Erstellt am{" "}
-            {new Intl.DateTimeFormat("de-DE", {
-              dateStyle: "medium",
-            }).format(new Date(list.createdAt))}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              Erstellt am{" "}
+              {new Intl.DateTimeFormat("de-DE", {
+                dateStyle: "medium",
+              }).format(new Date(list.createdAt))}
+            </span>
+            {list.listType === "recurring" && list.interval && (
+              <span className="inline-flex items-center rounded-full bg-brand-surface px-2 py-0.5 text-xs font-medium text-brand-text">
+                {list.interval === "monthly"
+                  ? "Monatlich"
+                  : list.interval === "quarterly"
+                    ? "Quartalsweise"
+                    : "Jährlich"}
+                {list.dayOfMonth ? ` · Stichtag: ${list.dayOfMonth}.` : ""}
+                {list.autoClose ? " · Auto-Abschluss" : ""}
+              </span>
+            )}
+            {list.completedAt && (
+              <span>
+                · Abgeschlossen am{" "}
+                {new Intl.DateTimeFormat("de-DE", {
+                  dateStyle: "medium",
+                }).format(new Date(list.completedAt))}
+              </span>
+            )}
+          </div>
+          {list.listType === "recurring" && list.interval && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Folgeperiode wird am{" "}
+              <span className="font-medium text-foreground">
+                {new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(
+                  calculateNextPeriodDate(
+                    list.createdAt,
+                    list.interval,
+                    list.dayOfMonth
+                  )
+                )}
+              </span>{" "}
+              automatisch erzeugt
+              {list.autoClose
+                ? " (inkl. automatischem Kassenabschluss)"
+                : " (manueller Kassenabschluss)"}
+              .
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <ExpenseListStatusBadge status={list.status} />
         </div>
       </div>
-      {canClose && list.status !== "isPaid" && (
-        <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        {isAdmin && list.status === "open" && onConvert && (
+          <Button
+            aria-label={`Listentyp umwandeln: ${list.name}`}
+            className="rounded-xl text-xs"
+            onClick={(e) => {
+              e.stopPropagation()
+              onConvert()
+            }}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Typ umwandeln
+          </Button>
+        )}
+        {canClose && list.status !== "isPaid" && (
           <Button
             className="rounded-xl"
             disabled={isBusy}
@@ -90,8 +151,8 @@ function ExpenseListCard({
             ) : null}
             {list.status === "open" ? "Abschließen" : "Als bezahlt markieren"}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </article>
   )
 }
@@ -111,6 +172,7 @@ export function ExpenseLists({
 }) {
   const {
     getExpenseLists,
+    processRecurringLists,
     completeExpenseList,
     markExpenseListPaid,
     canCloseExpenseLists,
@@ -118,6 +180,7 @@ export function ExpenseLists({
   const [reloadNumber, setReloadNumber] = useState(0)
   const [result, setResult] = useState<ExpenseListsResult | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [convertingList, setConvertingList] = useState<ExpenseList | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyListId, setBusyListId] = useState<string | null>(null)
@@ -148,7 +211,13 @@ export function ExpenseLists({
   useEffect(() => {
     let isCurrent = true
 
-    getExpenseLists(group.id, includeCompleted)
+    // Fällige Folgeperioden wiederkehrender Listen vor dem Laden prüfen & ggf. erzeugen (FR-5.2/FR-5.3)
+    const syncRecurring = processRecurringLists
+      ? Promise.resolve(processRecurringLists(group.id)).catch(() => null)
+      : Promise.resolve(null)
+
+    syncRecurring
+      .then(() => getExpenseLists(group.id, includeCompleted))
       .then((nextLists) => {
         if (isCurrent) {
           setResult({
@@ -171,7 +240,14 @@ export function ExpenseLists({
     return () => {
       isCurrent = false
     }
-  }, [getExpenseLists, group.id, includeCompleted, reloadNumber, requestKey])
+  }, [
+    getExpenseLists,
+    processRecurringLists,
+    group.id,
+    includeCompleted,
+    reloadNumber,
+    requestKey,
+  ])
 
   const isLoading = result?.requestKey !== requestKey
   const errorMessage = isLoading ? null : (result?.errorMessage ?? null)
@@ -289,6 +365,19 @@ export function ExpenseLists({
         }}
         groupId={group.id}
       />
+      {convertingList && (
+        <ConvertExpenseListDialog
+          open={Boolean(convertingList)}
+          onClose={() => setConvertingList(null)}
+          onSuccess={() => {
+            setConvertingList(null)
+            setCreateSuccess("Der Listentyp wurde erfolgreich geändert.")
+            setReloadNumber((current) => current + 1)
+          }}
+          list={convertingList}
+          isAdmin={Boolean(group.currentUserIsAdmin && !group.archivedAt)}
+        />
+      )}
       <Toast message={createSuccess} onClose={() => setCreateSuccess(null)} />
       <Toast
         message={actionError}
@@ -323,6 +412,7 @@ export function ExpenseLists({
           lists.map((list) => (
             <ExpenseListCard
               canClose={canClose}
+              isAdmin={Boolean(group.currentUserIsAdmin && !group.archivedAt)}
               isBusy={busyListId === list.id}
               key={list.id}
               list={list}
@@ -330,6 +420,7 @@ export function ExpenseLists({
                 e.stopPropagation()
                 void handleStatusChange(list)
               }}
+              onConvert={() => setConvertingList(list)}
               onMarkPaid={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation()
                 void handleStatusChange(list)

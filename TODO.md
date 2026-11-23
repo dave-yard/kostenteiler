@@ -88,33 +88,20 @@ Grundlage: [Anwendungs-Regelwerk](./APP_REQUIREMENT.md),
 
 ### Listen und Automatisierung
 
-- [ ] Listentyp und Konfiguration für einmalige und wiederkehrende Listen
+- [x] Listentyp und Konfiguration für einmalige und wiederkehrende Listen
       ergänzen. Das Listenmodell und die Erstellung enthalten derzeit nur den
       Namen und keinen Wiederholungstyp. (FR-2.3;
       [Typen](./src/types/group.ts), [Listen-Service](./src/services/listService.ts))
-- [ ] Automatische Periodenerzeugung für monatliche, quartalsweise und jährliche
+- [x] Automatische Periodenerzeugung für monatliche, quartalsweise und jährliche
       Intervalle einschließlich Monatsende/Schaltjahr implementieren; Positionen,
       Beträge und Verteilungen aus der Vorperiode übernehmen und anpassbar halten.
       (FR-5.2)
-- [ ] Manuellen und automatischen Abschluss für wiederkehrende Listen
+- [x] Manuellen und automatischen Abschluss für wiederkehrende Listen
       konfigurieren; bei automatischem Abschluss Salden und Vorschläge berechnen,
       ohne Zahlungen vorzeitig als bezahlt zu markieren. (FR-5.3)
-- [ ] Erstellungs-, Abschluss- und Bezahlzeitpunkt **und handelnden Nutzer**
+- [x] Erstellungs-, Abschluss- und Bezahlzeitpunkt **und handelnden Nutzer**
       dauerhaft speichern und nachweisen. Das Frontend-Listenmodell enthält
       Zeitpunkte, aber keine handelnden Nutzer. (MVP-Umfang)
-
-### Bon-Erfassung und Suche
-
-- [ ] Summen-Bon und Positions-Bon ausdrücklich unterscheiden und die dafür
-      geltenden Erfassungsregeln umsetzen; Geschäftsname am Bon gemäß Vorgabe
-      überprüfen bzw. ergänzen. Die aktuelle Oberfläche unterscheidet nur
-      Einzelposition und Bon. (FR-3.2;
-      [Listendetail](./src/pages/ExpenseListDetail/ExpenseListDetail.tsx))
-- [ ] Bei vollständig erfassten Unterpositionen eine positive Abweichung
-      ausdrücklich bestätigen lassen. Bei Überschreitung anbieten, die Bon-Summe
-      auf die Positionssumme zu erhöhen; bei Ablehnung die Abrechnung bis zur
-      Korrektur blockieren. Den bereits vorhandenen Rest- und Warnmechanismus
-      beibehalten. (FR-3.4.1)
 
 ### Abschluss und Zahlungen
 

@@ -43,6 +43,8 @@ const createExpenseList = vi.fn()
 const completeExpenseList = vi.fn()
 const markExpenseListPaid = vi.fn()
 const canCloseExpenseLists = vi.fn()
+const updateExpenseListType = vi.fn()
+const processRecurringLists = vi.fn().mockResolvedValue({ generatedListsCount: 0, autoClosedListsCount: 0, generatedListIds: [] })
 
 afterEach(() => {
   cleanup()
@@ -52,6 +54,8 @@ afterEach(() => {
   completeExpenseList.mockReset()
   markExpenseListPaid.mockReset()
   canCloseExpenseLists.mockReset()
+  updateExpenseListType.mockReset()
+  processRecurringLists.mockReset()
 })
 
 function ExpenseListsHarness({ group: selectedGroup }: { group: Group }) {
@@ -73,6 +77,8 @@ function renderExpenseLists(selectedGroup = group) {
   vi.mocked(useExpenseLists).mockReturnValue({
     getExpenseLists,
     createExpenseList,
+    updateExpenseListType,
+    processRecurringLists,
     completeExpenseList,
     markExpenseListPaid,
     canCloseExpenseLists,
@@ -151,6 +157,47 @@ describe("ExpenseLists", () => {
       "Die Ausgabenliste wurde erstellt."
     )
     expect(successToast.className).toContain("fixed")
+  })
+
+  it("allows admins to create a recurring expense list with schedule", async () => {
+    const user = userEvent.setup()
+    getExpenseLists.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    createExpenseList.mockResolvedValue("list-recurring")
+    renderExpenseLists()
+
+    await user.click(
+      screen.getByRole("button", { name: "Neue Ausgabenliste hinzufügen" })
+    )
+    await user.type(
+      screen.getByRole("textbox", { name: "Name der neuen Ausgabenliste" }),
+      "Miete"
+    )
+
+    // Switch to recurring list
+    await user.click(screen.getByRole("combobox", { name: "Listentyp" }))
+    await user.click(
+      await screen.findByRole("option", { name: /Wiederkehrende Liste/ })
+    )
+
+    // Set day of month
+    const dayInput = screen.getByLabelText("Stichtag (Kalendertag 1–31)")
+    await user.clear(dayInput)
+    await user.type(dayInput, "5")
+
+    // Check auto-close
+    await user.click(
+      screen.getByLabelText("Am Periodenende automatisch abrechnen")
+    )
+
+    await user.click(screen.getByRole("button", { name: "Erstellen" }))
+
+    expect(createExpenseList).toHaveBeenCalledWith("group-1", {
+      name: "Miete",
+      listType: "recurring",
+      interval: "monthly",
+      dayOfMonth: 5,
+      autoClose: true,
+    })
   })
 
   it("completes an open list after confirmation and reloads", async () => {
@@ -311,5 +358,47 @@ describe("ExpenseLists", () => {
     await user.keyboard("{Escape}")
     expect(screen.queryByRole("dialog")).toBeNull()
     expect(screen.getByRole("heading", { name: "Wocheneinkauf" })).toBeTruthy()
+  })
+
+  it("allows admins to convert list type to recurring and saves configuration", async () => {
+    const user = userEvent.setup()
+    getExpenseLists.mockResolvedValueOnce([openList]).mockResolvedValueOnce([])
+    updateExpenseListType.mockResolvedValue(undefined)
+    renderExpenseLists()
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Listentyp umwandeln: Wocheneinkauf",
+      })
+    )
+
+    // Dialog opens with target type preset to recurring
+    expect(await screen.findByRole("dialog")).toBeTruthy()
+    expect(screen.getByText(/Listentyp umwandeln/)).toBeTruthy()
+
+    // Submit conversion
+    await user.click(screen.getByRole("button", { name: "Typ umwandeln" }))
+
+    expect(updateExpenseListType).toHaveBeenCalledWith("list-open", {
+      listType: "recurring",
+      interval: "monthly",
+      dayOfMonth: expect.any(Number),
+      autoClose: false,
+    })
+    expect(
+      await screen.findByText("Der Listentyp wurde erfolgreich geändert.")
+    ).toBeTruthy()
+  })
+
+  it("does not allow non-admins to convert list type", async () => {
+    getExpenseLists.mockResolvedValue([openList])
+    renderExpenseLists({ ...group, currentUserIsAdmin: false })
+
+    await screen.findByRole("heading", { name: "Wocheneinkauf" })
+    expect(
+      screen.queryByRole("button", {
+        name: "Listentyp umwandeln: Wocheneinkauf",
+      })
+    ).toBeNull()
   })
 })

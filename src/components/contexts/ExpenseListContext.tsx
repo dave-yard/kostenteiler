@@ -26,8 +26,15 @@ import {
   createExpenseList as createExpenseListRecord,
   getExpenseLists as getExpenseListsRecord,
   markExpenseListPaid as markExpenseListPaidRecord,
+  updateExpenseListType as updateExpenseListTypeRecord,
+  type UpdateExpenseListTypeParams,
 } from "@/services/listService"
+import {
+  processRecurringExpenseLists,
+  type RecurringProcessingResult,
+} from "@/services/recurringService"
 import type {
+  CreateExpenseListParams,
   ExpenseItem,
   ExpenseList,
   Group,
@@ -51,7 +58,15 @@ interface ExpenseListContextValue {
     groupId: string,
     includeCompleted: boolean
   ) => Promise<ExpenseList[]>
-  createExpenseList: (groupId: string, name: string) => Promise<string>
+  createExpenseList: (
+    groupId: string,
+    params: string | CreateExpenseListParams
+  ) => Promise<string>
+  updateExpenseListType: (
+    listId: string,
+    params: UpdateExpenseListTypeParams
+  ) => Promise<void>
+  processRecurringLists: (groupId: string) => Promise<RecurringProcessingResult>
   completeExpenseList: (listId: string) => Promise<void>
   markExpenseListPaid: (listId: string) => Promise<void>
   canCloseExpenseLists: (group: Group) => Promise<boolean>
@@ -101,7 +116,19 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
   )
 
   const createExpenseList = useCallback(
-    (groupId: string, name: string) => createExpenseListRecord(groupId, name),
+    (groupId: string, params: string | CreateExpenseListParams) =>
+      createExpenseListRecord(groupId, params),
+    []
+  )
+
+  const updateExpenseListType = useCallback(
+    (listId: string, params: UpdateExpenseListTypeParams) =>
+      updateExpenseListTypeRecord(listId, params),
+    []
+  )
+
+  const processRecurringLists = useCallback(
+    (groupId: string) => processRecurringExpenseLists(groupId),
     []
   )
 
@@ -219,6 +246,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     () => ({
       getExpenseLists,
       createExpenseList,
+      updateExpenseListType,
+      processRecurringLists,
       completeExpenseList,
       markExpenseListPaid,
       canCloseExpenseLists,
@@ -235,6 +264,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     [
       getExpenseLists,
       createExpenseList,
+      updateExpenseListType,
+      processRecurringLists,
       completeExpenseList,
       markExpenseListPaid,
       canCloseExpenseLists,

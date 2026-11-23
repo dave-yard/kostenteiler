@@ -5,6 +5,7 @@ import {
   createExpenseList,
   getExpenseLists,
   markExpenseListPaid,
+  updateExpenseListType,
 } from "./listService"
 
 vi.mock("@/lib/supabase", () => ({
@@ -13,6 +14,7 @@ vi.mock("@/lib/supabase", () => ({
 
 const query = {
   select: vi.fn(),
+  update: vi.fn(),
   eq: vi.fn(),
   order: vi.fn(),
   then: vi.fn(),
@@ -34,6 +36,7 @@ const rows: Record<string, unknown>[] = [
 beforeEach(() => {
   vi.clearAllMocks()
   query.select.mockReturnValue(query)
+  query.update.mockReturnValue(query)
   query.eq.mockReturnValue(query)
   query.order.mockReturnValue(query)
   query.then.mockImplementation(
@@ -54,6 +57,26 @@ describe("listService", () => {
     expect(rpc).toHaveBeenCalledWith("create_expense_list", {
       p_group_id: "group-1",
       p_name: "Wocheneinkauf",
+    })
+    expect(id).toBe("list-id")
+  })
+
+  it("creates a recurring expense list with schedule parameters", async () => {
+    const id = await createExpenseList("group-1", {
+      name: "Miete",
+      listType: "recurring",
+      interval: "monthly",
+      dayOfMonth: 1,
+      autoClose: true,
+    })
+
+    expect(rpc).toHaveBeenCalledWith("create_expense_list", {
+      p_group_id: "group-1",
+      p_name: "Miete",
+      p_list_type: "recurring",
+      p_interval: "monthly",
+      p_day_of_month: 1,
+      p_auto_close: true,
     })
     expect(id).toBe("list-id")
   })
@@ -107,6 +130,13 @@ describe("listService", () => {
         createdAt: "2026-10-26T10:00:00.000Z",
         completedAt: null,
         paidAt: null,
+        createdByUserId: null,
+        completedByUserId: null,
+        paidByUserId: null,
+        listType: "one_off",
+        interval: null,
+        dayOfMonth: null,
+        autoClose: false,
       },
     ])
   })
@@ -152,5 +182,43 @@ describe("listService", () => {
     await expect(getExpenseLists("group-1", false)).rejects.toThrow(
       "Database unavailable"
     )
+  })
+
+  it("updates list type through supabase update", async () => {
+    query.then.mockImplementationOnce(
+      (resolve: (value: { data: null; error: null }) => unknown) =>
+        Promise.resolve({ data: null, error: null }).then(resolve)
+    )
+
+    await updateExpenseListType("list-1", {
+      listType: "recurring",
+      interval: "monthly",
+      dayOfMonth: 15,
+      autoClose: true,
+    })
+
+    expect(query.update).toHaveBeenCalledWith({
+      list_type: "recurring",
+      interval: "monthly",
+      day_of_month: 15,
+      auto_close: true,
+    })
+    expect(query.eq).toHaveBeenCalledWith("id", "list-1")
+  })
+
+  it("surfaces errors when updating list type fails", async () => {
+    query.then.mockImplementationOnce(
+      (resolve: (value: { data: null; error: Error }) => unknown) =>
+        Promise.resolve({
+          data: null,
+          error: new Error("Update failed"),
+        }).then(resolve)
+    )
+
+    await expect(
+      updateExpenseListType("list-1", {
+        listType: "one_off",
+      })
+    ).rejects.toThrow("Update failed")
   })
 })

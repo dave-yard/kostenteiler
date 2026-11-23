@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/popover"
 import { ExpenseItemDialog } from "@/components/dialogs/ExpenseItemDialog"
 import { DeleteExpenseItemDialog } from "@/components/dialogs/DeleteExpenseItemDialog"
+import { ConvertExpenseListDialog } from "@/components/dialogs/ConvertExpenseListDialog"
 import { Toast } from "@/components/ui/toast"
 import { type ExpenseSplitRule } from "@/lib/expenseSplit"
 import { getActionErrorMessage } from "@/lib/errorMessage"
@@ -43,6 +44,7 @@ import {
   type ItemNode,
 } from "@/lib/itemHierarchy"
 import { SettlementSection } from "./components/SettlementSection"
+import { calculateNextPeriodDate } from "@/lib/recurringSchedule"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
 
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
@@ -242,6 +244,7 @@ export function ExpenseListDetail({
     null
   )
   const [deletingItem, setDeletingItem] = useState<ExpenseItem | null>(null)
+  const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const receiptInputRef = useRef<HTMLInputElement>(null)
 
@@ -575,13 +578,46 @@ export function ExpenseListDetail({
                 {list.name}
               </h1>
               <div className="flex flex-row gap-1">
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Erstellt am {dateFormat.format(new Date(list.createdAt))}
-                  {list.completedAt &&
-                    ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
-                  {list.paidAt &&
-                    ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
-                </p>
+                <div className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground">
+                  <p>
+                    Erstellt am {dateFormat.format(new Date(list.createdAt))}
+                    {list.listType === "recurring" && list.interval && (
+                      <>
+                        {" · "}
+                        {list.interval === "monthly"
+                          ? "Monatlich"
+                          : list.interval === "quarterly"
+                            ? "Quartalsweise"
+                            : "Jährlich"}
+                        {list.dayOfMonth ? ` (Stichtag: ${list.dayOfMonth}.)` : ""}
+                        {list.autoClose ? " · Auto-Abschluss" : ""}
+                      </>
+                    )}
+                    {list.completedAt &&
+                      ` · Erledigt am ${dateFormat.format(new Date(list.completedAt))}`}
+                    {list.paidAt &&
+                      ` · Bezahlt am ${dateFormat.format(new Date(list.paidAt))}`}
+                  </p>
+                  {list.listType === "recurring" && list.interval && (
+                    <p>
+                      Folgeperiode wird am{" "}
+                      <span className="font-medium text-foreground">
+                        {dateFormat.format(
+                          calculateNextPeriodDate(
+                            list.createdAt,
+                            list.interval,
+                            list.dayOfMonth
+                          )
+                        )}
+                      </span>{" "}
+                      automatisch erzeugt
+                      {list.autoClose
+                        ? " (inkl. automatischem Kassenabschluss)"
+                        : " (manueller Kassenabschluss)"}
+                      .
+                    </p>
+                  )}
+                </div>
                 <Popover
                   open={isViewSettingsOpen}
                   onOpenChange={setIsViewSettingsOpen}
@@ -683,6 +719,19 @@ export function ExpenseListDetail({
                     </div>
                   </PopoverContent>
                 </Popover>
+                {group.currentUserIsAdmin &&
+                  list.status === "open" &&
+                  !group.archivedAt && (
+                    <Button
+                      className="h-8 rounded-lg px-2.5 text-xs"
+                      onClick={() => setIsConvertDialogOpen(true)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Typ umwandeln
+                    </Button>
+                  )}
               </div>
             </div>
             <ExpenseListStatusBadge status={list.status} />
@@ -787,6 +836,20 @@ export function ExpenseListDetail({
             setReloadNumber((current) => current + 1)
           }}
         />
+        {isConvertDialogOpen && (
+          <ConvertExpenseListDialog
+            open={isConvertDialogOpen}
+            onClose={() => setIsConvertDialogOpen(false)}
+            onSuccess={(updatedList) => {
+              setIsConvertDialogOpen(false)
+              setSuccessMessage("Der Listentyp wurde erfolgreich geändert.")
+              onListChange?.(updatedList)
+              setReloadNumber((current) => current + 1)
+            }}
+            list={list}
+            isAdmin={Boolean(group.currentUserIsAdmin && !group.archivedAt)}
+          />
+        )}
         <Toast
           message={successMessage}
           onClose={() => setSuccessMessage(null)}

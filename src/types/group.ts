@@ -7,14 +7,32 @@ export interface Group {
   archivedAt: string | null
 }
 
+export type ExpenseListType = "one_off" | "recurring"
+export type RecurringInterval = "monthly" | "quarterly" | "yearly"
+
 export interface ExpenseList {
   id: string
   groupId: string
   name: string
   status: "open" | "completed" | "isPaid"
   createdAt: string
+  createdByUserId?: string | null
   completedAt: string | null
+  completedByUserId?: string | null
   paidAt: string | null
+  paidByUserId?: string | null
+  listType?: ExpenseListType
+  interval?: RecurringInterval | null
+  dayOfMonth?: number | null
+  autoClose?: boolean
+}
+
+export interface CreateExpenseListParams {
+  name: string
+  listType?: ExpenseListType
+  interval?: RecurringInterval | null
+  dayOfMonth?: number | null
+  autoClose?: boolean
 }
 
 export interface ExpenseItem {
