@@ -162,6 +162,7 @@ export function ExpenseItemDialog({
   const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
   const lastEditedFixedMemberId = useRef<string | null>(null)
+  const [allocationSeed, setAllocationSeed] = useState("")
 
   const dialogParentId = editingItem ? editingItem.parentItemId : parentItem?.id ?? null
   const dialogParent = parentItem ?? (dialogParentId ? items.find((item) => item.id === dialogParentId) : null)
@@ -310,6 +311,7 @@ export function ExpenseItemDialog({
 
     let isCurrent = true
     lastEditedFixedMemberId.current = null
+    setAllocationSeed(editingItem?.id ?? crypto.randomUUID())
     setItemName(editingItem?.name ?? "")
     setAmountText(
       editingItem
@@ -424,7 +426,8 @@ export function ExpenseItemDialog({
         amountForPreview,
         members.map((member) => member.id),
         previewRule,
-        groupDefaultSplitRule
+        groupDefaultSplitRule,
+        allocationSeed
       )
     } catch (error) {
       splitPreviewError = getActionErrorMessage(error)
@@ -498,7 +501,8 @@ export function ExpenseItemDialog({
           amountCents,
           members.map((member) => member.id),
           splitRule,
-          groupDefaultSplitRule
+          groupDefaultSplitRule,
+          allocationSeed
         )
         if (areSplitRulesEqual(splitRule, groupDefaultSplitRule)) {
           splitRule = editingItem ? groupDefaultSplitRule : null

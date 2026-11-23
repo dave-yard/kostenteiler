@@ -32,6 +32,57 @@ describe("calculateExpenseSplit", () => {
     ).toBe(10_000)
   })
 
+  it("spreads equal split remainder cents fairly across allocation seeds", () => {
+    for (const members of [
+      ["member-a", "member-b"],
+      ["member-a", "member-b", "member-c"],
+      ["member-a", "member-b", "member-c", "member-d", "member-e"],
+    ]) {
+      const totals = new Map(members.map((memberId) => [memberId, 0]))
+      const amountCents = members.length * 40 + members.length - 1
+
+      for (let index = 0; index < 1000; index += 1) {
+        const allocation = calculateExpenseSplit(
+          amountCents,
+          members,
+          { mode: "equal" },
+          { mode: "equal" },
+          `item-${index}`
+        )
+        for (const share of allocation) {
+          totals.set(
+            share.memberId,
+            (totals.get(share.memberId) ?? 0) + share.amountCents
+          )
+        }
+      }
+
+      const amounts = [...totals.values()]
+      expect(Math.max(...amounts) - Math.min(...amounts)).toBeLessThanOrEqual(
+        80
+      )
+    }
+  })
+
+  it("keeps equal split remainder cents stable for one allocation seed", () => {
+    const first = calculateExpenseSplit(
+      101,
+      ["member-a", "member-b", "member-c"],
+      { mode: "equal" },
+      { mode: "equal" },
+      "item-123"
+    )
+    const second = calculateExpenseSplit(
+      101,
+      ["member-a", "member-b", "member-c"],
+      { mode: "equal" },
+      { mode: "equal" },
+      "item-123"
+    )
+
+    expect(second).toEqual(first)
+  })
+
   it("assigns the full amount to one selected member", () => {
     expect(
       calculateExpenseSplit(1250, memberIds, {

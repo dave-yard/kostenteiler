@@ -7,7 +7,7 @@ export function ExpenseListsPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const { groups, isLoading } = useGroupOverview()
   const navigate = useNavigate()
-  const [includeCompleted, setIncludeCompleted] = useState(false)
+  const [includePaid, setIncludePaid] = useState(false)
 
   const group = groups.find((g) => g.id === groupId)
 
@@ -30,8 +30,8 @@ export function ExpenseListsPage() {
   return (
     <ExpenseLists
       group={group}
-      includeCompleted={includeCompleted}
-      onIncludeCompletedChange={setIncludeCompleted}
+      includePaid={includePaid}
+      onIncludePaidChange={setIncludePaid}
       onBack={() => navigate(`/`)}
       onOpenList={(list) => navigate(`/groups/${group.id}/lists/${list.id}`)}
     />

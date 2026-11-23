@@ -25,7 +25,8 @@ import {
   completeExpenseList as completeExpenseListRecord,
   createExpenseList as createExpenseListRecord,
   getExpenseLists as getExpenseListsRecord,
-  markExpenseListPaid as markExpenseListPaidRecord,
+  getExpenseListPayments as getExpenseListPaymentsRecord,
+  markExpenseListPaymentPaid as markExpenseListPaymentPaidRecord,
   updateExpenseListType as updateExpenseListTypeRecord,
   type UpdateExpenseListTypeParams,
 } from "@/services/listService"
@@ -37,10 +38,12 @@ import type {
   CreateExpenseListParams,
   ExpenseItem,
   ExpenseList,
+  ExpenseListPayment,
   Group,
   GroupMember,
 } from "@/types/group"
 import type { ExpenseSplitRule } from "@/lib/expenseSplit"
+import type { SettlementTransfer } from "@/lib/settlement"
 
 export interface ExpenseItemAccess {
   members: GroupMember[]
@@ -56,7 +59,7 @@ export interface ExpenseItemAccess {
 interface ExpenseListContextValue {
   getExpenseLists: (
     groupId: string,
-    includeCompleted: boolean
+    includePaid: boolean
   ) => Promise<ExpenseList[]>
   createExpenseList: (
     groupId: string,
@@ -67,8 +70,12 @@ interface ExpenseListContextValue {
     params: UpdateExpenseListTypeParams
   ) => Promise<void>
   processRecurringLists: (groupId: string) => Promise<RecurringProcessingResult>
-  completeExpenseList: (listId: string) => Promise<void>
-  markExpenseListPaid: (listId: string) => Promise<void>
+  completeExpenseList: (
+    listId: string,
+    payments?: SettlementTransfer[]
+  ) => Promise<void>
+  getExpenseListPayments: (listId: string) => Promise<ExpenseListPayment[]>
+  markExpenseListPaymentPaid: (paymentId: string) => Promise<boolean>
   canCloseExpenseLists: (group: Group) => Promise<boolean>
   getExpenseItems: (listId: string) => Promise<ExpenseItem[]>
   createExpenseItem: (
@@ -110,8 +117,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       : null
 
   const getExpenseLists = useCallback(
-    (groupId: string, includeCompleted: boolean) =>
-      getExpenseListsRecord(groupId, includeCompleted),
+    (groupId: string, includePaid: boolean) =>
+      getExpenseListsRecord(groupId, includePaid),
     []
   )
 
@@ -133,12 +140,18 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
   )
 
   const completeExpenseList = useCallback(
-    (listId: string) => completeExpenseListRecord(listId),
+    (listId: string, payments?: SettlementTransfer[]) =>
+      completeExpenseListRecord(listId, payments),
     []
   )
 
-  const markExpenseListPaid = useCallback(
-    (listId: string) => markExpenseListPaidRecord(listId),
+  const getExpenseListPayments = useCallback(
+    (listId: string) => getExpenseListPaymentsRecord(listId),
+    []
+  )
+
+  const markExpenseListPaymentPaid = useCallback(
+    (paymentId: string) => markExpenseListPaymentPaidRecord(paymentId),
     []
   )
 
@@ -249,7 +262,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       updateExpenseListType,
       processRecurringLists,
       completeExpenseList,
-      markExpenseListPaid,
+      getExpenseListPayments,
+      markExpenseListPaymentPaid,
       canCloseExpenseLists,
       getExpenseItems,
       createExpenseItem,
@@ -267,7 +281,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       updateExpenseListType,
       processRecurringLists,
       completeExpenseList,
-      markExpenseListPaid,
+      getExpenseListPayments,
+      markExpenseListPaymentPaid,
       canCloseExpenseLists,
       getExpenseItems,
       createExpenseItem,

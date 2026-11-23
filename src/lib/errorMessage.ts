@@ -36,6 +36,20 @@ const databaseMessages: Record<string, string> = {
     "Nur erledigte Ausgabenlisten können als bezahlt markiert werden.",
   "The expense list is already marked as paid.":
     "Die Ausgabenliste ist bereits als bezahlt markiert.",
+  "The settlement payments are invalid.":
+    "Die Erstattungsvorschläge sind ungültig.",
+  "The settlement contains an unknown group member.":
+    "Die Erstattung enthält eine unbekannte Person.",
+  "The expense list payment does not exist.":
+    "Die Erstattung gibt es nicht mehr.",
+  "The expense list payment is already paid.":
+    "Die Erstattung wurde bereits bestätigt.",
+  "Only the recipient or a group admin can confirm this payment.":
+    "Nur die empfangende Person oder ein Gruppen-Admin kann diese Zahlung bestätigen.",
+  "The settlement payments do not match the list calculation.":
+    "Die Erstattungen entsprechen nicht mehr der aktuellen Abrechnung.",
+  "The sub-items exceed the total amount of a receipt.":
+    "Die Unterpositionen übersteigen die Bon-Summe.",
   "Only group admins can create lists.":
     "Nur Gruppen-Admins dürfen Listen erstellen.",
   "List name must contain between 1 and 80 characters.":

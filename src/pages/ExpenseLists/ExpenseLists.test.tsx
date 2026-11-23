@@ -41,10 +41,13 @@ const paidList: ExpenseList = {
 const getExpenseLists = vi.fn()
 const createExpenseList = vi.fn()
 const completeExpenseList = vi.fn()
-const markExpenseListPaid = vi.fn()
 const canCloseExpenseLists = vi.fn()
 const updateExpenseListType = vi.fn()
-const processRecurringLists = vi.fn().mockResolvedValue({ generatedListsCount: 0, autoClosedListsCount: 0, generatedListIds: [] })
+const processRecurringLists = vi.fn().mockResolvedValue({
+  generatedListsCount: 0,
+  autoClosedListsCount: 0,
+  generatedListIds: [],
+})
 
 afterEach(() => {
   cleanup()
@@ -52,21 +55,20 @@ afterEach(() => {
   getExpenseLists.mockReset()
   createExpenseList.mockReset()
   completeExpenseList.mockReset()
-  markExpenseListPaid.mockReset()
   canCloseExpenseLists.mockReset()
   updateExpenseListType.mockReset()
   processRecurringLists.mockReset()
 })
 
 function ExpenseListsHarness({ group: selectedGroup }: { group: Group }) {
-  const [includeCompleted, setIncludeCompleted] = useState(false)
+  const [includePaid, setIncludePaid] = useState(false)
 
   return (
     <ExpenseLists
       group={selectedGroup}
-      includeCompleted={includeCompleted}
+      includePaid={includePaid}
       onBack={vi.fn()}
-      onIncludeCompletedChange={setIncludeCompleted}
+      onIncludePaidChange={setIncludePaid}
       onOpenList={vi.fn()}
     />
   )
@@ -80,7 +82,6 @@ function renderExpenseLists(selectedGroup = group) {
     updateExpenseListType,
     processRecurringLists,
     completeExpenseList,
-    markExpenseListPaid,
     canCloseExpenseLists,
   } as never)
 
@@ -88,7 +89,7 @@ function renderExpenseLists(selectedGroup = group) {
 }
 
 describe("ExpenseLists", () => {
-  it("loads and shows open lists by default", async () => {
+  it("loads open and completed lists but hides paid lists by default", async () => {
     getExpenseLists.mockResolvedValue([openList])
     renderExpenseLists()
 
@@ -99,7 +100,7 @@ describe("ExpenseLists", () => {
     expect(screen.queryByText("Urlaub")).toBeNull()
   })
 
-  it("loads non-open lists when the filter is enabled", async () => {
+  it("loads paid lists when the filter is enabled", async () => {
     const user = userEvent.setup()
     getExpenseLists
       .mockResolvedValueOnce([openList])
@@ -107,7 +108,7 @@ describe("ExpenseLists", () => {
     renderExpenseLists()
 
     await user.click(
-      screen.getByRole("checkbox", { name: "Erledigte anzeigen" })
+      screen.getByRole("checkbox", { name: "Bezahlte anzeigen" })
     )
 
     expect(await screen.findByRole("heading", { name: "Urlaub" })).toBeTruthy()
@@ -227,8 +228,7 @@ describe("ExpenseLists", () => {
     expect(completeExpenseList).not.toHaveBeenCalled()
   })
 
-  it("marks a completed list as paid and offers no action for paid lists", async () => {
-    const user = userEvent.setup()
+  it("offers no direct paid action for completed or paid lists", async () => {
     const completedList: ExpenseList = {
       ...openList,
       id: "list-completed",
@@ -237,17 +237,12 @@ describe("ExpenseLists", () => {
       completedAt: "2026-10-26T11:00:00.000Z",
     }
     getExpenseLists.mockResolvedValue([completedList, paidList])
-    markExpenseListPaid.mockResolvedValue(undefined)
     renderExpenseLists()
 
-    const buttons = await screen.findAllByRole("button", {
-      name: "Als bezahlt markieren",
-    })
-    expect(buttons).toHaveLength(1)
-    await user.click(buttons[0])
-    await user.click(screen.getByRole("button", { name: "Bestätigen" }))
-
-    expect(markExpenseListPaid).toHaveBeenCalledWith("list-completed")
+    await screen.findByRole("heading", { name: "Erledigt" })
+    expect(
+      screen.queryByRole("button", { name: "Als bezahlt markieren" })
+    ).toBeNull()
   })
 
   it("shows status errors as an error toast", async () => {
@@ -279,7 +274,9 @@ describe("ExpenseLists", () => {
     getExpenseLists.mockResolvedValue([])
     renderExpenseLists(memberGroup)
 
-    expect(await screen.findByText("Keine offenen Listen")).toBeTruthy()
+    expect(
+      await screen.findByText("Keine offenen oder abgeschlossenen Listen")
+    ).toBeTruthy()
     expect(
       screen.queryByRole("textbox", {
         name: "Name der neuen Ausgabenliste",
@@ -334,9 +331,13 @@ describe("ExpenseLists", () => {
     renderExpenseLists()
 
     expect(
-      screen.getByRole("checkbox", { name: "Erledigte anzeigen" })
+      screen.getByRole("checkbox", { name: "Bezahlte anzeigen" })
     ).toBeTruthy()
-    expect(screen.getByRole("heading", { name: "Offene Listen" })).toBeTruthy()
+    expect(
+      screen.getByRole("heading", {
+        name: "Offene und abgeschlossene Listen",
+      })
+    ).toBeTruthy()
     expect(
       screen.getByRole("button", { name: "Neue Ausgabenliste hinzufügen" })
     ).toBeTruthy()

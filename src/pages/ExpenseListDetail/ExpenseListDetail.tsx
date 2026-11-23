@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useState,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from "react"
+import { useEffect, useState, useMemo, useRef, type ReactNode } from "react"
 import { SlidersHorizontal } from "lucide-react"
 import {
   ArrowLeft,
@@ -468,7 +462,7 @@ export function ExpenseListDetail({
     const resolvedParent =
       parent ??
       (item?.parentItemId
-        ? items.find((i) => i.id === item.parentItemId) ?? null
+        ? (items.find((i) => i.id === item.parentItemId) ?? null)
         : null)
     setDialogParent(resolvedParent)
     setIsDialogOpen(true)
@@ -480,10 +474,7 @@ export function ExpenseListDetail({
     setDialogParent(null)
   }
 
-  function handleDialogSuccess(
-    message: string,
-    parentItemId: string | null
-  ) {
+  function handleDialogSuccess(message: string, parentItemId: string | null) {
     closeDialog()
     if (parentItemId) {
       setExpandedIds((current) => new Set(current).add(parentItemId))
@@ -589,7 +580,9 @@ export function ExpenseListDetail({
                           : list.interval === "quarterly"
                             ? "Quartalsweise"
                             : "Jährlich"}
-                        {list.dayOfMonth ? ` (Stichtag: ${list.dayOfMonth}.)` : ""}
+                        {list.dayOfMonth
+                          ? ` (Stichtag: ${list.dayOfMonth}.)`
+                          : ""}
                         {list.autoClose ? " · Auto-Abschluss" : ""}
                       </>
                     )}
@@ -1017,6 +1010,9 @@ export function ExpenseListDetail({
             rules={result?.rules}
             rulesErrorMessage={result?.rulesErrorMessage ?? null}
             canCloseList={canCloseList}
+            currentMemberId={result?.access?.currentMemberId ?? null}
+            isAdmin={group.currentUserIsAdmin}
+            isArchived={Boolean(group.archivedAt)}
             onListChange={onListChange}
             onSuccess={setSuccessMessage}
           />

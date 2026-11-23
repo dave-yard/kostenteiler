@@ -27,6 +27,17 @@ export interface ExpenseList {
   autoClose?: boolean
 }
 
+export interface ExpenseListPayment {
+  id: string
+  listId: string
+  fromMemberId: string
+  toMemberId: string
+  amountCents: number
+  status: "pending" | "paid"
+  paidAt: string | null
+  paidByUserId: string | null
+}
+
 export interface CreateExpenseListParams {
   name: string
   listType?: ExpenseListType

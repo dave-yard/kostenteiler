@@ -154,7 +154,7 @@ export function GroupOverview() {
   } = useGroupOverview()
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [selectedList, setSelectedList] = useState<ExpenseList | null>(null)
-  const [includeCompleted, setIncludeCompleted] = useState(false)
+  const [includePaid, setIncludePaid] = useState(false)
   const [adminGroupId, setAdminGroupId] = useState<string | null>(null)
   const [invitationToken, setInvitationToken] = useState(() =>
     new URLSearchParams(window.location.search).get("invite")
@@ -312,8 +312,8 @@ export function GroupOverview() {
       return (
         <ExpenseLists
           group={selectedGroup}
-          includeCompleted={includeCompleted}
-          onIncludeCompletedChange={setIncludeCompleted}
+          includePaid={includePaid}
+          onIncludePaidChange={setIncludePaid}
           onBack={() => {
             setSelectedList(null)
             setSelectedGroup(null)

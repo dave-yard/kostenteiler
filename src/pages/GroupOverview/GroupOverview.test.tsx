@@ -94,7 +94,7 @@ describe("GroupOverview Navigation", () => {
 
     renderRoutes("/groups/g1")
     const checkbox = await screen.findByRole("checkbox", {
-      name: "Erledigte anzeigen",
+      name: "Bezahlte anzeigen",
     })
     await user.click(checkbox)
 

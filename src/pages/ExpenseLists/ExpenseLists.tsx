@@ -31,7 +31,6 @@ function ExpenseListCard({
   isBusy,
   onOpen,
   onComplete,
-  onMarkPaid,
   onConvert,
 }: {
   list: ExpenseList
@@ -40,7 +39,6 @@ function ExpenseListCard({
   isBusy: boolean
   onOpen: () => void
   onComplete: (e: React.MouseEvent<HTMLButtonElement>) => void
-  onMarkPaid: (e: React.MouseEvent<HTMLButtonElement>) => void
   onConvert?: () => void
 }) {
   return (
@@ -98,7 +96,9 @@ function ExpenseListCard({
             <p className="mt-1 text-xs text-muted-foreground">
               Folgeperiode wird am{" "}
               <span className="font-medium text-foreground">
-                {new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(
+                {new Intl.DateTimeFormat("de-DE", {
+                  dateStyle: "medium",
+                }).format(
                   calculateNextPeriodDate(
                     list.createdAt,
                     list.interval,
@@ -134,11 +134,11 @@ function ExpenseListCard({
             Typ umwandeln
           </Button>
         )}
-        {canClose && list.status !== "isPaid" && (
+        {canClose && list.status === "open" && (
           <Button
             className="rounded-xl"
             disabled={isBusy}
-            onClick={list.status === "open" ? onComplete : onMarkPaid}
+            onClick={onComplete}
             size="sm"
             type="button"
             variant="outline"
@@ -149,7 +149,7 @@ function ExpenseListCard({
                 className="size-4 animate-spin"
               />
             ) : null}
-            {list.status === "open" ? "Abschließen" : "Als bezahlt markieren"}
+            Abschließen
           </Button>
         )}
       </div>
@@ -159,14 +159,14 @@ function ExpenseListCard({
 
 export function ExpenseLists({
   group,
-  includeCompleted,
-  onIncludeCompletedChange: setIncludeCompleted,
+  includePaid,
+  onIncludePaidChange: setIncludePaid,
   onBack,
   onOpenList,
 }: {
   group: Group
-  includeCompleted: boolean
-  onIncludeCompletedChange: (value: boolean) => void
+  includePaid: boolean
+  onIncludePaidChange: (value: boolean) => void
   onBack: () => void
   onOpenList: (list: ExpenseList) => void
 }) {
@@ -174,7 +174,6 @@ export function ExpenseLists({
     getExpenseLists,
     processRecurringLists,
     completeExpenseList,
-    markExpenseListPaid,
     canCloseExpenseLists,
   } = useExpenseLists()
   const [reloadNumber, setReloadNumber] = useState(0)
@@ -186,7 +185,7 @@ export function ExpenseLists({
   const [busyListId, setBusyListId] = useState<string | null>(null)
   const [canClose, setCanClose] = useState(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
-  const requestKey = `${group.id}:${includeCompleted}:${reloadNumber}`
+  const requestKey = `${group.id}:${includePaid}:${reloadNumber}`
 
   useEffect(() => {
     let isCurrent = true
@@ -217,7 +216,7 @@ export function ExpenseLists({
       : Promise.resolve(null)
 
     syncRecurring
-      .then(() => getExpenseLists(group.id, includeCompleted))
+      .then(() => getExpenseLists(group.id, includePaid))
       .then((nextLists) => {
         if (isCurrent) {
           setResult({
@@ -244,7 +243,7 @@ export function ExpenseLists({
     getExpenseLists,
     processRecurringLists,
     group.id,
-    includeCompleted,
+    includePaid,
     reloadNumber,
     requestKey,
   ])
@@ -254,11 +253,8 @@ export function ExpenseLists({
   const lists = isLoading ? [] : (result?.lists ?? [])
 
   async function handleStatusChange(list: ExpenseList) {
-    const isCompleting = list.status === "open"
     const confirmed = await confirm(
-      isCompleting
-        ? `Liste „${list.name}“ abschließen? Danach kann sie nicht mehr als offen geführt werden.`
-        : `Liste „${list.name}“ als bezahlt markieren?`
+      `Liste „${list.name}“ abschließen? Danach kann sie nicht mehr als offen geführt werden.`
     )
     if (!confirmed) {
       return
@@ -269,16 +265,8 @@ export function ExpenseLists({
     setBusyListId(list.id)
 
     try {
-      if (isCompleting) {
-        await completeExpenseList(list.id)
-      } else {
-        await markExpenseListPaid(list.id)
-      }
-      setCreateSuccess(
-        isCompleting
-          ? "Die Ausgabenliste wurde abgeschlossen."
-          : "Die Ausgabenliste wurde als bezahlt markiert."
-      )
+      await completeExpenseList(list.id)
+      setCreateSuccess("Die Ausgabenliste wurde abgeschlossen.")
       setReloadNumber((current) => current + 1)
     } catch (error) {
       setActionError(getActionErrorMessage(error))
@@ -326,15 +314,13 @@ export function ExpenseLists({
         <div className="mt-7 flex items-center gap-3 border-b border-border pb-4">
           <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
-              checked={includeCompleted}
-              onCheckedChange={(checked) =>
-                setIncludeCompleted(checked === true)
-              }
+              checked={includePaid}
+              onCheckedChange={(checked) => setIncludePaid(checked === true)}
             />
-            Erledigte anzeigen
+            Bezahlte anzeigen
           </label>
           <h2 className="min-w-0 flex-1 font-semibold">
-            {includeCompleted ? "Alle Listen" : "Offene Listen"}
+            {includePaid ? "Alle Listen" : "Offene und abgeschlossene Listen"}
           </h2>
           {group.currentUserIsAdmin && !group.archivedAt && (
             <Button
@@ -353,14 +339,14 @@ export function ExpenseLists({
       </div>
 
       <ExpenseListDialog
-        open={
-          Boolean(group.currentUserIsAdmin && !group.archivedAt && isCreateModalOpen)
-        }
+        open={Boolean(
+          group.currentUserIsAdmin && !group.archivedAt && isCreateModalOpen
+        )}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={(message) => {
           setIsCreateModalOpen(false)
           setCreateSuccess(message)
-          setIncludeCompleted(false)
+          setIncludePaid(false)
           setReloadNumber((current) => current + 1)
         }}
         groupId={group.id}
@@ -421,22 +407,20 @@ export function ExpenseLists({
                 void handleStatusChange(list)
               }}
               onConvert={() => setConvertingList(list)}
-              onMarkPaid={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation()
-                void handleStatusChange(list)
-              }}
               onOpen={() => onOpenList(list)}
             />
           ))
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-muted px-5 py-10 text-center">
             <p className="font-medium">
-              {includeCompleted ? "Noch keine Listen" : "Keine offenen Listen"}
+              {includePaid
+                ? "Noch keine Listen"
+                : "Keine offenen oder abgeschlossenen Listen"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {includeCompleted
+              {includePaid
                 ? "Für diese Gruppe wurden noch keine Listen erstellt."
-                : "Erledigte Listen kannst du über den Filter einblenden."}
+                : "Bezahlte Listen kannst du über den Filter einblenden."}
             </p>
           </div>
         )}

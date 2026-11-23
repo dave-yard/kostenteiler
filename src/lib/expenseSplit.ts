@@ -159,18 +159,37 @@ function assertKnownUniqueShares(
   }
 }
 
+function getSeededStartIndex(seed: string, memberCount: number) {
+  if (!seed) {
+    return 0
+  }
+
+  let hash = 2166136261
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0) % memberCount
+}
+
 function splitEvenly(
   amountCents: number,
-  memberIds: string[]
+  memberIds: string[],
+  allocationSeed: string
 ): Map<string, number> {
   const sortedIds = sortedMemberIds(memberIds)
   const baseCents = Math.floor(amountCents / sortedIds.length)
   const remainderCents = amountCents % sortedIds.length
+  const startIndex = getSeededStartIndex(allocationSeed, sortedIds.length)
 
   return new Map(
     sortedIds.map((memberId, index) => [
       memberId,
-      baseCents + (index < remainderCents ? 1 : 0),
+      baseCents +
+        ((index - startIndex + sortedIds.length) % sortedIds.length <
+        remainderCents
+          ? 1
+          : 0),
     ])
   )
 }
@@ -231,7 +250,8 @@ function allocateFixed(
   amountCents: number,
   memberIds: string[],
   shares: Array<{ memberId: string; amountCents: number }>,
-  remainderRule: ExpenseSplitRule
+  remainderRule: ExpenseSplitRule,
+  allocationSeed: string
 ): Map<string, number> {
   assertKnownUniqueShares(memberIds, shares)
 
@@ -260,7 +280,9 @@ function allocateFixed(
       : calculateExpenseSplit(
           remainingCents,
           memberIds,
-          remainderRule.mode === "fixed" ? { mode: "equal" } : remainderRule
+          remainderRule.mode === "fixed" ? { mode: "equal" } : remainderRule,
+          { mode: "equal" },
+          allocationSeed
         ).reduce(
           (allocations, allocation) =>
             allocations.set(allocation.memberId, allocation.amountCents),
@@ -285,7 +307,8 @@ export function calculateExpenseSplit(
   amountCents: number,
   memberIds: string[],
   rule: ExpenseSplitRule,
-  remainderRule: ExpenseSplitRule = { mode: "equal" }
+  remainderRule: ExpenseSplitRule = { mode: "equal" },
+  allocationSeed = ""
 ): ExpenseSplitAllocation[] {
   assertValidAmount(amountCents)
   assertValidMembers(memberIds)
@@ -303,7 +326,7 @@ export function calculateExpenseSplit(
       ])
     )
   } else if (rule.mode === "equal") {
-    allocationByMember = splitEvenly(amountCents, memberIds)
+    allocationByMember = splitEvenly(amountCents, memberIds, allocationSeed)
   } else if (rule.mode === "percentage") {
     allocationByMember = allocatePercentage(amountCents, memberIds, rule.shares)
   } else {
@@ -311,7 +334,8 @@ export function calculateExpenseSplit(
       amountCents,
       memberIds,
       rule.shares,
-      remainderRule
+      remainderRule,
+      allocationSeed
     )
   }
 

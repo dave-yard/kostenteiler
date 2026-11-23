@@ -3,8 +3,9 @@ import { getSupabaseClient } from "@/lib/supabase"
 import {
   completeExpenseList,
   createExpenseList,
+  getExpenseListPayments,
   getExpenseLists,
-  markExpenseListPaid,
+  markExpenseListPaymentPaid,
   updateExpenseListType,
 } from "./listService"
 
@@ -16,6 +17,7 @@ const query = {
   select: vi.fn(),
   update: vi.fn(),
   eq: vi.fn(),
+  neq: vi.fn(),
   order: vi.fn(),
   then: vi.fn(),
 }
@@ -38,6 +40,7 @@ beforeEach(() => {
   query.select.mockReturnValue(query)
   query.update.mockReturnValue(query)
   query.eq.mockReturnValue(query)
+  query.neq.mockReturnValue(query)
   query.order.mockReturnValue(query)
   query.then.mockImplementation(
     (resolve: (value: { data: typeof rows; error: null }) => unknown) =>
@@ -92,32 +95,79 @@ describe("listService", () => {
     )
   })
 
-  it("completes and marks lists as paid through authorized functions", async () => {
+  it("completes lists with persisted payment proposals", async () => {
     rpc.mockResolvedValue({ data: null, error: null })
 
-    await completeExpenseList("list-1")
-    await markExpenseListPaid("list-1")
+    await completeExpenseList("list-1", [
+      {
+        fromMemberId: "member-1",
+        toMemberId: "member-2",
+        amountCents: 500,
+      },
+    ])
 
-    expect(rpc).toHaveBeenNthCalledWith(1, "complete_expense_list", {
+    expect(rpc).toHaveBeenCalledWith("complete_expense_list", {
       p_list_id: "list-1",
-    })
-    expect(rpc).toHaveBeenNthCalledWith(2, "mark_expense_list_paid", {
-      p_list_id: "list-1",
+      p_payments: [
+        {
+          from_member_id: "member-1",
+          to_member_id: "member-2",
+          amount_cents: 500,
+        },
+      ],
     })
   })
 
   it("surfaces errors from the status functions", async () => {
     rpc.mockResolvedValue({ data: null, error: new Error("Denied") })
 
-    await expect(completeExpenseList("list-1")).rejects.toThrow("Denied")
-    await expect(markExpenseListPaid("list-1")).rejects.toThrow("Denied")
+    await expect(completeExpenseList("list-1", [])).rejects.toThrow("Denied")
+  })
+
+  it("loads persisted payment proposals and returns their all-paid state", async () => {
+    query.then.mockImplementationOnce(
+      (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+        Promise.resolve({
+          data: [
+            {
+              id: "payment-1",
+              list_id: "list-1",
+              from_member_id: "member-1",
+              to_member_id: "member-2",
+              amount_cents: 500,
+              status: "pending",
+              paid_at: null,
+              paid_by_user_id: null,
+            },
+          ],
+          error: null,
+        }).then(resolve)
+    )
+    rpc.mockResolvedValueOnce({ data: true, error: null })
+
+    await expect(getExpenseListPayments("list-1")).resolves.toEqual([
+      {
+        id: "payment-1",
+        listId: "list-1",
+        fromMemberId: "member-1",
+        toMemberId: "member-2",
+        amountCents: 500,
+        status: "pending",
+        paidAt: null,
+        paidByUserId: null,
+      },
+    ])
+    await expect(markExpenseListPaymentPaid("payment-1")).resolves.toBe(true)
+    expect(rpc).toHaveBeenCalledWith("mark_expense_list_payment_paid", {
+      p_payment_id: "payment-1",
+    })
   })
 
   it("loads only open lists by default and maps database fields", async () => {
     const lists = await getExpenseLists("group-1", false)
 
     expect(query.eq).toHaveBeenNthCalledWith(1, "group_id", "group-1")
-    expect(query.eq).toHaveBeenNthCalledWith(2, "status", "open")
+    expect(query.neq).toHaveBeenCalledWith("status", "isPaid")
     expect(query.order).toHaveBeenCalledWith("created_at", {
       ascending: false,
     })
@@ -141,7 +191,7 @@ describe("listService", () => {
     ])
   })
 
-  it("includes completed lists when requested", async () => {
+  it("includes paid lists when requested", async () => {
     await getExpenseLists("group-1", true)
 
     expect(query.eq).toHaveBeenCalledTimes(1)

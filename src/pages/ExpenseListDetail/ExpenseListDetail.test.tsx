@@ -69,6 +69,8 @@ const items: ExpenseItem[] = [
 const getExpenseItems = vi.fn()
 const getExpenseItemSplitRule = vi.fn()
 const getExpenseListSplitRules = vi.fn()
+const getExpenseListPayments = vi.fn()
+const markExpenseListPaymentPaid = vi.fn()
 const getItemAccess = vi.fn()
 const completeExpenseList = vi.fn()
 const createExpenseItem = vi.fn()
@@ -86,6 +88,8 @@ function renderDetail(
     getExpenseItems,
     getExpenseItemSplitRule,
     getExpenseListSplitRules,
+    getExpenseListPayments,
+    markExpenseListPaymentPaid,
     getItemAccess,
     completeExpenseList,
     createExpenseItem,
@@ -107,6 +111,8 @@ function renderDetail(
 
 beforeEach(() => {
   getExpenseListSplitRules.mockResolvedValue({})
+  getExpenseListPayments.mockResolvedValue([])
+  markExpenseListPaymentPaid.mockResolvedValue(false)
   getReceiptImage.mockResolvedValue(null)
 })
 
@@ -116,6 +122,8 @@ afterEach(() => {
   getExpenseItems.mockReset()
   getExpenseItemSplitRule.mockReset()
   getExpenseListSplitRules.mockReset()
+  getExpenseListPayments.mockReset()
+  markExpenseListPaymentPaid.mockReset()
   getItemAccess.mockReset()
   completeExpenseList.mockReset()
   createExpenseItem.mockReset()
@@ -142,6 +150,40 @@ function mockAccess() {
 }
 
 describe("ExpenseListDetail", () => {
+  it("bestätigt eine gespeicherte Erstattung einzeln", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseListPayments.mockResolvedValue([
+      {
+        id: "payment-1",
+        listId: "l1",
+        fromMemberId: "m1",
+        toMemberId: "m2",
+        amountCents: 375,
+        status: "pending",
+        paidAt: null,
+        paidByUserId: null,
+      },
+    ])
+    markExpenseListPaymentPaid.mockResolvedValue(true)
+    mockAccess()
+    renderDetail()
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Ben bekommt am meisten zurück/,
+      })
+    )
+    await screen.findByRole("list", { name: "Erstattungen" })
+    await user.click(
+      screen.getByRole("button", { name: "Als bezahlt bestätigen" })
+    )
+    await user.click(screen.getByRole("button", { name: "Bestätigen" }))
+
+    expect(markExpenseListPaymentPaid).toHaveBeenCalledWith("payment-1")
+    expect(getExpenseListPayments).toHaveBeenCalledWith("l1")
+  })
+
   it("zeigt die Abrechnung ein- und ausgeklappt und schließt die Liste ab", async () => {
     const user = userEvent.setup()
     const onListChange = vi.fn()
@@ -168,7 +210,13 @@ describe("ExpenseListDetail", () => {
     await user.click(screen.getByRole("button", { name: "Abschluss" }))
     await user.click(screen.getByRole("button", { name: "Bestätigen" }))
 
-    expect(completeExpenseList).toHaveBeenCalledWith("l1")
+    expect(completeExpenseList).toHaveBeenCalledWith("l1", [
+      {
+        fromMemberId: "m1",
+        toMemberId: "m2",
+        amountCents: 375,
+      },
+    ])
     expect(onListChange).toHaveBeenCalledWith(
       expect.objectContaining({ id: "l1", status: "completed" })
     )

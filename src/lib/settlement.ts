@@ -43,7 +43,8 @@ export function calculateSettlement(
       item.amountCents,
       memberIds,
       rulesByItemId[item.id] ?? groupDefaultRule,
-      groupDefaultRule
+      groupDefaultRule,
+      item.id
     )
     balanceByMember.set(
       item.paidByMemberId,

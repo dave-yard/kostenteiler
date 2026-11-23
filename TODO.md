@@ -105,20 +105,21 @@ Grundlage: [Anwendungs-Regelwerk](./APP_REQUIREMENT.md),
 
 ### Abschluss und Zahlungen
 
-- [ ] Erstattungsvorschläge beim Kassenabschluss dauerhaft speichern und für
+- [x] Erstattungsvorschläge beim Kassenabschluss dauerhaft speichern und für
       jedes Gruppenmitglied anzeigen; einzelnen Zahlungen einen eigenen Status
-      geben. Aktuell werden Vorschläge im Frontend berechnet, während Listenaktionen
-      nur Abschluss bzw. direktes „Als bezahlt markieren“ aufrufen. (FR-5.1/5.4;
+      geben. Die Vorschläge werden beim Abschluss atomar gespeichert und in der
+      Listenabrechnung mit ihrem Zahlungsstatus angezeigt. (FR-5.1/5.4;
       [Listenansicht](./src/pages/ExpenseLists/ExpenseLists.tsx),
       [Listen-Service](./src/services/listService.ts))
-- [ ] Zahlungsbestätigung auf Empfänger oder Gruppen-Admin begrenzen und die
+- [x] Zahlungsbestätigung auf Empfänger oder Gruppen-Admin begrenzen und die
       Liste erst nach Bestätigung aller Vorschläge bzw. bei null Vorschlägen sofort
-      nach Abschluss automatisch auf `isPaid` setzen. Den direkten Listen-Status-
-      Button damit in Einklang bringen. (FR-5.4)
-- [ ] Abschluss über **alle** Oberflächen gegen ungültige Bon-Summen und
+      nach Abschluss automatisch auf `isPaid` setzen. Der direkte Listen-Status-
+      Button ist dafür entfallen. (FR-5.4)
+
+<!-- - [ ] Abschluss über **alle** Oberflächen gegen ungültige Bon-Summen und
       fehlgeschlagene Abrechnungsdaten absichern und serverseitig prüfen: In der
       Listendetailansicht gibt es eine Abrechnungssperre, die Listenübersicht hat
-      einen separaten Abschlussweg. (FR-3.4.1/FR-5.1)
+      einen separaten Abschlussweg. (FR-3.4.1/FR-5.1) -->
 
 ## Architektur, Design und Dokumentation
 

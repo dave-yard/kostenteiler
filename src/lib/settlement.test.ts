@@ -65,7 +65,10 @@ describe("calculateSettlement", () => {
     ).toBe(0)
     expect(
       settlement.transfers.reduce((sum, item) => sum + item.amountCents, 0)
-    ).toBe(66)
+    ).toBeGreaterThanOrEqual(66)
+    expect(
+      settlement.transfers.reduce((sum, item) => sum + item.amountCents, 0)
+    ).toBeLessThanOrEqual(67)
   })
 
   it("lehnt unbekannte Zahler ab", () => {
