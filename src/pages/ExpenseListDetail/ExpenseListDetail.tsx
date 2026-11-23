@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Printer,
   LoaderCircle,
   Pencil,
   Plus,
@@ -40,9 +41,14 @@ import {
 import { SettlementSection } from "./components/SettlementSection"
 import { calculateNextPeriodDate } from "@/lib/recurringSchedule"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
+import {
+  createExpenseListPdf,
+  type ExpenseListPdfSort,
+} from "@/lib/expenseListPdf"
 
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
 const timeFormat = new Intl.DateTimeFormat("de-DE", { timeStyle: "short" })
+const equalSplitRule: ExpenseSplitRule = { mode: "equal" }
 
 export function todayIsoDate() {
   const now = new Date()
@@ -240,6 +246,7 @@ export function ExpenseListDetail({
   const [deletingItem, setDeletingItem] = useState<ExpenseItem | null>(null)
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
+  const [pdfErrorMessage, setPdfErrorMessage] = useState<string | null>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -299,13 +306,15 @@ export function ExpenseListDetail({
     result?.listId !== list.id || result.reloadNumber !== reloadNumber
   const errorMessage = isLoading ? null : (result?.errorMessage ?? null)
   const items = isLoading ? [] : (result?.items ?? [])
-  const memberNames = new Map(
-    (result?.access?.members ?? []).map((member) => [
-      member.id,
-      member.displayName,
-    ])
+  const accessMembers = result?.access?.members
+  const memberNames = useMemo(
+    () =>
+      new Map(
+        (accessMembers ?? []).map((member) => [member.id, member.displayName])
+      ),
+    [accessMembers]
   )
-  const members = result?.access?.members ?? []
+  const members = accessMembers ?? []
   // Nur zur Bequemlichkeit: Die Datenbank prüft Rechte, Status und Archiv erneut.
   const canAddItem =
     !isLoading &&
@@ -331,9 +340,8 @@ export function ExpenseListDetail({
     Boolean(result?.access?.canEditSplits) &&
     list.status === "open" &&
     !group.archivedAt
-  const groupDefaultSplitRule = result?.access?.groupDefaultSplitRule ?? {
-    mode: "equal" as const,
-  }
+  const groupDefaultSplitRule =
+    result?.access?.groupDefaultSplitRule ?? equalSplitRule
 
   const nodes = buildItemNodes(items)
 
@@ -518,6 +526,30 @@ export function ExpenseListDetail({
     }
   }
 
+  async function handleCreatePdf(sort: ExpenseListPdfSort) {
+    if (result?.rulesErrorMessage) {
+      setPdfErrorMessage(
+        "Das PDF kann nicht erstellt werden, weil die Aufteilungen nicht geladen werden konnten."
+      )
+      return
+    }
+
+    try {
+      await createExpenseListPdf({
+        group,
+        list,
+        nodes,
+        members,
+        rules: result?.rules,
+        groupDefaultSplitRule,
+        sort,
+      })
+      setIsViewSettingsOpen(false)
+    } catch (error) {
+      setPdfErrorMessage(getActionErrorMessage(error))
+    }
+  }
+
   return (
     <>
       {isScanning && (
@@ -546,29 +578,29 @@ export function ExpenseListDetail({
         </div>
       )}
 
-      <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden border border-border bg-card p-6 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:h-[calc(100dvh-8rem)] sm:p-10">
+      <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden border border-border bg-card p-4 shadow-[0_12px_36px_-30px_rgba(32,36,31,0.35)] sm:h-[calc(100dvh-8rem)] sm:p-6">
         <div className="shrink-0">
-          <Button
-            className={
-              isScanning
-                ? "relative z-50 mb-8 inline-flex h-auto items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-medium text-brand-text shadow-md hover:bg-card hover:text-foreground"
-                : "mb-8 h-auto p-0 text-sm font-medium text-brand-text hover:bg-transparent hover:text-foreground"
-            }
-            onClick={onBack}
-            type="button"
-            variant="ghost"
-          >
-            <ArrowLeft aria-hidden="true" className="size-4" />
-            Zu den Ausgabenlisten
-          </Button>
-
           <div className="flex w-full items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm text-muted-foreground">{group.name}</p>
-              <h1 className="text-2xl font-semibold tracking-[-0.04em] break-words">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Button
+                aria-label="Zurück"
+                className="size-8 shrink-0 rounded-lg border border-border p-0 text-brand-text"
+                onClick={onBack}
+                type="button"
+                variant="outline"
+              >
+                <ArrowLeft aria-hidden="true" className="size-4" />
+              </Button>
+              <h1 className="min-w-0 text-2xl leading-8 font-semibold tracking-[-0.04em] break-words">
                 {list.name}
               </h1>
-              <div className="flex flex-row gap-1">
+            </div>
+            <ExpenseListStatusBadge status={list.status} />
+          </div>
+
+          <div className="mt-1 ml-[42px]">
+            <div className="flex flex-row items-start gap-1">
+              <div className="min-w-0">
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground">
                   <p>
                     Erstellt am {dateFormat.format(new Date(list.createdAt))}
@@ -611,126 +643,144 @@ export function ExpenseListDetail({
                     </p>
                   )}
                 </div>
-                <Popover
-                  open={isViewSettingsOpen}
-                  onOpenChange={setIsViewSettingsOpen}
-                >
-                  <PopoverTrigger
-                    render={
-                      <Button
-                        aria-label="Ansichts- und Sortieroptionen"
-                        className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
-                        type="button"
-                        variant="outline"
-                      />
-                    }
-                  >
-                    <SlidersHorizontal className="size-4" />
-                  </PopoverTrigger>
-
-                  <PopoverContent className="w-64">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-foreground">
-                        Ansicht & Filter
-                      </p>
-                      {searchQuery && (
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-brand-text">
-                          Filter aktiv
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-2.5 space-y-2.5 text-xs">
-                      {/* Volltext-Suche ganz oben */}
-                      <div>
-                        <label
-                          className="text-muted-foreground"
-                          htmlFor="item-search"
-                        >
-                          Positionen durchsuchen
-                        </label>
-                        <div className="relative mt-1">
-                          <Input
-                            id="item-search"
-                            placeholder="Name, Zahler, Bon-Posten..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-8 rounded-lg border-border bg-muted px-2.5 pr-7 text-xs"
-                            autoFocus
-                          />
-                          {searchQuery && (
-                            <Button
-                              type="button"
-                              onClick={() => setSearchQuery("")}
-                              className="absolute top-1/2 right-2 size-auto -translate-y-1/2 p-0 text-muted-foreground hover:text-foreground"
-                              aria-label="Suche zurücksetzen"
-                              variant="ghost"
-                            >
-                              <X className="size-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      <hr className="border-border" />
-
-                      {/* Uhrzeit-Umschalter */}
-                      <div>
-                        <label className="text-muted-foreground">
-                          Uhrzeit anzeigen
-                        </label>
-                        <Button
-                          type="button"
-                          onClick={() => setShowTime((prev) => !prev)}
-                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
-                          variant="ghost"
-                        >
-                          {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
-                        </Button>
-                      </div>
-
-                      {/* Sortierung */}
-                      <div>
-                        <label className="text-muted-foreground">
-                          Sortieren nach
-                        </label>
-                        <Button
-                          type="button"
-                          onClick={() =>
-                            setSortBy((prev) =>
-                              prev === "item_date" ? "createdAt" : "item_date"
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
-                          variant="ghost"
-                        >
-                          {sortBy === "item_date"
-                            ? "📅 Belegdatum"
-                            : "🕒 Erfassungszeit"}
-                        </Button>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {group.currentUserIsAdmin &&
-                  list.status === "open" &&
-                  !group.archivedAt && (
+              </div>
+              <Popover
+                open={isViewSettingsOpen}
+                onOpenChange={setIsViewSettingsOpen}
+              >
+                <PopoverTrigger
+                  render={
                     <Button
-                      className="h-8 rounded-lg px-2.5 text-xs"
-                      onClick={() => setIsConvertDialogOpen(true)}
-                      size="sm"
+                      aria-label="Ansichts- und Sortieroptionen"
+                      className="size-8 rounded-lg border border-border p-0 text-muted-foreground hover:bg-muted"
                       type="button"
                       variant="outline"
-                    >
-                      Typ umwandeln
-                    </Button>
-                  )}
-              </div>
+                    />
+                  }
+                >
+                  <SlidersHorizontal className="size-4" />
+                </PopoverTrigger>
+
+                <PopoverContent
+                  align="end"
+                  className="w-64 max-w-[calc(100vw-24px)]"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-foreground">
+                      Ansichts- und Sortieroptionen
+                    </p>
+                  </div>
+
+                  <div className="mt-2.5 space-y-2.5 text-xs">
+                    {/* Uhrzeit-Umschalter */}
+                    <div>
+                      <label className="text-muted-foreground">
+                        Uhrzeit anzeigen
+                      </label>
+                      <Button
+                        type="button"
+                        onClick={() => setShowTime((prev) => !prev)}
+                        className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
+                        variant="ghost"
+                      >
+                        {showTime ? "✓ Mit Uhrzeit" : "Nur Datum"}
+                      </Button>
+                    </div>
+
+                    {/* Sortierung */}
+                    <div>
+                      <label className="text-muted-foreground">
+                        Sortieren nach
+                      </label>
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          setSortBy((prev) =>
+                            prev === "item_date" ? "createdAt" : "item_date"
+                          )
+                        }
+                        className="mt-1 w-full rounded-lg border border-border bg-muted py-1 text-center font-medium hover:bg-muted"
+                        variant="ghost"
+                      >
+                        {sortBy === "item_date"
+                          ? "📅 Belegdatum"
+                          : "🕒 Erfassungszeit"}
+                      </Button>
+                    </div>
+
+                    <hr className="border-border" />
+
+                    <div className="space-y-1.5">
+                      <p className="text-muted-foreground">Druckbild als PDF</p>
+                      <Button
+                        className="w-full justify-start rounded-lg"
+                        disabled={isLoading || items.length === 0}
+                        onClick={() => handleCreatePdf("date")}
+                        type="button"
+                        variant="outline"
+                      >
+                        <Printer aria-hidden="true" className="size-4" />
+                        Nach Datum (älteste zuerst)
+                      </Button>
+                      <Button
+                        className="w-full justify-start rounded-lg"
+                        disabled={isLoading || items.length === 0}
+                        onClick={() => handleCreatePdf("alphabetical")}
+                        type="button"
+                        variant="outline"
+                      >
+                        <Printer aria-hidden="true" className="size-4" />
+                        Alphabetisch
+                      </Button>
+                      {group.currentUserIsAdmin &&
+                        list.status === "open" &&
+                        !group.archivedAt && (
+                          <>
+                            <hr className="mt-2 border-border" />
+                            <Button
+                              className="mt-2 w-full justify-start rounded-lg"
+                              onClick={() => {
+                                setIsViewSettingsOpen(false)
+                                setIsConvertDialogOpen(true)
+                              }}
+                              type="button"
+                              variant="outline"
+                            >
+                              Typ umwandeln
+                            </Button>
+                          </>
+                        )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            <ExpenseListStatusBadge status={list.status} />
           </div>
 
-          <div className="mt-1 flex items-center justify-between gap-3 border-b border-border pb-4">
+          <div className="relative mt-4">
+            <label className="sr-only" htmlFor="item-search">
+              Positionen durchsuchen
+            </label>
+            <Input
+              id="item-search"
+              placeholder="Positionen durchsuchen"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="h-9 rounded-xl border-border bg-muted px-3 pr-9 text-sm"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute top-1/2 right-1.5 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                aria-label="Suche zurücksetzen"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 border-b border-border pb-4">
             <div className="flex items-center gap-2.5">
               <h2 className="font-semibold">Positionen</h2>
               {items.length > 0 && (
@@ -850,6 +900,11 @@ export function ExpenseListDetail({
         <Toast
           message={scanWarningMessage}
           onClose={() => setScanWarningMessage(null)}
+          variant="error"
+        />
+        <Toast
+          message={pdfErrorMessage}
+          onClose={() => setPdfErrorMessage(null)}
           variant="error"
         />
 

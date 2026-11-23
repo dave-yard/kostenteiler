@@ -13,6 +13,7 @@ export interface ExpenseItemInput {
   isReceipt?: boolean
   parentItemId?: string | null
   item_date?: string | null
+  syncChildrenPaidBy?: boolean
 }
 
 type ParsedReceipt = {
@@ -508,6 +509,7 @@ export async function updateExpenseItem(
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
       p_item_date: itemIsoDate,
+      p_sync_children_paid_by: input.syncChildrenPaidBy ?? true,
     }
   )
 

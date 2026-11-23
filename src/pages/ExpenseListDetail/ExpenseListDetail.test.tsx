@@ -13,6 +13,7 @@ import { ExpenseListDetail } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import { getSupabaseClient } from "@/lib/supabase"
 import type { UploadAndProcessReceiptResult } from "@/services/itemService"
 import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
+import { createExpenseListPdf } from "@/lib/expenseListPdf"
 
 vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: vi.fn(),
@@ -21,6 +22,14 @@ vi.mock("@/lib/supabase", () => ({
 vi.mock("@/components/contexts/ExpenseListContext", () => ({
   useExpenseLists: vi.fn(),
 }))
+
+vi.mock("@/lib/expenseListPdf", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/expenseListPdf")>()
+  return {
+    ...original,
+    createExpenseListPdf: vi.fn(),
+  }
+})
 
 const group: Group = {
   id: "g1",
@@ -131,6 +140,7 @@ afterEach(() => {
   deleteExpenseItem.mockReset()
   getReceiptImage.mockReset()
   uploadAndProcessReceipt.mockReset()
+  vi.mocked(createExpenseListPdf).mockReset()
 })
 
 function mockAccess() {
@@ -266,7 +276,7 @@ describe("ExpenseListDetail", () => {
     renderDetail()
 
     expect(screen.getByRole("heading", { name: "Urlaub" })).toBeTruthy()
-    expect(screen.getByText("WG Berlin")).toBeTruthy()
+    expect(screen.queryByText("WG Berlin")).toBeNull()
     expect(screen.getByText("Erledigt")).toBeTruthy()
     expect(await screen.findByText("Noch keine Positionen")).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledWith("l1")
@@ -291,20 +301,53 @@ describe("ExpenseListDetail", () => {
     mockAccess()
     renderDetail()
 
-    await user.click(
-      await screen.findByRole("button", {
+    const search = await screen.findByRole("textbox", {
+      name: "Positionen durchsuchen",
+    })
+    expect(
+      screen.queryByRole("button", {
         name: "Ansichts- und Sortieroptionen",
       })
-    )
-    await user.type(
-      screen.getByRole("textbox", { name: "Positionen durchsuchen" }),
-      "sock"
-    )
+    ).toBeTruthy()
+    await user.type(search, "sock")
 
     expect(screen.getByText("Sock", { selector: "mark" }).textContent).toBe(
       "Sock"
     )
     expect(screen.queryByText("Pizza")).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: "Suche zurücksetzen" }))
+    expect((search as HTMLInputElement).value).toBe("")
+    expect(screen.getByText("Pizza")).toBeTruthy()
+  })
+
+  it("bietet PDF-Ausgaben nach Datum und alphabetischer Sortierung an", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    mockAccess()
+    renderDetail()
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Ansichts- und Sortieroptionen",
+      })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Nach Datum (älteste zuerst)" })
+    )
+    expect(createExpenseListPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: "date" })
+    )
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ansichts- und Sortieroptionen",
+      })
+    )
+    await user.click(screen.getByRole("button", { name: "Alphabetisch" }))
+    expect(createExpenseListPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: "alphabetical" })
+    )
   })
 
   it("sortiert Hauptpositionen nach Belegdatum und Erfassungszeit", async () => {
@@ -462,9 +505,7 @@ describe("ExpenseListDetail", () => {
     mockAccess()
     renderDetail(onBack)
 
-    await user.click(
-      screen.getByRole("button", { name: /Zu den Ausgabenlisten/ })
-    )
+    await user.click(screen.getByRole("button", { name: "Zurück" }))
 
     expect(onBack).toHaveBeenCalled()
     await screen.findByText("Noch keine Positionen")
@@ -699,11 +740,61 @@ describe("ExpenseListDetail", () => {
       splitRule: { mode: "equal" },
       isReceipt: false,
       item_date: "2026-01-03T00:00:00.000Z",
+      syncChildrenPaidBy: true,
     })
     expect(
       await screen.findByText("Die Position wurde aktualisiert.")
     ).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("fragt bei geänderten Zahlern einer Hauptposition nach den Unterpositionen", async () => {
+    const user = userEvent.setup()
+    const receipt = {
+      ...items[0],
+      name: "Supermarkt",
+      isReceipt: true,
+    }
+    const child = {
+      ...items[1],
+      id: "child",
+      name: "Brot",
+      parentItemId: receipt.id,
+    }
+    getExpenseItems.mockResolvedValue([receipt, child])
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Position bearbeiten: Supermarkt",
+      })
+    )
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("button", { name: "Speichern" }) as HTMLButtonElement)
+          .disabled
+      ).toBe(false)
+    )
+    await user.click(screen.getByRole("combobox", { name: "Bezahlt von" }))
+    await user.click(await screen.findByRole("option", { name: "Ben" }))
+
+    const syncCheckbox = screen.getByRole("checkbox", {
+      name: /Zahler auch bei allen Unterpositionen/,
+    })
+    expect(syncCheckbox.getAttribute("aria-checked")).toBe("true")
+
+    await user.click(syncCheckbox)
+    await user.click(screen.getByRole("button", { name: "Speichern" }))
+
+    expect(updateExpenseItem).toHaveBeenCalledWith(
+      receipt.id,
+      expect.objectContaining({
+        paidByMemberId: "m2",
+        syncChildrenPaidBy: false,
+      })
+    )
   })
 
   it("legt einen Bon an und klappt seine Unterpositionen auf", async () => {
@@ -868,7 +959,7 @@ describe("ExpenseListDetail", () => {
 
     // Navigation zur Liste ist weiterhin klickbar
     const backButton = screen.getByRole("button", {
-      name: "Zu den Ausgabenlisten",
+      name: "Zurück",
     })
     expect(backButton).toBeTruthy()
     await user.click(backButton)

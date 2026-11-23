@@ -6,12 +6,14 @@ export const PopoverTrigger = PopoverPrimitive.Trigger
 
 export function PopoverContent({
   className,
+  align = "start",
   ...props
-}: PopoverPrimitive.Popup.Props) {
+}: PopoverPrimitive.Popup.Props & { align?: "start" | "center" | "end" }) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
-        align="start"
+        align={align}
+        collisionPadding={12}
         className="z-40"
         sideOffset={4}
       >

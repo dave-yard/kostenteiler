@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { LoaderCircle, X } from "lucide-react"
 import { useExpenseLists } from "@/components/contexts/ExpenseListContext"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -12,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ReceiptPreview } from "@/pages/ExpenseListDetail/ReceiptPreview"
 import {
   calculateExpenseSplit,
@@ -143,11 +138,8 @@ export function ExpenseItemDialog({
   canEditSplits,
   currentMemberId,
 }: ExpenseItemDialogProps) {
-  const {
-    createExpenseItem,
-    updateExpenseItem,
-    getExpenseItemSplitRule,
-  } = useExpenseLists()
+  const { createExpenseItem, updateExpenseItem, getExpenseItemSplitRule } =
+    useExpenseLists()
 
   const [itemName, setItemName] = useState("")
   const [amountText, setAmountText] = useState("")
@@ -161,11 +153,16 @@ export function ExpenseItemDialog({
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
+  const [syncChildrenPaidBy, setSyncChildrenPaidBy] = useState(true)
   const lastEditedFixedMemberId = useRef<string | null>(null)
   const [allocationSeed, setAllocationSeed] = useState("")
 
-  const dialogParentId = editingItem ? editingItem.parentItemId : parentItem?.id ?? null
-  const dialogParent = parentItem ?? (dialogParentId ? items.find((item) => item.id === dialogParentId) : null)
+  const dialogParentId = editingItem
+    ? editingItem.parentItemId
+    : (parentItem?.id ?? null)
+  const dialogParent =
+    parentItem ??
+    (dialogParentId ? items.find((item) => item.id === dialogParentId) : null)
   const editingHasChildren = editingItem
     ? items.some((item) => item.parentItemId === editingItem.id)
     : false
@@ -212,8 +209,7 @@ export function ExpenseItemDialog({
     setCustomSplitMode(mode)
     if (mode === "complete") {
       setCompleteMemberId(
-        (current) =>
-          current || currentMemberId || members[0]?.id || ""
+        (current) => current || currentMemberId || members[0]?.id || ""
       )
     } else if (mode === "percentage") {
       setSplitInputs(
@@ -323,12 +319,10 @@ export function ExpenseItemDialog({
     )
     setIsReceiptDraft(editingItem?.isReceipt ?? false)
     setPaidByMemberId(
-      editingItem?.paidByMemberId ??
-        currentMemberId ??
-        members[0]?.id ??
-        ""
+      editingItem?.paidByMemberId ?? currentMemberId ?? members[0]?.id ?? ""
     )
     setDialogError(null)
+    setSyncChildrenPaidBy(true)
 
     applySplitDraft(groupDefaultSplitRule ?? { mode: "equal" })
 
@@ -513,9 +507,7 @@ export function ExpenseItemDialog({
       }
     }
 
-    const itemDateIso = itemDateText
-      ? germanToIsoDateTime(itemDateText)
-      : null
+    const itemDateIso = itemDateText ? germanToIsoDateTime(itemDateText) : null
     if (itemDateText && !itemDateIso) {
       setDialogError(
         "Bitte ein gültiges Datum im Format TT.MM.JJJJ HH:MM eingeben."
@@ -534,6 +526,7 @@ export function ExpenseItemDialog({
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           item_date: itemDateIso,
+          syncChildrenPaidBy,
         })
       } else {
         await createExpenseItem(listId, {
@@ -567,8 +560,8 @@ export function ExpenseItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md md:max-w-lg">
-        <div className="flex items-start justify-between gap-4">
+      <DialogContent className="flex max-h-[90dvh] max-w-md flex-col overflow-hidden p-0 md:max-w-lg">
+        <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6">
           <DialogTitle className="text-lg font-semibold">
             {dialogParentId
               ? editingItem
@@ -590,295 +583,319 @@ export function ExpenseItemDialog({
           </Button>
         </div>
         <form
-          className="mt-5 space-y-4"
+          className="mt-5 flex min-h-0 flex-1 flex-col"
           noValidate
           onSubmit={(event) => void handleSubmit(event)}
         >
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="item-name">
-              Bezeichnung
-            </label>
-            <Input
-              autoComplete="one-time-code"
-              data-roboform-disable="true"
-              autoFocus
-              className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-              id="item-name"
-              maxLength={120}
-              onChange={(event) => setItemName(event.target.value)}
-              value={itemName}
-            />
-          </div>
-          <div className="flex flex-row gap-1">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="item-amount">
-                Betrag in €
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="item-name">
+                Bezeichnung
               </label>
               <Input
                 autoComplete="one-time-code"
                 data-roboform-disable="true"
+                autoFocus
                 className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                id="item-amount"
-                inputMode="decimal"
-                onChange={(event) => handleAmountChange(event.target.value)}
-                placeholder="12,50"
-                value={amountText}
+                id="item-name"
+                maxLength={120}
+                onChange={(event) => setItemName(event.target.value)}
+                value={itemName}
               />
             </div>
-            {!dialogParentId && (
+            <div className="flex flex-row gap-1">
               <div className="flex-1 space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="item-date">
-                  Datum
+                <label className="text-sm font-medium" htmlFor="item-amount">
+                  Betrag in €
                 </label>
                 <Input
+                  autoComplete="one-time-code"
+                  data-roboform-disable="true"
                   className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                  id="item-date"
-                  onChange={handlePositionDateChange}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="TT.MM.JJJJ"
-                  value={itemDateText}
+                  id="item-amount"
+                  inputMode="decimal"
+                  onChange={(event) => handleAmountChange(event.target.value)}
+                  placeholder="12,50"
+                  value={amountText}
                 />
               </div>
-            )}
-          </div>
-          <div className="flex flex-row gap-1">
-            {dialogParent ? (
-              <p className="text-sm text-muted-foreground">
-                Teil des Bons „{dialogParent.name}“. Was nicht als
-                Unterposition erfasst ist, wird nach Zahler und Verteilung
-                des Bons verrechnet.
-              </p>
-            ) : (
-              <div className="w-1/2 space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="item-type">
-                  Art der Position
+              {!dialogParentId && (
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="item-date">
+                    Datum
+                  </label>
+                  <Input
+                    className="h-11 rounded-xl border-border bg-card px-4 text-sm"
+                    id="item-date"
+                    onChange={handlePositionDateChange}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="TT.MM.JJJJ"
+                    value={itemDateText}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-row gap-1">
+              {dialogParent ? (
+                <p className="text-sm text-muted-foreground">
+                  Teil des Bons „{dialogParent.name}“. Was nicht als
+                  Unterposition erfasst ist, wird nach Zahler und Verteilung des
+                  Bons verrechnet.
+                </p>
+              ) : (
+                <div className="w-1/2 space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="item-type">
+                    Art der Position
+                  </label>
+                  <SelectField
+                    disabled={editingHasChildren}
+                    id="item-type"
+                    onValueChange={(value) =>
+                      setIsReceiptDraft(value === "receipt")
+                    }
+                    value={isReceiptDraft ? "receipt" : "single"}
+                    options={[
+                      { value: "single", label: "Einzelposition" },
+                      {
+                        value: "receipt",
+                        label: "Bon (Summe mit Unterpositionen)",
+                      },
+                    ]}
+                  />
+                  {editingHasChildren && (
+                    <p className="text-xs text-muted-foreground">
+                      Ein Bon mit Unterpositionen kann nicht zur Einzelposition
+                      werden.
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex-1 space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="item-payer">
+                  Bezahlt von
                 </label>
                 <SelectField
-                  disabled={editingHasChildren}
-                  id="item-type"
-                  onValueChange={(value) =>
-                    setIsReceiptDraft(value === "receipt")
-                  }
-                  value={isReceiptDraft ? "receipt" : "single"}
-                  options={[
-                    { value: "single", label: "Einzelposition" },
-                    {
-                      value: "receipt",
-                      label: "Bon (Summe mit Unterpositionen)",
-                    },
-                  ]}
+                  id="item-payer"
+                  onValueChange={setPaidByMemberId}
+                  value={paidByMemberId}
+                  options={members.map((member) => ({
+                    value: member.id,
+                    label: member.displayName,
+                  }))}
                 />
-                {editingHasChildren && (
-                  <p className="text-xs text-muted-foreground">
-                    Ein Bon mit Unterpositionen kann nicht zur
-                    Einzelposition werden.
-                  </p>
-                )}
               </div>
-            )}
-            <div className="flex-1 space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="item-payer">
-                Bezahlt von
-              </label>
-              <SelectField
-                id="item-payer"
-                onValueChange={setPaidByMemberId}
-                value={paidByMemberId}
-                options={members.map((member) => ({
-                  value: member.id,
-                  label: member.displayName,
-                }))}
-              />
             </div>
-          </div>
-          <hr className="border-border" />
-          <section aria-labelledby="item-split-title" className="space-y-3">
-            <div>
-              <h3 className="text-sm font-semibold" id="item-split-title">
-                Verteilung
-              </h3>
-              <p
-                aria-live="polite"
-                className="mt-1 text-xs text-muted-foreground"
-                role="status"
-              >
-                {isGroupDistribution
-                  ? "Gruppenverteilung"
-                  : "Individuelle Verteilung"}
-                {" · Gruppenstandard: "}
-                {splitRuleLabel(groupDefaultSplitRule)}
-              </p>
-            </div>
-            {canEditSplits && (
-              <>
-                <label className="sr-only" htmlFor="item-split-mode">
-                  Aufteilungsmodus
-                </label>
-                <SelectField
-                  id="item-split-mode"
-                  onValueChange={changeCustomSplitMode}
-                  value={customSplitMode}
-                  options={[
-                    {
-                      value: "equal",
-                      label: "Gleichmäßig auf alle Gruppenmitglieder",
-                    },
-                    {
-                      value: "complete",
-                      label: "Komplett für eine Person",
-                    },
-                    { value: "percentage", label: "Prozentual" },
-                    { value: "fixed", label: "Fester Betrag" },
-                  ]}
-                />
-                {customSplitMode === "equal" ||
-                customSplitMode === "complete" ? (
-                  members.length <= 4 ? (
-                    <fieldset className="space-y-1.5">
-                      <legend className="text-sm font-medium">
-                        Übernimmt den gesamten Betrag
-                      </legend>
-                      <RadioGroup
-                        aria-label="Übernimmt den gesamten Betrag"
-                        className="grid grid-cols-2 gap-2"
-                        name="item-split-member"
-                        onValueChange={(value: string) => {
-                          changeCustomSplitMode("complete")
-                          setCompleteMemberId(value)
-                        }}
-                        value={
-                          customSplitMode === "complete"
-                            ? completeMemberId
-                            : ""
-                        }
-                      >
-                        {members.map((member) => (
-                          <label
-                            className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
-                            htmlFor={`item-split-member-${member.id}`}
-                            key={member.id}
-                          >
-                            <RadioGroupItem
-                              id={`item-split-member-${member.id}`}
-                              value={member.id}
-                            />
-                            <span className="truncate">
-                              {member.displayName}
-                            </span>
-                          </label>
-                        ))}
-                      </RadioGroup>
-                    </fieldset>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label
-                        className="text-sm font-medium"
-                        htmlFor="item-split-member"
-                      >
-                        Übernimmt den gesamten Betrag
-                      </label>
-                      <SelectField
-                        id="item-split-member"
-                        onValueChange={(value) => {
-                          changeCustomSplitMode("complete")
-                          setCompleteMemberId(value)
-                        }}
-                        placeholder="Person wählen"
-                        value={
-                          customSplitMode === "complete"
-                            ? completeMemberId
-                            : ""
-                        }
-                        options={members.map((member) => ({
-                          value: member.id,
-                          label: member.displayName,
-                        }))}
-                      />
-                    </div>
-                  )
-                ) : (
-                  <div className="space-y-2">
-                    {members.map((member) => (
-                      <div
-                        className="flex items-center justify-between gap-3"
-                        key={member.id}
-                      >
-                        <label
-                          className="min-w-0 flex-1 truncate text-sm"
-                          htmlFor={`split-${member.id}`}
-                        >
-                          {member.displayName}
-                        </label>
-                        <div className="flex w-36 shrink-0 items-center gap-2">
-                          <Input
-                            className="h-10 rounded-xl border-border px-3 text-right text-sm"
-                            id={`split-${member.id}`}
-                            inputMode="decimal"
-                            onChange={(event) =>
-                              handleSplitInputChange(
-                                member.id,
-                                event.target.value
-                              )
-                            }
-                            placeholder={
-                              customSplitMode === "percentage"
-                                ? "0,00"
-                                : "0,00"
-                            }
-                            value={splitInputs[member.id] ?? ""}
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {customSplitMode === "percentage" ? "%" : "€"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-            {splitPreviewError && (
-              <p className="text-sm text-danger-text" role="alert">
-                {splitPreviewError}
-              </p>
-            )}
-            {splitPreview && (
-              <ul
-                aria-label="Vorschau der Verteilung"
-                className="space-y-1 rounded-xl bg-muted p-3 text-sm"
-              >
-                {splitPreview.map((allocation) => (
-                  <li
-                    className="flex justify-between gap-3"
-                    key={allocation.memberId}
+            {editingItem &&
+              editingHasChildren &&
+              paidByMemberId !== editingItem.paidByMemberId && (
+                <div className="rounded-xl border border-border bg-muted/50 p-3">
+                  <label
+                    className="flex cursor-pointer items-start gap-2.5 text-sm"
+                    htmlFor="sync-children-paid-by"
                   >
+                    <Checkbox
+                      checked={syncChildrenPaidBy}
+                      id="sync-children-paid-by"
+                      onCheckedChange={(checked) =>
+                        setSyncChildrenPaidBy(checked === true)
+                      }
+                    />
                     <span>
-                      {memberNames.get(allocation.memberId) ?? "Unbekannt"}
+                      Zahler auch bei allen Unterpositionen auf{" "}
+                      {memberNames.get(paidByMemberId) ?? "diese Person"} ändern
                     </span>
-                    <span className="font-medium">
-                      {formatCents(allocation.amountCents)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                  </label>
+                </div>
+              )}
+            <hr className="border-border" />
+            <section aria-labelledby="item-split-title" className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold" id="item-split-title">
+                  Verteilung
+                </h3>
+                <p
+                  aria-live="polite"
+                  className="mt-1 text-xs text-muted-foreground"
+                  role="status"
+                >
+                  {isGroupDistribution
+                    ? "Gruppenverteilung"
+                    : "Individuelle Verteilung"}
+                  {" · Gruppenstandard: "}
+                  {splitRuleLabel(groupDefaultSplitRule)}
+                </p>
+              </div>
+              {canEditSplits && (
+                <>
+                  <label className="sr-only" htmlFor="item-split-mode">
+                    Aufteilungsmodus
+                  </label>
+                  <SelectField
+                    id="item-split-mode"
+                    onValueChange={changeCustomSplitMode}
+                    value={customSplitMode}
+                    options={[
+                      {
+                        value: "equal",
+                        label: "Gleichmäßig auf alle Gruppenmitglieder",
+                      },
+                      {
+                        value: "complete",
+                        label: "Komplett für eine Person",
+                      },
+                      { value: "percentage", label: "Prozentual" },
+                      { value: "fixed", label: "Fester Betrag" },
+                    ]}
+                  />
+                  {customSplitMode === "equal" ||
+                  customSplitMode === "complete" ? (
+                    members.length <= 4 ? (
+                      <fieldset className="space-y-1.5">
+                        <legend className="text-sm font-medium">
+                          Übernimmt den gesamten Betrag
+                        </legend>
+                        <RadioGroup
+                          aria-label="Übernimmt den gesamten Betrag"
+                          className="grid grid-cols-2 gap-2"
+                          name="item-split-member"
+                          onValueChange={(value: string) => {
+                            changeCustomSplitMode("complete")
+                            setCompleteMemberId(value)
+                          }}
+                          value={
+                            customSplitMode === "complete"
+                              ? completeMemberId
+                              : ""
+                          }
+                        >
+                          {members.map((member) => (
+                            <label
+                              className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                              htmlFor={`item-split-member-${member.id}`}
+                              key={member.id}
+                            >
+                              <RadioGroupItem
+                                id={`item-split-member-${member.id}`}
+                                value={member.id}
+                              />
+                              <span className="truncate">
+                                {member.displayName}
+                              </span>
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      </fieldset>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor="item-split-member"
+                        >
+                          Übernimmt den gesamten Betrag
+                        </label>
+                        <SelectField
+                          id="item-split-member"
+                          onValueChange={(value) => {
+                            changeCustomSplitMode("complete")
+                            setCompleteMemberId(value)
+                          }}
+                          placeholder="Person wählen"
+                          value={
+                            customSplitMode === "complete"
+                              ? completeMemberId
+                              : ""
+                          }
+                          options={members.map((member) => ({
+                            value: member.id,
+                            label: member.displayName,
+                          }))}
+                        />
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      {members.map((member) => (
+                        <div
+                          className="flex items-center justify-between gap-3"
+                          key={member.id}
+                        >
+                          <label
+                            className="min-w-0 flex-1 truncate text-sm"
+                            htmlFor={`split-${member.id}`}
+                          >
+                            {member.displayName}
+                          </label>
+                          <div className="flex w-36 shrink-0 items-center gap-2">
+                            <Input
+                              className="h-10 rounded-xl border-border px-3 text-right text-sm"
+                              id={`split-${member.id}`}
+                              inputMode="decimal"
+                              onChange={(event) =>
+                                handleSplitInputChange(
+                                  member.id,
+                                  event.target.value
+                                )
+                              }
+                              placeholder={
+                                customSplitMode === "percentage"
+                                  ? "0,00"
+                                  : "0,00"
+                              }
+                              value={splitInputs[member.id] ?? ""}
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {customSplitMode === "percentage" ? "%" : "€"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {splitPreviewError && (
+                <p className="text-sm text-danger-text" role="alert">
+                  {splitPreviewError}
+                </p>
+              )}
+              {splitPreview && (
+                <ul
+                  aria-label="Vorschau der Verteilung"
+                  className="space-y-1 rounded-xl bg-muted p-3 text-sm"
+                >
+                  {splitPreview.map((allocation) => (
+                    <li
+                      className="flex justify-between gap-3"
+                      key={allocation.memberId}
+                    >
+                      <span>
+                        {memberNames.get(allocation.memberId) ?? "Unbekannt"}
+                      </span>
+                      <span className="font-medium">
+                        {formatCents(allocation.amountCents)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            {(editingItem || dialogParentId) && (
+              <div className="space-y-1.5 border-t border-border pt-3">
+                <p className="text-sm font-medium">Beleg</p>
+                <ReceiptPreview
+                  fallbackItemId={editingItem?.parentItemId ?? dialogParentId}
+                  itemId={editingItem?.id}
+                />
+              </div>
             )}
-          </section>
-          {(editingItem || dialogParentId) && (
-            <div className="space-y-1.5 border-t border-border pt-3">
-              <p className="text-sm font-medium">Beleg</p>
-              <ReceiptPreview
-                fallbackItemId={editingItem?.parentItemId ?? dialogParentId}
-                itemId={editingItem?.id}
-              />
-            </div>
-          )}
-          {dialogError && (
-            <p className="text-sm text-danger-text" role="alert">
-              {dialogError}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
+            {dialogError && (
+              <p className="text-sm text-danger-text" role="alert">
+                {dialogError}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-6 py-4">
             <Button
               disabled={isSaving || isLoadingSplitRule}
               onClick={onClose}

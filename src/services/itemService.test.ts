@@ -142,7 +142,22 @@ describe("itemService", () => {
       p_split_rule: null,
       p_is_receipt: false,
       p_item_date: "2026-01-03T00:13:00.000Z",
+      p_sync_children_paid_by: true,
     })
+  })
+
+  it("überträgt die Auswahl zur Zahler-Synchronisierung", async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await updateExpenseItem("item-1", {
+      ...input,
+      syncChildrenPaidBy: false,
+    })
+
+    expect(rpc).toHaveBeenCalledWith(
+      "update_expense_item_hierarchical",
+      expect.objectContaining({ p_sync_children_paid_by: false })
+    )
   })
 
   it("loads an item split rule through the authorized database function", async () => {
