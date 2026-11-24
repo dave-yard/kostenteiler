@@ -206,6 +206,7 @@ function getSplitHint(
 interface ItemsResult {
   listId: string
   reloadNumber: number
+  groupDataRevision: number
   items: ExpenseItem[]
   access: ExpenseItemAccess | null
   rules: Record<string, ExpenseSplitRule> | null
@@ -225,6 +226,7 @@ export function ExpenseListDetail({
   onListChange?: (list: ExpenseList) => void
 }) {
   const {
+    groupDataRevision,
     getExpenseItems,
     getExpenseListSplitRules,
     getItemAccess,
@@ -269,6 +271,7 @@ export function ExpenseListDetail({
           setResult({
             listId: list.id,
             reloadNumber,
+            groupDataRevision,
             items,
             access,
             ...splitRules,
@@ -281,6 +284,7 @@ export function ExpenseListDetail({
           setResult({
             listId: list.id,
             reloadNumber,
+            groupDataRevision,
             items: [],
             access: null,
             rules: null,
@@ -297,13 +301,16 @@ export function ExpenseListDetail({
     getExpenseItems,
     getExpenseListSplitRules,
     getItemAccess,
+    groupDataRevision,
     group,
     list,
     reloadNumber,
   ])
 
   const isLoading =
-    result?.listId !== list.id || result.reloadNumber !== reloadNumber
+    result?.listId !== list.id ||
+    result.reloadNumber !== reloadNumber ||
+    result.groupDataRevision !== groupDataRevision
   const errorMessage = isLoading ? null : (result?.errorMessage ?? null)
   const items = isLoading ? [] : (result?.items ?? [])
   const accessMembers = result?.access?.members
@@ -371,7 +378,9 @@ export function ExpenseListDetail({
       result?.access?.currentMemberId ?? null,
       memberNames
     )
-    const payerName = memberNames.get(item.paidByMemberId) ?? "Unbekannt"
+    const payerName = item.paidByMemberId
+      ? (memberNames.get(item.paidByMemberId) ?? "Unbekannt")
+      : "Aufgeteilt"
     const amount = formatCents(item.amountCents)
 
     return (
@@ -1099,7 +1108,11 @@ function matchesItem(
   if (item.name.toLowerCase().includes(query)) return true
 
   // 2. Ausleger (sichtbar als: "Bezahlt von ...")
-  const payerName = (memberNames.get(item.paidByMemberId) ?? "").toLowerCase()
+  const payerName = (
+    item.paidByMemberId
+      ? (memberNames.get(item.paidByMemberId) ?? "")
+      : "Aufgeteilt"
+  ).toLowerCase()
   if (payerName.includes(query)) return true
 
   // 3. Betrag

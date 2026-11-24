@@ -12,7 +12,7 @@ export interface ExpenseListPdfRow {
   parentId: string | null
   name: string
   date: string
-  payerId: string
+  payerId: string | null
   amountCents: number
   sharesByMemberId: Map<string, number>
   includeInTotals: boolean
@@ -569,7 +569,9 @@ export async function createExpenseListPdf({
     const values = [
       isSubitem ? "" : formatPdfDate(row.date),
       positionLines,
-      memberNames.get(row.payerId) ?? "Unbekannt",
+      row.payerId
+        ? (memberNames.get(row.payerId) ?? "Unbekannt")
+        : "Aufgeteilt",
       formatCents(row.amountCents).replace(/\u00A0/g, " "),
       ...members.map((member) =>
         formatCents(row.sharesByMemberId.get(member.id) ?? 0).replace(

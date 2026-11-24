@@ -134,6 +134,40 @@ describe("ExpenseLists", () => {
     ).toBeTruthy()
   })
 
+  it("reloads open lists when group member data changes", async () => {
+    let groupDataRevision = 0
+    const updatedList = { ...openList, name: "Wocheneinkauf aktualisiert" }
+    getExpenseLists
+      .mockResolvedValueOnce([openList])
+      .mockResolvedValueOnce([updatedList])
+    canCloseExpenseLists.mockResolvedValue(true)
+    vi.mocked(useExpenseLists).mockImplementation(
+      () =>
+        ({
+          groupDataRevision,
+          getExpenseLists,
+          processRecurringLists,
+          completeExpenseList,
+          canCloseExpenseLists,
+        }) as never
+    )
+    const view = render(<ExpenseListsHarness group={group} />)
+
+    expect(
+      await screen.findByRole("heading", { name: "Wocheneinkauf" })
+    ).toBeTruthy()
+
+    groupDataRevision += 1
+    view.rerender(<ExpenseListsHarness group={group} />)
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Wocheneinkauf aktualisiert",
+      })
+    ).toBeTruthy()
+    expect(getExpenseLists).toHaveBeenCalledTimes(2)
+  })
+
   it("allows admins to create an expense list and shows it after reloading", async () => {
     const user = userEvent.setup()
     getExpenseLists.mockResolvedValueOnce([]).mockResolvedValueOnce([openList])

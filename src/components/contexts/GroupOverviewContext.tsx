@@ -42,6 +42,7 @@ interface GroupOverviewContextValue {
   groups: Group[]
   isLoading: boolean
   loadError: string | null
+  groupDataRevision: number
   refreshGroups: () => Promise<void>
   createGroup: (name: string) => Promise<string>
   saveGroupOrder: (groupIds: string[]) => Promise<void>
@@ -85,6 +86,7 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
   const [groups, setGroups] = useState<Group[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [groupDataRevision, setGroupDataRevision] = useState(0)
 
   const refreshGroups = useCallback(async () => {
     setIsLoading(true)
@@ -236,16 +238,17 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       updateGroupMemberPermissionsRecord(memberId, permissions),
     []
   )
-  const removeGroupMember = useCallback(
-    (memberId: string) => removeGroupMemberRecord(memberId),
-    []
-  )
+  const removeGroupMember = useCallback(async (memberId: string) => {
+    await removeGroupMemberRecord(memberId)
+    setGroupDataRevision((current) => current + 1)
+  }, [])
 
   const value = useMemo(
     () => ({
       groups,
       isLoading,
       loadError,
+      groupDataRevision,
       refreshGroups,
       createGroup,
       saveGroupOrder,
@@ -271,6 +274,7 @@ export function GroupOverviewProvider({ children }: { children: ReactNode }) {
       groups,
       isLoading,
       loadError,
+      groupDataRevision,
       refreshGroups,
       createGroup,
       saveGroupOrder,

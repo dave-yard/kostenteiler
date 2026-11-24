@@ -113,6 +113,36 @@ describe("calculateExpenseSplit", () => {
     ])
   })
 
+  it("preserves an intentional zero-percent share for a legacy child", () => {
+    expect(
+      calculateExpenseSplit(1200, ["parent", "legacy-child"], {
+        mode: "percentage",
+        shares: [
+          { memberId: "parent", basisPoints: 10_000 },
+          { memberId: "legacy-child", basisPoints: 0 },
+        ],
+      })
+    ).toEqual([
+      { memberId: "parent", amountCents: 1200 },
+      { memberId: "legacy-child", amountCents: 0 },
+    ])
+  })
+
+  it("keeps an existing share of a legacy member", () => {
+    expect(
+      calculateExpenseSplit(10_000, ["active", "legacy-member"], {
+        mode: "percentage",
+        shares: [
+          { memberId: "active", basisPoints: 6250 },
+          { memberId: "legacy-member", basisPoints: 3750 },
+        ],
+      })
+    ).toEqual([
+      { memberId: "active", amountCents: 6250 },
+      { memberId: "legacy-member", amountCents: 3750 },
+    ])
+  })
+
   it("rejects percentage shares that do not total 100 percent", () => {
     expect(() =>
       calculateExpenseSplit(100, memberIds, {

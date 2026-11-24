@@ -8,7 +8,7 @@ import type { ExpenseItem } from "@/types/group"
 export interface ExpenseItemInput {
   name: string
   amountCents: number
-  paidByMemberId: string
+  paidByMemberId: string | null
   splitRule?: ExpenseSplitRule | null
   isReceipt?: boolean
   parentItemId?: string | null
@@ -208,7 +208,7 @@ export async function uploadAndProcessReceipt(
       isReceipt: true,
       item_date: parseResult.date,
       parentItemId: null,
-      paidByMemberId: currentMemberId,
+      paidByMemberId: null,
     })
 
     if (!receiptId) {
@@ -358,18 +358,27 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
     )
   }
 
-  const items = data.map((row) => ({
-    id: readString(row, "id"),
-    listId: readString(row, "list_id"),
-    name: readString(row, "name"),
-    amountCents: readInteger(row, "amount_cents"),
-    paidByMemberId: readString(row, "paid_by_member_id"),
-    isReceipt: row.is_receipt === true,
-    parentItemId:
-      typeof row.parent_item_id === "string" ? row.parent_item_id : null,
-    item_date: readString(row, "item_date") || readString(row, "item_date"),
-    createdAt: readString(row, "created_at"),
-  }))
+  const items = data.map((row) => {
+    const isReceipt = row.is_receipt === true
+    const parentItemId =
+      typeof row.parent_item_id === "string" ? row.parent_item_id : null
+    const paidByMemberId =
+      row.paid_by_member_id === null && isReceipt && !parentItemId
+        ? null
+        : readString(row, "paid_by_member_id")
+
+    return {
+      id: readString(row, "id"),
+      listId: readString(row, "list_id"),
+      name: readString(row, "name"),
+      amountCents: readInteger(row, "amount_cents"),
+      paidByMemberId,
+      isReceipt,
+      parentItemId,
+      item_date: readString(row, "item_date") || readString(row, "item_date"),
+      createdAt: readString(row, "created_at"),
+    }
+  })
 
   let rules: Record<string, ExpenseSplitRule> = {}
   try {
@@ -462,13 +471,18 @@ export async function createExpenseItem(
   console.log("##### createExpenseItem")
   console.log(input.item_date)
 
+  const isReceiptHead = input.isReceipt === true && !input.parentItemId
+  if (!isReceiptHead && !input.paidByMemberId) {
+    throw new Error("Bitte auswählen, wer bezahlt hat.")
+  }
+
   const { data, error } = await getSupabaseClient().rpc(
     "create_expense_item_hierarchical",
     {
       p_list_id: listId,
       p_name: input.name,
       p_amount_cents: input.amountCents,
-      p_paid_by_member_id: input.paidByMemberId,
+      p_paid_by_member_id: isReceiptHead ? null : input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
       p_item_date: input.item_date ?? null,
@@ -499,17 +513,24 @@ export async function updateExpenseItem(
   const itemIsoDate = input.item_date ?? null
   console.log("updateExpenseItem", itemIsoDate)
 
+  const isReceiptHead = input.isReceipt === true && !input.parentItemId
+  if (!isReceiptHead && !input.paidByMemberId) {
+    throw new Error("Bitte auswählen, wer bezahlt hat.")
+  }
+
   const { error } = await getSupabaseClient().rpc(
     "update_expense_item_hierarchical",
     {
       p_item_id: itemId,
       p_name: input.name,
       p_amount_cents: input.amountCents,
-      p_paid_by_member_id: input.paidByMemberId,
+      p_paid_by_member_id: isReceiptHead ? null : input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
       p_item_date: itemIsoDate,
-      p_sync_children_paid_by: input.syncChildrenPaidBy ?? true,
+      p_sync_children_paid_by: isReceiptHead
+        ? false
+        : (input.syncChildrenPaidBy ?? true),
     }
   )
 

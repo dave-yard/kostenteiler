@@ -51,7 +51,7 @@ export interface ExpenseItem {
   listId: string
   name: string
   amountCents: number
-  paidByMemberId: string
+  paidByMemberId: string | null
   isReceipt: boolean
   parentItemId: string | null
   item_date: string
@@ -72,7 +72,7 @@ export interface GroupMember extends GroupMemberPermissions {
   displayName: string
   email: string | null
   role: "admin" | "member"
-  membershipStatus: "active" | "pending" | "legacy"
+  membershipStatus: "active" | "pending" | "legacy" | "removed"
 }
 
 export interface GroupInvitation {

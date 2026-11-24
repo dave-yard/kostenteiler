@@ -10,6 +10,16 @@ const databaseMessages: Record<string, string> = {
   "The amount must be greater than zero.": "Der Betrag muss größer als 0 sein.",
   "The payer must be a member of this group.":
     "Die zahlende Person muss Mitglied dieser Gruppe sein.",
+  "The payer must be a non-removed member of this group.":
+    "Die zahlende Person muss ein nicht entferntes Mitglied dieser Gruppe sein.",
+  "Cannot replace a payer without remaining group members.":
+    "Der Zahler kann nicht entfernt werden, weil keine anderen Gruppenmitglieder verbleiben.",
+  "Cannot convert a negative item or an overfilled receipt.":
+    "Das Mitglied kann nicht entfernt werden: Eine betroffene Position ist negativ oder ein Bon enthält zu hohe Unterpositionen.",
+  "The existing item allocation is invalid.":
+    "Das Mitglied kann nicht entfernt werden, weil eine bestehende Aufteilung ungültig ist.",
+  "The converted item allocation is invalid.":
+    "Das Mitglied kann nicht entfernt werden, weil die Aufteilung nicht vollständig übertragen werden konnte.",
   "The selected person must be a member of this group.":
     "Die ausgewählte Person muss Mitglied dieser Gruppe sein.",
   "You are not a member of this group.": "Du bist kein Mitglied dieser Gruppe.",

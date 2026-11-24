@@ -6,7 +6,7 @@ import {
 export interface SettlementItem {
   id: string
   amountCents: number
-  paidByMemberId: string
+  paidByMemberId: string | null
 }
 
 export interface SettlementBalance {
@@ -35,7 +35,7 @@ export function calculateSettlement(
   const balanceByMember = new Map(memberIds.map((memberId) => [memberId, 0]))
 
   for (const item of items) {
-    if (!balanceByMember.has(item.paidByMemberId)) {
+    if (!item.paidByMemberId || !balanceByMember.has(item.paidByMemberId)) {
       throw new Error("Die zahlende Person gehört nicht zu dieser Gruppe.")
     }
 

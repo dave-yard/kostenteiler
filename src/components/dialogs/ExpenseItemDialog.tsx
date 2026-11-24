@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
 import { ReceiptPreview } from "@/pages/ExpenseListDetail/ReceiptPreview"
 import {
   calculateExpenseSplit,
@@ -153,7 +152,6 @@ export function ExpenseItemDialog({
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
-  const [syncChildrenPaidBy, setSyncChildrenPaidBy] = useState(true)
   const lastEditedFixedMemberId = useRef<string | null>(null)
   const [allocationSeed, setAllocationSeed] = useState("")
 
@@ -322,7 +320,6 @@ export function ExpenseItemDialog({
       editingItem?.paidByMemberId ?? currentMemberId ?? members[0]?.id ?? ""
     )
     setDialogError(null)
-    setSyncChildrenPaidBy(true)
 
     applySplitDraft(groupDefaultSplitRule ?? { mode: "equal" })
 
@@ -441,7 +438,14 @@ export function ExpenseItemDialog({
       setDialogError("Bitte einen gültigen Betrag eingeben, z. B. 12,50.")
       return
     }
-    if (!paidByMemberId) {
+    const isReceiptHead = !dialogParentId && isReceiptDraft
+    if (
+      !isReceiptHead &&
+      !members.some(
+        (member) =>
+          member.id === paidByMemberId && member.membershipStatus !== "removed"
+      )
+    ) {
       setDialogError("Bitte auswählen, wer bezahlt hat.")
       return
     }
@@ -522,17 +526,17 @@ export function ExpenseItemDialog({
         await updateExpenseItem(editingItem.id, {
           name,
           amountCents,
-          paidByMemberId,
+          paidByMemberId: isReceiptHead ? null : paidByMemberId,
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           item_date: itemDateIso,
-          syncChildrenPaidBy,
+          syncChildrenPaidBy: !isReceiptHead,
         })
       } else {
         await createExpenseItem(listId, {
           name,
           amountCents,
-          paidByMemberId,
+          paidByMemberId: isReceiptHead ? null : paidByMemberId,
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           parentItemId: dialogParentId,
@@ -672,42 +676,33 @@ export function ExpenseItemDialog({
                 </div>
               )}
               <div className="flex-1 space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="item-payer">
-                  Bezahlt von
-                </label>
-                <SelectField
-                  id="item-payer"
-                  onValueChange={setPaidByMemberId}
-                  value={paidByMemberId}
-                  options={members.map((member) => ({
-                    value: member.id,
-                    label: member.displayName,
-                  }))}
-                />
+                {!dialogParentId && isReceiptDraft ? (
+                  <>
+                    <span className="text-sm font-medium">Bezahlt von</span>
+                    <p className="flex h-11 items-center text-sm">Aufgeteilt</p>
+                  </>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium" htmlFor="item-payer">
+                      Bezahlt von
+                    </label>
+                    <SelectField
+                      id="item-payer"
+                      onValueChange={setPaidByMemberId}
+                      value={paidByMemberId}
+                      options={members
+                        .filter(
+                          (member) => member.membershipStatus !== "removed"
+                        )
+                        .map((member) => ({
+                          value: member.id,
+                          label: member.displayName,
+                        }))}
+                    />
+                  </>
+                )}
               </div>
             </div>
-            {editingItem &&
-              editingHasChildren &&
-              paidByMemberId !== editingItem.paidByMemberId && (
-                <div className="rounded-xl border border-border bg-muted/50 p-3">
-                  <label
-                    className="flex cursor-pointer items-start gap-2.5 text-sm"
-                    htmlFor="sync-children-paid-by"
-                  >
-                    <Checkbox
-                      checked={syncChildrenPaidBy}
-                      id="sync-children-paid-by"
-                      onCheckedChange={(checked) =>
-                        setSyncChildrenPaidBy(checked === true)
-                      }
-                    />
-                    <span>
-                      Zahler auch bei allen Unterpositionen auf{" "}
-                      {memberNames.get(paidByMemberId) ?? "diese Person"} ändern
-                    </span>
-                  </label>
-                </div>
-              )}
             <hr className="border-border" />
             <section aria-labelledby="item-split-title" className="space-y-3">
               <div>

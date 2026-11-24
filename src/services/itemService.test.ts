@@ -6,6 +6,7 @@ import {
   deleteExpenseItem,
   getExpenseItems,
   getExpenseItemSplitRule,
+  getExpenseListMemberNames,
   getExpenseListSplitRules,
   getReceiptImage,
   updateExpenseItem,
@@ -103,6 +104,29 @@ describe("itemService", () => {
     await expect(getExpenseItems("list-1")).rejects.toThrow("amount_cents")
   })
 
+  it("reads a receipt head with a null payer but rejects a payerless child", async () => {
+    const receipt = {
+      id: "receipt",
+      list_id: "list-1",
+      name: "Bon",
+      amount_cents: 500,
+      paid_by_member_id: null,
+      is_receipt: true,
+      parent_item_id: null,
+      item_date: "2026-10-26T10:00:00.000Z",
+      created_at: "2026-10-26T10:00:00.000Z",
+    }
+    mockRows([receipt])
+    await expect(getExpenseItems("list-1")).resolves.toEqual([
+      expect.objectContaining({ paidByMemberId: null, isReceipt: true }),
+    ])
+
+    mockRows([
+      { ...receipt, id: "child", is_receipt: false, parent_item_id: "receipt" },
+    ])
+    await expect(getExpenseItems("list-1")).rejects.toThrow("paid_by_member_id")
+  })
+
   it("creates an item through the authorized database function", async () => {
     const id = await createExpenseItem("list-1", input)
 
@@ -160,6 +184,45 @@ describe("itemService", () => {
     )
   })
 
+  it("creates and updates receipt heads with null payer and no child synchronization", async () => {
+    await createExpenseItem("list-1", { ...input, isReceipt: true })
+    expect(rpc).toHaveBeenCalledWith(
+      "create_expense_item_hierarchical",
+      expect.objectContaining({
+        p_paid_by_member_id: null,
+        p_is_receipt: true,
+        p_parent_item_id: null,
+      })
+    )
+
+    await updateExpenseItem("receipt", {
+      ...input,
+      isReceipt: true,
+      syncChildrenPaidBy: true,
+    })
+    expect(rpc).toHaveBeenCalledWith(
+      "update_expense_item_hierarchical",
+      expect.objectContaining({
+        p_paid_by_member_id: null,
+        p_sync_children_paid_by: false,
+      })
+    )
+  })
+
+  it("rejects a payerless normal item and child before calling an RPC", async () => {
+    await expect(
+      createExpenseItem("list-1", { ...input, paidByMemberId: null })
+    ).rejects.toThrow("wer bezahlt hat")
+    await expect(
+      updateExpenseItem("child", {
+        ...input,
+        paidByMemberId: null,
+        parentItemId: "receipt",
+      })
+    ).rejects.toThrow("wer bezahlt hat")
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
   it("loads an item split rule through the authorized database function", async () => {
     rpc.mockResolvedValue({ data: { mode: "equal" }, error: null })
 
@@ -188,6 +251,24 @@ describe("itemService", () => {
       "item-2": { mode: "complete", memberId: "member-1" },
     })
     expect(rpc).toHaveBeenCalledWith("get_list_split_rules", {
+      p_list_id: "list-1",
+    })
+  })
+
+  it("loads completed-list member names from the stored snapshot RPC", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { member_id: "member-1", display_name: "Alter Anzeigename" },
+        { member_id: "removed-1", display_name: "Ehemaliges Mitglied" },
+      ],
+      error: null,
+    })
+
+    await expect(getExpenseListMemberNames("list-1")).resolves.toEqual({
+      "member-1": "Alter Anzeigename",
+      "removed-1": "Ehemaliges Mitglied",
+    })
+    expect(rpc).toHaveBeenCalledWith("get_list_member_names", {
       p_list_id: "list-1",
     })
   })

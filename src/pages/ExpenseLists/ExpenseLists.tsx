@@ -171,6 +171,7 @@ export function ExpenseLists({
   onOpenList: (list: ExpenseList) => void
 }) {
   const {
+    groupDataRevision,
     getExpenseLists,
     processRecurringLists,
     completeExpenseList,
@@ -185,7 +186,7 @@ export function ExpenseLists({
   const [busyListId, setBusyListId] = useState<string | null>(null)
   const [canClose, setCanClose] = useState(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
-  const requestKey = `${group.id}:${includePaid}:${reloadNumber}`
+  const requestKey = `${group.id}:${includePaid}:${reloadNumber}:${groupDataRevision}`
 
   useEffect(() => {
     let isCurrent = true
@@ -205,7 +206,7 @@ export function ExpenseLists({
     return () => {
       isCurrent = false
     }
-  }, [canCloseExpenseLists, group])
+  }, [canCloseExpenseLists, group, groupDataRevision])
 
   useEffect(() => {
     let isCurrent = true

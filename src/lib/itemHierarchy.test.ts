@@ -69,6 +69,52 @@ describe("itemHierarchy", () => {
     expect(result.map((entry) => entry.id)).toEqual(["x"])
   })
 
+  it("verrechnet einen vollständig abgedeckten Bon ohne Zahler nur über seine Unterpositionen", () => {
+    const result = toSettlementItems(
+      buildItemNodes([
+        item({
+          id: "bon",
+          amountCents: 101,
+          isReceipt: true,
+          paidByMemberId: null,
+        }),
+        item({
+          id: "a",
+          amountCents: 51,
+          parentItemId: "bon",
+          paidByMemberId: "a",
+        }),
+        item({
+          id: "b",
+          amountCents: 50,
+          parentItemId: "bon",
+          paidByMemberId: "b",
+        }),
+      ])
+    )
+
+    expect(result.map(({ id, amountCents }) => [id, amountCents])).toEqual([
+      ["a", 51],
+      ["b", 50],
+    ])
+  })
+
+  it("blockiert einen Bon-Rest ohne Zahler", () => {
+    expect(() =>
+      toSettlementItems(
+        buildItemNodes([
+          item({
+            id: "bon",
+            amountCents: 101,
+            isReceipt: true,
+            paidByMemberId: null,
+          }),
+          item({ id: "child", amountCents: 100, parentItemId: "bon" }),
+        ])
+      )
+    ).toThrow(/Restbetrag.*keinen Zahler/)
+  })
+
   it("meldet Unterpositionen über der Bon-Summe", () => {
     expect(() =>
       toSettlementItems(

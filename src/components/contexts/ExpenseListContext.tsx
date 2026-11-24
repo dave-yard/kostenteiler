@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react"
 import { useAuth } from "@/components/contexts/AuthContext"
+import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import { getGroupMembers, getGroupSplitDefault } from "@/services/groupService"
 import {
   createExpenseItem as createExpenseItemRecord,
@@ -57,6 +58,7 @@ export interface ExpenseItemAccess {
 }
 
 interface ExpenseListContextValue {
+  groupDataRevision: number
   getExpenseLists: (
     groupId: string,
     includePaid: boolean
@@ -107,8 +109,44 @@ const ExpenseListContext = createContext<ExpenseListContextValue | undefined>(
   undefined
 )
 
+export function resolveExpenseListMembers(
+  currentMembers: GroupMember[],
+  namesSnapshot: Record<string, string> | null
+): GroupMember[] {
+  if (!namesSnapshot) {
+    return currentMembers.filter(
+      (member) => member.membershipStatus !== "removed"
+    )
+  }
+
+  const currentById = new Map(
+    currentMembers.map((member) => [member.id, member])
+  )
+  return Object.entries(namesSnapshot).map(([memberId, displayName]) => {
+    const member = currentById.get(memberId)
+    if (member) {
+      return { ...member, displayName }
+    }
+
+    return {
+      id: memberId,
+      userId: null,
+      displayName,
+      email: null,
+      role: "member",
+      membershipStatus: "removed",
+      canCreateItems: false,
+      canEditItems: false,
+      canDeleteItems: false,
+      canEditSplits: false,
+      canCloseLists: false,
+    }
+  })
+}
+
 export function ExpenseListProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { groupDataRevision } = useGroupOverview()
   const userId = session?.user.id
   const metadataName: unknown = session?.user.user_metadata?.display_name
   const ownName =
@@ -217,19 +255,14 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     async (group: Group, list?: ExpenseList): Promise<ExpenseItemAccess> => {
       const frozenNames =
         list && list.status !== "open"
-          ? getExpenseListMemberNamesRecord(list.id).catch(() => null)
+          ? getExpenseListMemberNamesRecord(list.id)
           : Promise.resolve(null)
       const [loadedMembers, groupDefaultSplitRule, names] = await Promise.all([
         getGroupMembers(group.id),
         getGroupSplitDefault(group.id),
         frozenNames,
       ])
-      const frozenMembers = names
-        ? loadedMembers.map((member) => ({
-            ...member,
-            displayName: names[member.id] ?? member.displayName,
-          }))
-        : loadedMembers
+      const frozenMembers = resolveExpenseListMembers(loadedMembers, names)
       const members =
         ownName && !names && !group.archivedAt
           ? frozenMembers.map((member) =>
@@ -257,6 +290,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      groupDataRevision,
       getExpenseLists,
       createExpenseList,
       updateExpenseListType,
@@ -276,6 +310,7 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getReceiptImage,
     }),
     [
+      groupDataRevision,
       getExpenseLists,
       createExpenseList,
       updateExpenseListType,

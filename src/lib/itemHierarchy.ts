@@ -57,6 +57,11 @@ export function toSettlementItems(nodes: ItemNode[]) {
         `Die Unterpositionen von „${node.item.name} (${isoToGermanDateTime(node.item.item_date)})“ übersteigen die Bon-Summe.`
       )
     }
+    if (node.remainderCents > 0 && !node.item.paidByMemberId) {
+      throw new Error(
+        `Der Restbetrag von „${node.item.name}“ hat keinen Zahler. Bitte die Bon-Summe vollständig auf Unterpositionen verteilen.`
+      )
+    }
 
     return [
       ...(node.remainderCents > 0

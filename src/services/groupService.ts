@@ -319,26 +319,28 @@ export async function getGroupMembers(groupId: string): Promise<GroupMember[]> {
     throw error
   }
 
-  return readRows(data).map((row) => {
-    const role = readString(row, "member_role")
-    if (role !== "admin" && role !== "member") {
-      throw new Error("Supabase hat eine unbekannte Gruppenrolle geliefert.")
-    }
+  return readRows(data)
+    .map<GroupMember>((row) => {
+      const role = readString(row, "member_role")
+      if (role !== "admin" && role !== "member") {
+        throw new Error("Supabase hat eine unbekannte Gruppenrolle geliefert.")
+      }
 
-    return {
-      id: readString(row, "member_id"),
-      userId: readNullableString(row, "member_user_id"),
-      displayName: readString(row, "display_name"),
-      email: readNullableString(row, "member_email"),
-      role,
-      canCreateItems: readBoolean(row, "can_create_items"),
-      canEditItems: readBoolean(row, "can_edit_items"),
-      canDeleteItems: readBoolean(row, "can_delete_items"),
-      canEditSplits: readBoolean(row, "can_edit_splits"),
-      canCloseLists: readBoolean(row, "can_close_lists"),
-      membershipStatus: readMembershipStatus(row, "membership_status"),
-    }
-  })
+      return {
+        id: readString(row, "member_id"),
+        userId: readNullableString(row, "member_user_id"),
+        displayName: readString(row, "display_name"),
+        email: readNullableString(row, "member_email"),
+        role,
+        canCreateItems: readBoolean(row, "can_create_items"),
+        canEditItems: readBoolean(row, "can_edit_items"),
+        canDeleteItems: readBoolean(row, "can_delete_items"),
+        canEditSplits: readBoolean(row, "can_edit_splits"),
+        canCloseLists: readBoolean(row, "can_close_lists"),
+        membershipStatus: readMembershipStatus(row, "membership_status"),
+      }
+    })
+    .filter((member) => member.membershipStatus !== "removed")
 }
 
 function readMembershipStatus(
@@ -347,7 +349,12 @@ function readMembershipStatus(
 ): GroupMember["membershipStatus"] {
   //console.log("readMembershipStatus", row, key)
   const value = readString(row, key)
-  if (value !== "active" && value !== "pending" && value !== "legacy") {
+  if (
+    value !== "active" &&
+    value !== "pending" &&
+    value !== "legacy" &&
+    value !== "removed"
+  ) {
     throw new Error("Supabase hat einen unbekannten Mitgliedsstatus geliefert.")
   }
 

@@ -23,12 +23,8 @@ export function GroupAdmin({
   group: Group
   onBack: () => void
 }) {
-  const {
-    groups,
-    loadError,
-    getGroupMembers,
-    getMyContacts,
-  } = useGroupOverview()
+  const { groups, loadError, getGroupMembers, getMyContacts } =
+    useGroupOverview()
 
   const [members, setMembers] = useState<GroupMember[]>([])
   const [contacts, setContacts] = useState<PersonalContact[]>([])
@@ -43,7 +39,9 @@ export function GroupAdmin({
 
     try {
       const nextMembers = await getGroupMembers(group.id)
-      setMembers(nextMembers)
+      setMembers(
+        nextMembers.filter((member) => member.membershipStatus !== "removed")
+      )
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
     } finally {
@@ -57,7 +55,11 @@ export function GroupAdmin({
     getGroupMembers(group.id)
       .then((nextMembers) => {
         if (isCurrent) {
-          setMembers(nextMembers)
+          setMembers(
+            nextMembers.filter(
+              (member) => member.membershipStatus !== "removed"
+            )
+          )
         }
       })
       .catch((error: unknown) => {
@@ -157,7 +159,7 @@ export function GroupAdmin({
       <GroupMembersSection
         members={members}
         isLoading={isLoading}
-        onReload={() => void loadMembers()}
+        onReload={loadMembers}
         onSuccess={setSuccessMessage}
         onError={setErrorMessage}
       />

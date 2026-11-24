@@ -748,12 +748,13 @@ describe("ExpenseListDetail", () => {
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
   })
 
-  it("fragt bei geänderten Zahlern einer Hauptposition nach den Unterpositionen", async () => {
+  it("speichert einen Bon-Kopf ohne Zahler und ohne Synchronisierung", async () => {
     const user = userEvent.setup()
     const receipt = {
       ...items[0],
       name: "Supermarkt",
       isReceipt: true,
+      paidByMemberId: null,
     }
     const child = {
       ...items[1],
@@ -766,6 +767,7 @@ describe("ExpenseListDetail", () => {
     mockAccess()
     renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
 
+    expect(await screen.findByText("Bezahlt von Aufgeteilt")).toBeTruthy()
     await user.click(
       await screen.findByRole("button", {
         name: "Position bearbeiten: Supermarkt",
@@ -777,21 +779,19 @@ describe("ExpenseListDetail", () => {
           .disabled
       ).toBe(false)
     )
-    await user.click(screen.getByRole("combobox", { name: "Bezahlt von" }))
-    await user.click(await screen.findByRole("option", { name: "Ben" }))
-
-    const syncCheckbox = screen.getByRole("checkbox", {
-      name: /Zahler auch bei allen Unterpositionen/,
-    })
-    expect(syncCheckbox.getAttribute("aria-checked")).toBe("true")
-
-    await user.click(syncCheckbox)
+    expect(screen.getByText("Aufgeteilt")).toBeTruthy()
+    expect(screen.queryByRole("combobox", { name: "Bezahlt von" })).toBeNull()
+    expect(
+      screen.queryByRole("checkbox", {
+        name: /Zahler auch bei allen Unterpositionen/,
+      })
+    ).toBeNull()
     await user.click(screen.getByRole("button", { name: "Speichern" }))
 
     expect(updateExpenseItem).toHaveBeenCalledWith(
       receipt.id,
       expect.objectContaining({
-        paidByMemberId: "m2",
+        paidByMemberId: null,
         syncChildrenPaidBy: false,
       })
     )
@@ -865,7 +865,11 @@ describe("ExpenseListDetail", () => {
 
     expect(createExpenseItem).toHaveBeenCalledWith(
       "l1",
-      expect.objectContaining({ isReceipt: true, parentItemId: null })
+      expect.objectContaining({
+        isReceipt: true,
+        parentItemId: null,
+        paidByMemberId: null,
+      })
     )
   })
 

@@ -81,4 +81,17 @@ describe("calculateSettlement", () => {
       )
     ).toThrow("zahlende Person")
   })
+
+  it("lehnt entfernte und fehlende Zahler bei verrechneten Positionen ab", () => {
+    for (const paidByMemberId of ["removed", null]) {
+      expect(() =>
+        calculateSettlement(
+          [{ id: "i1", amountCents: 101, paidByMemberId }],
+          {},
+          ["a", "b"],
+          equal
+        )
+      ).toThrow("zahlende Person")
+    }
+  })
 })

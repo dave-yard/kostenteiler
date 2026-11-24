@@ -11,6 +11,7 @@ import { useGroupOverview } from "@/components/contexts/GroupOverviewContext"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useConfirmDialog } from "@/components/ui/confirm-dialog"
+import { getActionErrorMessage } from "@/lib/errorMessage"
 import type { GroupMember, GroupMemberPermissions } from "@/types/group"
 
 const PERMISSIONS: {
@@ -33,7 +34,7 @@ function getErrorMessage(error: unknown) {
 export interface GroupMembersSectionProps {
   members: GroupMember[]
   isLoading: boolean
-  onReload: () => void
+  onReload: () => Promise<void>
   onSuccess: (message: string) => void
   onError: (message: string) => void
 }
@@ -113,7 +114,7 @@ export function GroupMembersSection({
     setSavingMemberId(member.id)
     try {
       await setGroupMemberAdmin(member.id, makeAdmin)
-      onReload()
+      await onReload()
       await refreshGroups()
     } catch (error) {
       onError(getErrorMessage(error))
@@ -132,7 +133,7 @@ export function GroupMembersSection({
     try {
       await updateGroupMemberPermissions(member.id, permissions)
       onSuccess(`Rechte für ${member.displayName} wurden gespeichert.`)
-      onReload()
+      await onReload()
     } catch (error) {
       onError(getErrorMessage(error))
     } finally {
@@ -151,10 +152,10 @@ export function GroupMembersSection({
     setSavingMemberId(member.id)
     try {
       await removeGroupMember(member.id)
-      onReload()
+      await onReload()
       await refreshGroups()
     } catch (error) {
-      onError(getErrorMessage(error))
+      onError(getActionErrorMessage(error))
     } finally {
       setSavingMemberId(null)
     }

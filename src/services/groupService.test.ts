@@ -3,6 +3,7 @@ import { getSupabaseClient } from "@/lib/supabase"
 import {
   addGroupMember,
   archiveGroup,
+  getGroupMembers,
   getGroupSplitDefault,
   getMyGroups,
   setGroupSplitDefault,
@@ -54,6 +55,48 @@ describe("groupService", () => {
     expect(rpc).toHaveBeenCalledWith("add_group_member", {
       p_group_id: "group-1",
       p_contact_id: "contact-1",
+    })
+  })
+
+  it("keeps legacy members and excludes removed members", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          member_id: "child-1",
+          member_user_id: null,
+          display_name: "Kind",
+          member_email: null,
+          member_role: "member",
+          membership_status: "legacy",
+          can_create_items: false,
+          can_edit_items: false,
+          can_delete_items: false,
+          can_edit_splits: false,
+          can_close_lists: false,
+        },
+        {
+          member_id: "removed-1",
+          member_user_id: "user-1",
+          display_name: "Ehemalig",
+          member_email: "former@example.com",
+          member_role: "member",
+          membership_status: "removed",
+          can_create_items: true,
+          can_edit_items: true,
+          can_delete_items: true,
+          can_edit_splits: true,
+          can_close_lists: true,
+        },
+      ],
+      error: null,
+    })
+
+    const members = await getGroupMembers("group-1")
+
+    expect(members.map((member) => member.id)).toEqual(["child-1"])
+    expect(members[0]?.membershipStatus).toBe("legacy")
+    expect(rpc).toHaveBeenCalledWith("get_group_members", {
+      p_group_id: "group-1",
     })
   })
 
