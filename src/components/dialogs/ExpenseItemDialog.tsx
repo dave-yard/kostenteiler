@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ReceiptPreview } from "@/pages/ExpenseListDetail/ReceiptPreview"
 import { ExpenseItemTransferDialog } from "@/components/dialogs/ExpenseItemTransferDialog"
@@ -159,6 +160,7 @@ export function ExpenseItemDialog({
 
   const [itemName, setItemName] = useState("")
   const [amountText, setAmountText] = useState("")
+  const [comment, setComment] = useState("")
   const [itemDateText, setItemDateText] = useState("")
   const [isReceiptDraft, setIsReceiptDraft] = useState(false)
   const [paidByMemberId, setPaidByMemberId] = useState("")
@@ -340,6 +342,7 @@ export function ExpenseItemDialog({
     lastEditedFixedMemberId.current = null
     setAllocationSeed(editingItem?.id ?? crypto.randomUUID())
     setItemName(editingItem?.name ?? "")
+    setComment(editingItem?.comment ?? "")
     setAmountText(
       editingItem
         ? (editingItem.amountCents / 100).toFixed(2).replace(".", ",")
@@ -573,6 +576,7 @@ export function ExpenseItemDialog({
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           item_date: itemDateIso,
+          comment,
           syncChildrenPaidBy:
             !isReceiptHead || paidByMemberId !== splitPayerValue,
           parentItemId: dialogParentId,
@@ -640,6 +644,14 @@ export function ExpenseItemDialog({
           noValidate
           onSubmit={(event) => void handleSubmit(event)}
         >
+          {dialogError && (
+            <p
+              className="mx-6 mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-danger-text"
+              role="alert"
+            >
+              {dialogError}
+            </p>
+          )}
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="item-name">
@@ -656,6 +668,20 @@ export function ExpenseItemDialog({
                 value={itemName}
               />
             </div>
+            {editingItem && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="item-comment">
+                  Kommentar
+                </label>
+                <Textarea
+                  id="item-comment"
+                  onChange={(event) => setComment(event.target.value)}
+                  placeholder="Kommentar zur Position"
+                  rows={4}
+                  value={comment}
+                />
+              </div>
+            )}
             <div className="flex flex-row gap-1">
               <div className="flex-1 space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="item-amount">
@@ -926,11 +952,6 @@ export function ExpenseItemDialog({
                   itemId={editingItem?.id}
                 />
               </div>
-            )}
-            {dialogError && (
-              <p className="text-sm text-danger-text" role="alert">
-                {dialogError}
-              </p>
             )}
           </div>
           <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-6 py-4">

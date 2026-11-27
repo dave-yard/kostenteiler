@@ -55,6 +55,7 @@ export interface ExpenseItem {
   isPayerAllocation: boolean
   isReceipt: boolean
   parentItemId: string | null
+  comment: string | null
   item_date: string
   createdAt: string
 }
@@ -68,6 +69,7 @@ export interface ExpenseItemDatabaseRow {
   is_payer_allocation: boolean
   is_receipt: boolean
   parent_item_id: string | null
+  comment: string | null
   item_date: string
   created_at: string
 }

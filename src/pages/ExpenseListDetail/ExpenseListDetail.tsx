@@ -6,6 +6,7 @@ import {
   ChevronUp,
   Printer,
   LoaderCircle,
+  MessageSquare,
   Pencil,
   Plus,
   ReceiptText,
@@ -289,9 +290,7 @@ export function ExpenseListDetail({
             .flatMap((pair) => [pair.offsetItemId, pair.targetItemId])
         )
         const displayItems = items.map((item) =>
-          transferRootIds.has(item.id)
-            ? { ...item, parentItemId: null }
-            : item
+          transferRootIds.has(item.id) ? { ...item, parentItemId: null } : item
         )
         if (isCurrent) {
           setResult({
@@ -368,19 +367,17 @@ export function ExpenseListDetail({
   }, [result?.transferPairs])
   const recentTransferPairIsLoaded = Boolean(
     recentTransfer &&
-      recentTransfer.sourceListId === list.id &&
-      result?.transferPairs.some(
-        (pair) =>
-          pair.transferId === recentTransfer.result.transferId &&
-          pair.isRoot &&
-          pair.offsetItemId === recentTransfer.result.offsetRootItemId &&
-          pair.targetItemId === recentTransfer.result.targetRootItemId
-      )
+    recentTransfer.sourceListId === list.id &&
+    result?.transferPairs.some(
+      (pair) =>
+        pair.transferId === recentTransfer.result.transferId &&
+        pair.isRoot &&
+        pair.offsetItemId === recentTransfer.result.offsetRootItemId &&
+        pair.targetItemId === recentTransfer.result.targetRootItemId
+    )
   )
   const recentOffsetItem = recentTransfer
-    ? items.find(
-        (item) => item.id === recentTransfer.result.offsetRootItemId
-      )
+    ? items.find((item) => item.id === recentTransfer.result.offsetRootItemId)
     : null
   // Nur zur Bequemlichkeit: Die Datenbank prüft Rechte, Status und Archiv erneut.
   const canAddItem =
@@ -432,6 +429,12 @@ export function ExpenseListDetail({
 
   const totalCents = sumTopLevelCents(nodes)
 
+  const parentsWithCommentedChildren = new Set(
+    items.flatMap((item) =>
+      item.parentItemId && item.comment?.trim() ? [item.parentItemId] : []
+    )
+  )
+
   function renderItemRow(item: ExpenseItem) {
     const splitHint = getSplitHint(
       result?.rules?.[item.id] ?? groupDefaultSplitRule,
@@ -439,14 +442,16 @@ export function ExpenseListDetail({
       memberNames
     )
     const payerName =
-      (item.isReceipt && item.isPayerAllocation) ||
-      !item.paidByMemberId
+      (item.isReceipt && item.isPayerAllocation) || !item.paidByMemberId
         ? "Aufgeteilt"
         : (memberNames.get(item.paidByMemberId) ?? "Unbekannt")
     const amount = formatCents(item.amountCents)
     const isGeneratedAllocation = Boolean(
       item.isPayerAllocation && !item.isReceipt
     )
+    const hasOwnComment = Boolean(item.comment?.trim())
+    const hasCommentedChildren =
+      item.isReceipt && parentsWithCommentedChildren.has(item.id)
     const transferLink = transferLinkByItemId.get(item.id)
     const transferPair = transferLink?.pair
     const isTransferLocked = Boolean(transferLink)
@@ -474,6 +479,21 @@ export function ExpenseListDetail({
             variant="ghost"
           >
             <span>
+              {hasOwnComment && (
+                <MessageSquare
+                  aria-label="Kommentar vorhanden"
+                  className="mr-1.5 inline size-4 align-text-bottom text-muted-foreground"
+                  role="img"
+                />
+              )}
+              {hasCommentedChildren && (
+                <MessageSquare
+                  aria-label="Kommentar bei Unterposition vorhanden"
+                  className="mr-1.5 inline size-4 align-text-bottom text-muted-foreground"
+                  role="img"
+                  strokeDasharray="3 2"
+                />
+              )}
               {highlightSearchMatch(item.name, searchQuery)}
               {!item.parentItemId && item.item_date && (
                 <span className="ml-1.5 text-xs font-normal text-muted-foreground">
@@ -542,19 +562,19 @@ export function ExpenseListDetail({
             deleteMode &&
             !isGeneratedAllocation &&
             !isTransferLocked && (
-            <Button
-              aria-label={`Position löschen: ${item.name}`}
-              className="absolute top-2 right-0 size-8 p-0 text-destructive hover:text-danger-text"
-              onClick={(event) => {
-                event.stopPropagation()
-                setDeletingItem(item)
-              }}
-              type="button"
-              variant="ghost"
-            >
-              <Trash2 aria-hidden="true" className="size-4" />
-            </Button>
-          )}
+              <Button
+                aria-label={`Position löschen: ${item.name}`}
+                className="absolute top-2 right-0 size-8 p-0 text-destructive hover:text-danger-text"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setDeletingItem(item)
+                }}
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+              </Button>
+            )}
         </div>
       </div>
     )
@@ -1115,6 +1135,16 @@ export function ExpenseListDetail({
                             />
                           )}
                         </Button>
+                        {node.remainderCents < 0 && (
+                          <p
+                            className="py-2 text-sm text-danger-text"
+                            role="alert"
+                          >
+                            Die Unterpositionen übersteigen die Bon-Summe um{" "}
+                            {formatCents(-node.remainderCents)}. Bitte
+                            Positionen oder Bon-Summe korrigieren.
+                          </p>
+                        )}
                         {isExpanded && (
                           <div className="mt-2 ml-3 border-l-2 border-border pl-3">
                             <div className="flex flex-col gap-4 lg:flex-row">
@@ -1131,17 +1161,6 @@ export function ExpenseListDetail({
                                     Rest {formatCents(node.remainderCents)} wird
                                     nach Zahler und Verteilung des Bons
                                     verrechnet.
-                                  </p>
-                                )}
-                                {node.remainderCents < 0 && (
-                                  <p
-                                    className="py-2 text-xs text-danger-text"
-                                    role="alert"
-                                  >
-                                    Die Unterpositionen übersteigen die
-                                    Bon-Summe um{" "}
-                                    {formatCents(-node.remainderCents)}. Bitte
-                                    Positionen oder Bon-Summe korrigieren.
                                   </p>
                                 )}
                                 {canAddItem && (

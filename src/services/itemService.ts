@@ -17,6 +17,7 @@ export interface ExpenseItemInput {
   splitRule?: ExpenseSplitRule | null
   isReceipt?: boolean
   parentItemId?: string | null
+  comment?: string | null
   item_date?: string | null
   syncChildrenPaidBy?: boolean
 }
@@ -437,7 +438,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   const { data, error } = await getSupabaseClient()
     .from("expense_items")
     .select(
-      "id, list_id, name, amount_cents, paid_by_member_id, is_payer_allocation, is_receipt, parent_item_id, item_date, created_at"
+      "id, list_id, name, amount_cents, paid_by_member_id, is_payer_allocation, is_receipt, parent_item_id, comment, item_date, created_at"
     )
     .eq("list_id", listId)
 
@@ -472,6 +473,8 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
       isPayerAllocation: databaseRow.is_payer_allocation === true,
       isReceipt,
       parentItemId,
+      comment:
+        typeof databaseRow.comment === "string" ? databaseRow.comment : null,
       item_date: readString(row, "item_date") || readString(row, "item_date"),
       createdAt: readString(row, "created_at"),
     }
@@ -631,6 +634,7 @@ export async function updateExpenseItem(
           : isReceiptHead
             ? false
             : (input.syncChildrenPaidBy ?? true),
+      p_comment: input.comment ?? null,
     }
   )
 

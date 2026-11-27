@@ -140,6 +140,7 @@ describe("itemService", () => {
         name: "Socken",
         amount_cents: 500,
         paid_by_member_id: "member-1",
+        comment: "Zum Nachfragen",
         item_date: "2026-10-26T10:00:00.000Z",
         created_at: "2026-10-26T10:00:00.000Z",
       },
@@ -148,6 +149,9 @@ describe("itemService", () => {
     const items = await getExpenseItems("list-1")
 
     expect(from).toHaveBeenCalledWith("expense_items")
+    expect(query.select).toHaveBeenCalledWith(
+      "id, list_id, name, amount_cents, paid_by_member_id, is_payer_allocation, is_receipt, parent_item_id, comment, item_date, created_at"
+    )
     expect(query.eq).toHaveBeenCalledWith("list_id", "list-1")
     expect(items).toEqual([
       {
@@ -159,6 +163,7 @@ describe("itemService", () => {
         isPayerAllocation: false,
         isReceipt: false,
         parentItemId: null,
+        comment: "Zum Nachfragen",
         item_date: "2026-10-26T10:00:00.000Z",
         createdAt: "2026-10-26T10:00:00.000Z",
       },
@@ -232,18 +237,22 @@ describe("itemService", () => {
   it("updates an item through the authorized database function", async () => {
     rpc.mockResolvedValue({ data: null, error: null })
 
-    await updateExpenseItem("item-1", input)
+    await updateExpenseItem("item-1", { ...input, comment: "Bitte prüfen" })
 
-    expect(rpc).toHaveBeenCalledWith("update_expense_item_hierarchical", {
-      p_item_id: "item-1",
-      p_name: "Socken",
-      p_amount_cents: 500,
-      p_paid_by_member_id: "member-1",
-      p_split_rule: null,
-      p_is_receipt: false,
-      p_item_date: "2026-01-03T00:13:00.000Z",
-      p_sync_children_paid_by: true,
-    })
+    expect(rpc).toHaveBeenCalledWith(
+      "update_expense_item_hierarchical",
+      {
+        p_item_id: "item-1",
+        p_name: "Socken",
+        p_amount_cents: 500,
+        p_paid_by_member_id: "member-1",
+        p_split_rule: null,
+        p_is_receipt: false,
+        p_item_date: "2026-01-03T00:13:00.000Z",
+        p_sync_children_paid_by: true,
+        p_comment: "Bitte prüfen",
+      }
+    )
   })
 
   it("überträgt die Auswahl zur Zahler-Synchronisierung", async () => {

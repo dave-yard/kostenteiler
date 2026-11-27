@@ -18,6 +18,14 @@ describe("getActionErrorMessage", () => {
     ).toBe("Die Prozentanteile müssen zusammen genau 100 % ergeben.")
   })
 
+  it("übersetzt den RPC-Fehler für Unterpositionen über der Bon-Summe", () => {
+    expect(
+      getActionErrorMessage(
+        new Error("Receipt sub-items exceed the receipt total.")
+      )
+    ).toBe("Die Unterpositionen übersteigen die Bon-Summe.")
+  })
+
   it("übersetzt typische Fehler bei Übertragungen", () => {
     expect(
       getActionErrorMessage(

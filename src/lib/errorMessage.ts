@@ -60,6 +60,8 @@ const databaseMessages: Record<string, string> = {
     "Die Erstattungen entsprechen nicht mehr der aktuellen Abrechnung.",
   "The sub-items exceed the total amount of a receipt.":
     "Die Unterpositionen übersteigen die Bon-Summe.",
+  "Receipt sub-items exceed the receipt total.":
+    "Die Unterpositionen übersteigen die Bon-Summe.",
   "Only group admins can create lists.":
     "Nur Gruppen-Admins dürfen Listen erstellen.",
   "List name must contain between 1 and 80 characters.":

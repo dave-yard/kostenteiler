@@ -60,6 +60,7 @@ const items: ExpenseItem[] = [
     isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
+    comment: null,
     item_date: "2026-01-03",
     createdAt: "2026-01-03T10:00:00Z",
   },
@@ -72,6 +73,7 @@ const items: ExpenseItem[] = [
     isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
+    comment: null,
     item_date: "2026-01-03",
     createdAt: "2026-01-03T11:00:00Z",
   },
@@ -381,6 +383,7 @@ describe("ExpenseListDetail", () => {
         isPayerAllocation: false,
         isReceipt: false,
         parentItemId: null,
+        comment: null,
         item_date: "2026-01-01",
         createdAt: "2026-01-05T12:00:00Z",
       },
@@ -393,6 +396,7 @@ describe("ExpenseListDetail", () => {
         isPayerAllocation: false,
         isReceipt: false,
         parentItemId: null,
+        comment: null,
         item_date: "2026-01-04",
         createdAt: "2026-01-05T08:00:00Z",
       },
@@ -438,6 +442,7 @@ describe("ExpenseListDetail", () => {
       isPayerAllocation: false,
       isReceipt: true,
       parentItemId: null,
+      comment: null,
       item_date: "2026-01-03T00:00:00.000Z",
       createdAt: "2026-01-03T10:00:00Z",
     }
@@ -450,6 +455,7 @@ describe("ExpenseListDetail", () => {
       isPayerAllocation: false,
       isReceipt: false,
       parentItemId: "bon1",
+      comment: null,
       item_date: "2026-01-03T00:00:00.000Z",
       createdAt: "2026-01-03T10:00:00.000Z", // Hier spätere Zeit
     }
@@ -462,6 +468,7 @@ describe("ExpenseListDetail", () => {
       isPayerAllocation: false,
       isReceipt: false,
       parentItemId: "bon1",
+      comment: null,
       item_date: "2026-01-03T03:00:00.000Z",
       createdAt: "2026-01-03T00:00:00.000Z", // Hier frühere Zeit (sollte dank Zuweisung trotzdem ganz nach oben)
     }
@@ -793,12 +800,131 @@ describe("ExpenseListDetail", () => {
       isReceipt: false,
       parentItemId: null,
       item_date: "2026-01-03T00:00:00.000Z",
+      comment: "",
       syncChildrenPaidBy: true,
     })
     expect(
       await screen.findByText("Die Position wurde aktualisiert.")
     ).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("zeigt einen Speicherfehler oberhalb des scrollbaren Dialoginhalts", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    updateExpenseItem.mockRejectedValueOnce(
+      new Error("Receipt sub-items exceed the receipt total.")
+    )
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position bearbeiten: Socken" })
+    )
+    await user.click(screen.getByRole("button", { name: "Speichern" }))
+
+    const error = await screen.findByRole("alert")
+    expect(error.textContent).toBe(
+      "Die Unterpositionen übersteigen die Bon-Summe."
+    )
+    expect(error.closest("form")?.firstElementChild).toBe(error)
+  })
+
+  it("zeigt Kommentare an und speichert mehrzeilige Positionskommentare", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([
+      { ...items[0], comment: "Bitte Bon prüfen" },
+      items[1],
+    ])
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    expect(
+      await screen.findByRole("img", { name: "Kommentar vorhanden" })
+    ).toBeTruthy()
+    await user.click(
+      screen.getByRole("button", { name: "Position bearbeiten: Socken" })
+    )
+
+    const commentField = screen.getByRole("textbox", { name: "Kommentar" })
+    expect((commentField as HTMLTextAreaElement).value).toBe("Bitte Bon prüfen")
+    await user.clear(commentField)
+    await user.type(commentField, "Zeile eins{Enter}Zeile zwei")
+    await user.click(screen.getByRole("button", { name: "Speichern" }))
+
+    expect(updateExpenseItem).toHaveBeenCalledWith(
+      "i1",
+      expect.objectContaining({ comment: "Zeile eins\nZeile zwei" })
+    )
+  })
+
+  it("zeigt eine Überschreitungswarnung auch bei eingeklapptem Bon", async () => {
+    const receipt = {
+      ...items[0],
+      id: "overfilled-receipt",
+      name: "Supermarkt",
+      amountCents: 1000,
+      isReceipt: true,
+    }
+    const child = {
+      ...items[1],
+      id: "overfilled-child",
+      name: "Milch",
+      amountCents: 1500,
+      parentItemId: receipt.id,
+    }
+    getExpenseItems.mockResolvedValue([receipt, child])
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    const warning = await screen.findByRole("alert")
+    expect(warning.textContent).toContain(
+      "Die Unterpositionen übersteigen die Bon-Summe um"
+    )
+    expect(screen.queryByText("Milch")).toBeNull()
+  })
+
+  it("zeigt eigene Kommentare normal und Unterpositionskommentare gestrichelt am Bon", async () => {
+    const user = userEvent.setup()
+    const receipt = {
+      ...items[0],
+      id: "receipt-comment",
+      name: "Supermarkt",
+      isReceipt: true,
+      amountCents: 1000,
+      comment: "Kassenbon",
+    }
+    const child = {
+      ...items[1],
+      id: "child-comment",
+      name: "Milch",
+      parentItemId: receipt.id,
+      comment: "Laktosefrei",
+    }
+    getExpenseItems.mockResolvedValue([receipt, child])
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    const ownCommentIcon = await screen.findByRole("img", {
+      name: "Kommentar vorhanden",
+    })
+    const parentIcon = await screen.findByRole("img", {
+      name: "Kommentar bei Unterposition vorhanden",
+    })
+    expect(ownCommentIcon.getAttribute("stroke-dasharray")).toBeNull()
+    expect(parentIcon.getAttribute("stroke-dasharray")).toBe("3 2")
+    expect(screen.queryByText("Milch")).toBeNull()
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Unterpositionen von Supermarkt anzeigen",
+      })
+    )
+    expect(
+      await screen.findAllByRole("img", { name: "Kommentar vorhanden" })
+    ).toHaveLength(2)
   })
 
   it("überträgt eine Position in eine offene Liste und zeigt die Gegenposition", async () => {
@@ -1312,6 +1438,7 @@ describe("ExpenseListDetail", () => {
       isPayerAllocation: false,
       isReceipt: true,
       parentItemId: null,
+      comment: null,
       item_date: "2026-01-03",
       createdAt: "2026-01-03T10:00:00Z",
     }
@@ -1324,6 +1451,7 @@ describe("ExpenseListDetail", () => {
       isPayerAllocation: false,
       isReceipt: false,
       parentItemId: "parent-1",
+      comment: null,
       item_date: "2026-01-03",
       createdAt: "2026-01-03T10:01:00Z",
     }

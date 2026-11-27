@@ -67,6 +67,7 @@ function item(
     isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
+    comment: null,
     createdAt: "2026-01-01T12:00:00Z",
     ...values,
   }
