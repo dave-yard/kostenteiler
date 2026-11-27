@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ReceiptPreview } from "@/pages/ExpenseListDetail/ReceiptPreview"
+import { ExpenseItemTransferDialog } from "@/components/dialogs/ExpenseItemTransferDialog"
 import {
   calculateExpenseSplit,
   createEqualPercentageDrafts,
@@ -20,7 +21,11 @@ import {
   germanToIsoDateTime,
   isoToGermanDateTime,
 } from "@/pages/ExpenseListDetail/ExpenseListDetail"
-import type { ExpenseItem, GroupMember } from "@/types/group"
+import type {
+  ExpenseItem,
+  ExpenseItemTransferResult,
+  GroupMember,
+} from "@/types/group"
 
 const splitPayerValue = "__split__"
 
@@ -123,6 +128,13 @@ export interface ExpenseItemDialogProps {
   groupDefaultSplitRule: ExpenseSplitRule
   canEditSplits: boolean
   currentMemberId: string | null
+  groupId: string
+  isAdmin: boolean
+  canTransfer: boolean
+  onTransferSuccess: (
+    result: ExpenseItemTransferResult,
+    targetListName: string
+  ) => void
 }
 
 export function ExpenseItemDialog({
@@ -137,6 +149,10 @@ export function ExpenseItemDialog({
   groupDefaultSplitRule,
   canEditSplits,
   currentMemberId,
+  groupId,
+  isAdmin,
+  canTransfer,
+  onTransferSuccess,
 }: ExpenseItemDialogProps) {
   const { createExpenseItem, updateExpenseItem, getExpenseItemSplitRule } =
     useExpenseLists()
@@ -152,6 +168,7 @@ export function ExpenseItemDialog({
   const [splitInputs, setSplitInputs] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingSplitRule, setIsLoadingSplitRule] = useState(false)
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
   const lastEditedFixedMemberId = useRef<string | null>(null)
   const [allocationSeed, setAllocationSeed] = useState("")
@@ -594,6 +611,7 @@ export function ExpenseItemDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="flex max-h-[90dvh] max-w-md flex-col overflow-hidden p-0 md:max-w-lg">
         <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6">
@@ -915,35 +933,64 @@ export function ExpenseItemDialog({
               </p>
             )}
           </div>
-          <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-6 py-4">
-            <Button
-              disabled={isSaving || isLoadingSplitRule}
-              onClick={onClose}
-              type="button"
-              variant="outline"
-            >
-              Abbrechen
-            </Button>
-            <Button
-              className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
-              disabled={isSaving || isLoadingSplitRule || !isPercentageSumValid}
-              type="submit"
-            >
-              {isSaving && (
-                <LoaderCircle
-                  aria-hidden="true"
-                  className="size-4 animate-spin"
-                />
-              )}
-              {isSaving
-                ? "Speichert ..."
-                : editingItem
-                  ? "Speichern"
-                  : "Hinzufügen"}
-            </Button>
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-6 py-4">
+            {editingItem && canTransfer && !editingItem.isPayerAllocation ? (
+              <Button
+                disabled={isSaving || isLoadingSplitRule}
+                onClick={() => setIsTransferDialogOpen(true)}
+                type="button"
+                variant="outline"
+              >
+                In andere Liste übertragen
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                disabled={isSaving || isLoadingSplitRule}
+                onClick={onClose}
+                type="button"
+                variant="outline"
+              >
+                Abbrechen
+              </Button>
+              <Button
+                className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
+                disabled={
+                  isSaving || isLoadingSplitRule || !isPercentageSumValid
+                }
+                type="submit"
+              >
+                {isSaving && (
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="size-4 animate-spin"
+                  />
+                )}
+                {isSaving
+                  ? "Speichert ..."
+                  : editingItem
+                    ? "Speichern"
+                    : "Hinzufügen"}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
     </Dialog>
+      {editingItem && isTransferDialogOpen && (
+        <ExpenseItemTransferDialog
+          open
+          onClose={() => setIsTransferDialogOpen(false)}
+          onSuccess={onTransferSuccess}
+          groupId={groupId}
+          sourceListId={listId}
+          sourceItemId={editingItem.id}
+          sourceItemName={editingItem.name}
+          isAdmin={isAdmin}
+        />
+      )}
+    </>
   )
 }

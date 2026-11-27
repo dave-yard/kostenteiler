@@ -78,6 +78,9 @@ const items: ExpenseItem[] = [
 ]
 
 const getExpenseItems = vi.fn()
+const getExpenseItemTransferPairs = vi.fn()
+const getExpenseLists = vi.fn()
+const transferExpenseItemToList = vi.fn()
 const getExpenseItemSplitRule = vi.fn()
 const getExpenseListSplitRules = vi.fn()
 const getExpenseListPayments = vi.fn()
@@ -93,10 +96,14 @@ const uploadAndProcessReceipt = vi.fn()
 function renderDetail(
   onBack = vi.fn(),
   currentList: ExpenseList = list,
-  onListChange = vi.fn()
+  onListChange = vi.fn(),
+  currentGroup: Group = group
 ) {
   vi.mocked(useExpenseLists).mockReturnValue({
     getExpenseItems,
+    getExpenseItemTransferPairs,
+    getExpenseLists,
+    transferExpenseItemToList,
     getExpenseItemSplitRule,
     getExpenseListSplitRules,
     getExpenseListPayments,
@@ -112,7 +119,7 @@ function renderDetail(
 
   return render(
     <ExpenseListDetail
-      group={group}
+      group={currentGroup}
       list={currentList}
       onBack={onBack}
       onListChange={onListChange}
@@ -121,6 +128,13 @@ function renderDetail(
 }
 
 beforeEach(() => {
+  getExpenseItemTransferPairs.mockResolvedValue([])
+  getExpenseLists.mockResolvedValue([])
+  transferExpenseItemToList.mockResolvedValue({
+    transferId: "transfer-1",
+    offsetRootItemId: "offset-1",
+    targetRootItemId: "target-1",
+  })
   getExpenseListSplitRules.mockResolvedValue({})
   getExpenseListPayments.mockResolvedValue([])
   markExpenseListPaymentPaid.mockResolvedValue(false)
@@ -131,6 +145,9 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   getExpenseItems.mockReset()
+  getExpenseItemTransferPairs.mockReset()
+  getExpenseLists.mockReset()
+  transferExpenseItemToList.mockReset()
   getExpenseItemSplitRule.mockReset()
   getExpenseListSplitRules.mockReset()
   getExpenseListPayments.mockReset()
@@ -782,6 +799,177 @@ describe("ExpenseListDetail", () => {
       await screen.findByText("Die Position wurde aktualisiert.")
     ).toBeTruthy()
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("überträgt eine Position in eine offene Liste und zeigt die Gegenposition", async () => {
+    const user = userEvent.setup()
+    const sourceOffset = {
+      ...items[0],
+      id: "offset-1",
+      name: "Übertrag Socken",
+      amountCents: -500,
+    }
+    const transferPair = {
+      transferId: "transfer-1",
+      sourceItemId: "i1",
+      offsetItemId: "offset-1",
+      targetItemId: "target-1",
+      isRoot: true,
+    }
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    getExpenseLists.mockResolvedValue([
+      { ...list, id: "l2", name: "Später", status: "open" },
+    ])
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position bearbeiten: Socken" })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "In andere Liste übertragen" })
+    )
+    const targetSelect = await screen.findByRole("combobox", {
+      name: "Offene Zielliste",
+    })
+    await user.click(targetSelect)
+    await user.click(await screen.findByRole("option", { name: "Später" }))
+
+    getExpenseItems.mockResolvedValue([...items, sourceOffset])
+    getExpenseItemTransferPairs.mockResolvedValue([transferPair])
+    await user.click(screen.getByRole("button", { name: "Übertragen" }))
+
+    expect(transferExpenseItemToList).toHaveBeenCalledWith("i1", {
+      targetListId: "l2",
+    })
+    expect(
+      await screen.findByText(
+        "„Übertrag Socken“ ist mit der Kopie in „Später“ verknüpft."
+      )
+    ).toBeTruthy()
+    expect(screen.getByText("Übertrags-Gegenposition")).toBeTruthy()
+  })
+
+  it("lässt Admins beim Übertragen eine neue Einmalliste anlegen", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    getExpenseLists.mockResolvedValue([])
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position bearbeiten: Socken" })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "In andere Liste übertragen" })
+    )
+    await user.type(
+      await screen.findByLabelText("Name der neuen Einmalliste"),
+      "Später"
+    )
+    await user.click(screen.getByRole("button", { name: "Übertragen" }))
+
+    expect(transferExpenseItemToList).toHaveBeenCalledWith("i1", {
+      newListName: "Später",
+    })
+  })
+
+  it("bietet Nicht-Admins keine neue Zielliste an", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseItemSplitRule.mockResolvedValue({ mode: "equal" })
+    getExpenseLists.mockResolvedValue([])
+    mockAccess()
+    renderDetail(
+      vi.fn(),
+      { ...list, status: "open", completedAt: null },
+      vi.fn(),
+      { ...group, currentUserIsAdmin: false }
+    )
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position bearbeiten: Socken" })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "In andere Liste übertragen" })
+    )
+
+    expect(
+      await screen.findByRole("combobox", { name: "Offene Zielliste" })
+    ).toBeTruthy()
+    expect(
+      screen.queryByText("Neue offene Einmalliste erstellen")
+    ).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Übertragen" })
+    ).toHaveProperty("disabled", true)
+  })
+
+  it("sperrt Bearbeitung und Löschen für bereits übertragene Wurzeln", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue(items)
+    getExpenseItemTransferPairs.mockResolvedValue([
+      {
+        transferId: "transfer-1",
+        sourceItemId: "i2",
+        offsetItemId: "i1",
+        targetItemId: "target-1",
+        isRoot: true,
+      },
+    ])
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    expect(await screen.findByText("Übertrags-Gegenposition")).toBeTruthy()
+    expect(
+      screen.queryByRole("button", { name: "Position bearbeiten: Socken" })
+    ).toBeNull()
+    await user.click(screen.getByRole("button", { name: "Löschen aktivieren" }))
+    expect(
+      screen.queryByRole("button", { name: "Position löschen: Socken" })
+    ).toBeNull()
+  })
+
+  it("zeigt die verknüpfte Kopie als Top-Position in der Zielliste", async () => {
+    getExpenseItems.mockResolvedValue([
+      {
+        ...items[1],
+        id: "receipt-1",
+        name: "Bon",
+        isReceipt: true,
+        parentItemId: null,
+      },
+      {
+        ...items[0],
+        id: "target-1",
+        listId: "l2",
+        parentItemId: "receipt-1",
+      },
+    ])
+    getExpenseItemTransferPairs.mockResolvedValue([
+      {
+        transferId: "transfer-1",
+        sourceItemId: "source-1",
+        offsetItemId: "offset-1",
+        targetItemId: "target-1",
+        isRoot: true,
+      },
+    ])
+    mockAccess()
+    renderDetail(vi.fn(), {
+      ...list,
+      id: "l2",
+      name: "Später",
+      status: "open",
+      completedAt: null,
+    })
+
+    expect(await screen.findByText("Übertragene Kopie")).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: /Socken/ }).textContent
+    ).toContain("Übertragene Kopie")
   })
 
   it("kann einen Bon-Kopf nachträglich einem festen Zahler zuordnen", async () => {

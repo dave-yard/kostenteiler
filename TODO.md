@@ -162,9 +162,9 @@ Grundlage: [Anwendungs-Regelwerk](./APP_REQUIREMENT.md),
 
 ## Nice to Have
 
-- [ ] Übertragung von Positionen auf eine neue Liste
-      Manchmal solen Positionen oder Beträge erst später bezahlt werden. Dafür soll es möglich sein in Liste A eine Übertragsposition zu erzeugen. Diese ist negativ.
-      Dabei soll dann eine andere Liste gewählt oder erzeugt werden können, die dann die Position als Gegenposition annimmt.
+- [x] Benutzeroberfläche zum Übertragen von Positionen in eine andere offene
+      Liste derselben Gruppe einschließlich Admin-Erstellung einer Einmalliste,
+      Anzeige und Sperre der verknüpften Gegenpositionen über die Datenbank-RPC.
 - [x] Frontend-Anbindung für Bon-Upload, Verarbeitung, Abweichungswarnung und
       Bild-/PDF-Vorschau ist vorhanden; Backend und produktiver Ablauf sind damit
       noch nicht nachgewiesen.

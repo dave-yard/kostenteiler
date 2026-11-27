@@ -40,7 +40,13 @@ import {
 } from "@/lib/itemHierarchy"
 import { SettlementSection } from "./components/SettlementSection"
 import { calculateNextPeriodDate } from "@/lib/recurringSchedule"
-import type { ExpenseItem, ExpenseList, Group } from "@/types/group"
+import type {
+  ExpenseItem,
+  ExpenseItemTransferPair,
+  ExpenseItemTransferResult,
+  ExpenseList,
+  Group,
+} from "@/types/group"
 import {
   createExpenseListPdf,
   type ExpenseListPdfSort,
@@ -208,6 +214,7 @@ interface ItemsResult {
   reloadNumber: number
   groupDataRevision: number
   items: ExpenseItem[]
+  transferPairs: ExpenseItemTransferPair[]
   access: ExpenseItemAccess | null
   rules: Record<string, ExpenseSplitRule> | null
   rulesErrorMessage: string | null
@@ -228,6 +235,7 @@ export function ExpenseListDetail({
   const {
     groupDataRevision,
     getExpenseItems,
+    getExpenseItemTransferPairs,
     getExpenseListSplitRules,
     getItemAccess,
     uploadAndProcessReceipt,
@@ -242,6 +250,11 @@ export function ExpenseListDetail({
   const [showTime, setShowTime] = useState(false)
   const [sortBy, setSortBy] = useState<"item_date" | "createdAt">("item_date")
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [recentTransfer, setRecentTransfer] = useState<{
+    result: ExpenseItemTransferResult
+    targetListName: string
+    sourceListId: string
+  } | null>(null)
   const [scanWarningMessage, setScanWarningMessage] = useState<string | null>(
     null
   )
@@ -266,13 +279,27 @@ export function ExpenseListDetail({
         })
       ),
     ])
-      .then(([items, access, splitRules]) => {
+      .then(async ([items, access, splitRules]) => {
+        const transferPairs = await getExpenseItemTransferPairs(
+          items.map((item) => item.id)
+        )
+        const transferRootIds = new Set(
+          transferPairs
+            .filter((pair) => pair.isRoot)
+            .flatMap((pair) => [pair.offsetItemId, pair.targetItemId])
+        )
+        const displayItems = items.map((item) =>
+          transferRootIds.has(item.id)
+            ? { ...item, parentItemId: null }
+            : item
+        )
         if (isCurrent) {
           setResult({
             listId: list.id,
             reloadNumber,
             groupDataRevision,
-            items,
+            items: displayItems,
+            transferPairs,
             access,
             ...splitRules,
             errorMessage: null,
@@ -286,6 +313,7 @@ export function ExpenseListDetail({
             reloadNumber,
             groupDataRevision,
             items: [],
+            transferPairs: [],
             access: null,
             rules: null,
             rulesErrorMessage: null,
@@ -299,6 +327,7 @@ export function ExpenseListDetail({
     }
   }, [
     getExpenseItems,
+    getExpenseItemTransferPairs,
     getExpenseListSplitRules,
     getItemAccess,
     groupDataRevision,
@@ -322,6 +351,37 @@ export function ExpenseListDetail({
     [accessMembers]
   )
   const members = accessMembers ?? []
+  const transferLinkByItemId = useMemo(() => {
+    const links = new Map<
+      string,
+      {
+        pair: ExpenseItemTransferPair
+        side: "source" | "offset" | "target"
+      }
+    >()
+    for (const pair of result?.transferPairs ?? []) {
+      links.set(pair.sourceItemId, { pair, side: "source" })
+      links.set(pair.offsetItemId, { pair, side: "offset" })
+      links.set(pair.targetItemId, { pair, side: "target" })
+    }
+    return links
+  }, [result?.transferPairs])
+  const recentTransferPairIsLoaded = Boolean(
+    recentTransfer &&
+      recentTransfer.sourceListId === list.id &&
+      result?.transferPairs.some(
+        (pair) =>
+          pair.transferId === recentTransfer.result.transferId &&
+          pair.isRoot &&
+          pair.offsetItemId === recentTransfer.result.offsetRootItemId &&
+          pair.targetItemId === recentTransfer.result.targetRootItemId
+      )
+  )
+  const recentOffsetItem = recentTransfer
+    ? items.find(
+        (item) => item.id === recentTransfer.result.offsetRootItemId
+      )
+    : null
   // Nur zur Bequemlichkeit: Die Datenbank prüft Rechte, Status und Archiv erneut.
   const canAddItem =
     !isLoading &&
@@ -387,6 +447,9 @@ export function ExpenseListDetail({
     const isGeneratedAllocation = Boolean(
       item.isPayerAllocation && !item.isReceipt
     )
+    const transferLink = transferLinkByItemId.get(item.id)
+    const transferPair = transferLink?.pair
+    const isTransferLocked = Boolean(transferLink)
 
     return (
       <div
@@ -394,7 +457,7 @@ export function ExpenseListDetail({
           canDeleteItems && deleteMode ? "pr-10" : ""
         }`}
         onClick={() => {
-          if (!isGeneratedAllocation) {
+          if (!isGeneratedAllocation && !isTransferLocked) {
             openDialog(item)
           }
         }}
@@ -402,7 +465,7 @@ export function ExpenseListDetail({
         <div className="min-w-0">
           <Button
             className="h-auto max-w-full justify-start p-0 text-left font-medium break-words whitespace-normal hover:bg-transparent"
-            disabled={isGeneratedAllocation}
+            disabled={isGeneratedAllocation || isTransferLocked}
             onClick={(event) => {
               event.stopPropagation()
               void openDialog(item)
@@ -431,6 +494,19 @@ export function ExpenseListDetail({
                   Ausgleich
                 </span>
               )}
+              {transferPair && (
+                <span className="ml-2 rounded-full bg-muted px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">
+                  {transferLink?.side === "source"
+                    ? "Übertragene Position"
+                    : transferLink?.side === "offset"
+                      ? transferPair.isRoot
+                        ? "Übertrags-Gegenposition"
+                        : "Übertrags-Unterposition"
+                      : transferPair.isRoot
+                        ? "Übertragene Kopie"
+                        : "Kopierte Unterposition"}
+                </span>
+              )}
             </span>
           </Button>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -448,7 +524,7 @@ export function ExpenseListDetail({
               </p>
             )}
           </div>
-          {canEditItems && !isGeneratedAllocation && (
+          {canEditItems && !isGeneratedAllocation && !isTransferLocked && (
             <Button
               aria-label={`Position bearbeiten: ${item.name}`}
               className="size-8 p-0 text-muted-foreground"
@@ -462,7 +538,10 @@ export function ExpenseListDetail({
               <Pencil aria-hidden="true" className="size-4" />
             </Button>
           )}
-          {canDeleteItems && deleteMode && !isGeneratedAllocation && (
+          {canDeleteItems &&
+            deleteMode &&
+            !isGeneratedAllocation &&
+            !isTransferLocked && (
             <Button
               aria-label={`Position löschen: ${item.name}`}
               className="absolute top-2 right-0 size-8 p-0 text-destructive hover:text-danger-text"
@@ -512,6 +591,22 @@ export function ExpenseListDetail({
       setExpandedIds((current) => new Set(current).add(parentItemId))
     }
     setSuccessMessage(message)
+    setReloadNumber((current) => current + 1)
+  }
+
+  function handleItemTransferSuccess(
+    transferResult: ExpenseItemTransferResult,
+    targetListName: string
+  ) {
+    closeDialog()
+    setRecentTransfer({
+      result: transferResult,
+      targetListName,
+      sourceListId: list.id,
+    })
+    setSuccessMessage(
+      `Übertrag erfolgreich: Gegenposition in „${list.name}“, Kopie in „${targetListName}“.`
+    )
     setReloadNumber((current) => current + 1)
   }
 
@@ -807,6 +902,13 @@ export function ExpenseListDetail({
           <div className="mt-4 flex items-center justify-between gap-3 border-b border-border pb-4">
             <div className="flex items-center gap-2.5">
               <h2 className="font-semibold">Positionen</h2>
+              {recentTransfer?.sourceListId === list.id && (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {recentTransferPairIsLoaded && recentOffsetItem
+                    ? `„${recentOffsetItem.name}“ ist mit der Kopie in „${recentTransfer.targetListName}“ verknüpft.`
+                    : `Übertrag ${recentTransfer.result.transferId} wurde gespeichert.`}
+                </p>
+              )}
               {items.length > 0 && (
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">
@@ -893,6 +995,10 @@ export function ExpenseListDetail({
           groupDefaultSplitRule={groupDefaultSplitRule}
           canEditSplits={canEditSplits}
           currentMemberId={result?.access?.currentMemberId ?? null}
+          groupId={group.id}
+          isAdmin={group.currentUserIsAdmin && !group.archivedAt}
+          canTransfer={canEditItems}
+          onTransferSuccess={handleItemTransferSuccess}
         />
         <DeleteExpenseItemDialog
           item={deletingItem}

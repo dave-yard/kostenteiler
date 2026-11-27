@@ -88,5 +88,47 @@ export function getActionErrorMessage(error: unknown) {
     return "Die Aktion konnte nicht ausgeführt werden."
   }
 
-  return databaseMessages[message] ?? message
+  if (databaseMessages[message]) {
+    return databaseMessages[message]
+  }
+
+  const normalizedMessage = message.toLowerCase()
+  if (
+    normalizedMessage.includes("transfer") &&
+    (normalizedMessage.includes("permission") ||
+      normalizedMessage.includes("allowed"))
+  ) {
+    return "Du hast keine Berechtigung, diese Position zu übertragen."
+  }
+  if (
+    normalizedMessage.includes("transfer") &&
+    normalizedMessage.includes("already")
+  ) {
+    return "Diese Position wurde bereits übertragen."
+  }
+  if (
+    normalizedMessage.includes("group") &&
+    (normalizedMessage.includes("same") ||
+      normalizedMessage.includes("different"))
+  ) {
+    return "Quell- und Zielliste müssen zur selben Gruppe gehören."
+  }
+  if (
+    normalizedMessage.includes("list") &&
+    (normalizedMessage.includes("open") ||
+      normalizedMessage.includes("closed"))
+  ) {
+    return "Übertragen ist nur zwischen offenen Listen möglich."
+  }
+  if (
+    normalizedMessage.includes("receipt") &&
+    (normalizedMessage.includes("incomplete") ||
+      normalizedMessage.includes("itemized") ||
+      normalizedMessage.includes("remainder") ||
+      normalizedMessage.includes("unitemized"))
+  ) {
+    return "Der Bon muss vollständig aufgeschlüsselt sein, bevor er übertragen werden kann."
+  }
+
+  return message
 }

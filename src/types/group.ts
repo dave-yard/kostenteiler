@@ -72,6 +72,20 @@ export interface ExpenseItemDatabaseRow {
   created_at: string
 }
 
+export interface ExpenseItemTransferPair {
+  transferId: string
+  sourceItemId: string
+  offsetItemId: string
+  targetItemId: string
+  isRoot: boolean
+}
+
+export interface ExpenseItemTransferResult {
+  transferId: string
+  offsetRootItemId: string
+  targetRootItemId: string
+}
+
 export interface GroupMemberPermissions {
   canCreateItems: boolean
   canEditItems: boolean

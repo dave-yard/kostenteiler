@@ -12,13 +12,16 @@ import {
   createExpenseItem as createExpenseItemRecord,
   deleteExpenseItem as deleteExpenseItemRecord,
   getExpenseItemSplitRule as getExpenseItemSplitRuleRecord,
+  getExpenseItemTransferPairs as getExpenseItemTransferPairsRecord,
   getExpenseItems as getExpenseItemsRecord,
   getExpenseListMemberNames as getExpenseListMemberNamesRecord,
   getExpenseListSplitRules as getExpenseListSplitRulesRecord,
   getReceiptImage as getReceiptImageRecord,
+  transferExpenseItemToList as transferExpenseItemToListRecord,
   updateExpenseItem as updateExpenseItemRecord,
   uploadAndProcessReceipt as uploadAndProcessReceiptRecord,
   type ExpenseItemInput,
+  type ExpenseItemTransferTarget,
   type ReceiptImageResult,
   type UploadAndProcessReceiptResult,
 } from "@/services/itemService"
@@ -38,6 +41,8 @@ import {
 import type {
   CreateExpenseListParams,
   ExpenseItem,
+  ExpenseItemTransferPair,
+  ExpenseItemTransferResult,
   ExpenseList,
   ExpenseListPayment,
   Group,
@@ -85,6 +90,13 @@ interface ExpenseListContextValue {
     input: ExpenseItemInput
   ) => Promise<string>
   updateExpenseItem: (itemId: string, input: ExpenseItemInput) => Promise<void>
+  transferExpenseItemToList: (
+    sourceItemId: string,
+    target: ExpenseItemTransferTarget
+  ) => Promise<ExpenseItemTransferResult>
+  getExpenseItemTransferPairs: (
+    itemIds: string[]
+  ) => Promise<ExpenseItemTransferPair[]>
   uploadAndProcessReceipt: (
     listId: string,
     file: File,
@@ -224,6 +236,17 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const transferExpenseItemToList = useCallback(
+    (sourceItemId: string, target: ExpenseItemTransferTarget) =>
+      transferExpenseItemToListRecord(sourceItemId, target),
+    []
+  )
+
+  const getExpenseItemTransferPairs = useCallback(
+    (itemIds: string[]) => getExpenseItemTransferPairsRecord(itemIds),
+    []
+  )
+
   const uploadAndProcessReceipt = useCallback(
     (listId: string, file: File, currentMemberId: string) =>
       uploadAndProcessReceiptRecord(listId, file, currentMemberId),
@@ -302,6 +325,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getExpenseItems,
       createExpenseItem,
       updateExpenseItem,
+      transferExpenseItemToList,
+      getExpenseItemTransferPairs,
       uploadAndProcessReceipt,
       deleteExpenseItem,
       getExpenseItemSplitRule,
@@ -322,6 +347,8 @@ export function ExpenseListProvider({ children }: { children: ReactNode }) {
       getExpenseItems,
       createExpenseItem,
       updateExpenseItem,
+      transferExpenseItemToList,
+      getExpenseItemTransferPairs,
       uploadAndProcessReceipt,
       deleteExpenseItem,
       getExpenseItemSplitRule,

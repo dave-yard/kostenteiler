@@ -6,6 +6,8 @@ import {
 import type {
   ExpenseItem,
   ExpenseItemDatabaseRow,
+  ExpenseItemTransferPair,
+  ExpenseItemTransferResult,
 } from "@/types/group"
 
 export interface ExpenseItemInput {
@@ -341,6 +343,94 @@ function readInteger(row: Record<string, unknown>, key: string) {
   }
 
   return value
+}
+
+export type ExpenseItemTransferTarget =
+  | { targetListId: string; newListName?: never }
+  | { targetListId?: never; newListName: string }
+
+export async function transferExpenseItemToList(
+  sourceItemId: string,
+  target: ExpenseItemTransferTarget
+): Promise<ExpenseItemTransferResult> {
+  const targetListId = target.targetListId ?? null
+  const newListName = target.newListName?.trim() || null
+  if (Boolean(targetListId) === Boolean(newListName)) {
+    throw new Error("Bitte genau eine Zielliste für den Übertrag auswählen.")
+  }
+
+  const { data, error } = await getSupabaseClient().rpc(
+    "transfer_expense_item_to_list",
+    {
+      p_source_item_id: sourceItemId,
+      p_target_list_id: targetListId,
+      p_new_list_name: newListName,
+    }
+  )
+
+  if (error) {
+    throw error
+  }
+
+  const result = Array.isArray(data) ? data[0] : data
+  if (
+    !isRecord(result) ||
+    typeof result.transfer_id !== "string" ||
+    typeof result.offset_root_item_id !== "string" ||
+    typeof result.target_root_item_id !== "string"
+  ) {
+    throw new Error("Die Übertragung lieferte keine gültigen Positions-IDs.")
+  }
+
+  return {
+    transferId: result.transfer_id,
+    offsetRootItemId: result.offset_root_item_id,
+    targetRootItemId: result.target_root_item_id,
+  }
+}
+
+export async function getExpenseItemTransferPairs(
+  itemIds: string[]
+): Promise<ExpenseItemTransferPair[]> {
+  const uniqueIds = [...new Set(itemIds.filter(Boolean))]
+  if (uniqueIds.length === 0) {
+    return []
+  }
+
+  const idFilter = uniqueIds.join(",")
+  const { data, error } = await getSupabaseClient()
+    .from("expense_item_transfer_pairs")
+    .select(
+      "transfer_id, source_item_id, offset_item_id, target_item_id, is_root"
+    )
+    .or(
+      `source_item_id.in.(${idFilter}),offset_item_id.in.(${idFilter}),target_item_id.in.(${idFilter})`
+    )
+
+  if (error) {
+    throw error
+  }
+  if (!Array.isArray(data) || !data.every(isRecord)) {
+    throw new Error(
+      "Supabase hat Übertragungsverknüpfungen in einem unerwarteten Format geliefert."
+    )
+  }
+
+  return data.map((record) => {
+    if (typeof record.is_root !== "boolean") {
+      throw new Error(
+        'Der Wert "is_root" in der Übertragungsantwort ist ungültig.'
+      )
+    }
+
+    return {
+      transferId: readString(record, "transfer_id"),
+      sourceItemId: readString(record, "source_item_id"),
+      offsetItemId: readString(record, "offset_item_id"),
+      targetItemId: readString(record, "target_item_id"),
+      isRoot: record.is_root,
+    }
+  })
 }
 
 export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {

@@ -6,9 +6,11 @@ import {
   deleteExpenseItem,
   getExpenseItems,
   getExpenseItemSplitRule,
+  getExpenseItemTransferPairs,
   getExpenseListMemberNames,
   getExpenseListSplitRules,
   getReceiptImage,
+  transferExpenseItemToList,
   updateExpenseItem,
 } from "./itemService"
 
@@ -20,6 +22,7 @@ const query = {
   select: vi.fn(),
   eq: vi.fn(),
   order: vi.fn(),
+  or: vi.fn(),
   then: vi.fn(),
 }
 const from = vi.fn()
@@ -46,6 +49,7 @@ beforeEach(() => {
   query.select.mockReturnValue(query)
   query.eq.mockReturnValue(query)
   query.order.mockReturnValue(query)
+  query.or.mockReturnValue(query)
   from.mockReturnValue(query)
   invoke.mockResolvedValue({ data: null, error: null })
   vi.mocked(getSupabaseClient).mockReturnValue({
@@ -57,6 +61,77 @@ beforeEach(() => {
 })
 
 describe("itemService", () => {
+  it("transfers an item to exactly one selected or newly named list", async () => {
+    rpc.mockResolvedValue({
+      data: {
+        transfer_id: "transfer-1",
+        offset_root_item_id: "offset-1",
+        target_root_item_id: "target-1",
+      },
+      error: null,
+    })
+
+    await expect(
+      transferExpenseItemToList("source-1", { targetListId: "target-list" })
+    ).resolves.toEqual({
+      transferId: "transfer-1",
+      offsetRootItemId: "offset-1",
+      targetRootItemId: "target-1",
+    })
+    expect(rpc).toHaveBeenCalledWith("transfer_expense_item_to_list", {
+      p_source_item_id: "source-1",
+      p_target_list_id: "target-list",
+      p_new_list_name: null,
+    })
+
+    await transferExpenseItemToList("source-1", { newListName: "  Später  " })
+    expect(rpc).toHaveBeenLastCalledWith("transfer_expense_item_to_list", {
+      p_source_item_id: "source-1",
+      p_target_list_id: null,
+      p_new_list_name: "Später",
+    })
+  })
+
+  it("rejects a transfer target when neither or both target parameters are set", async () => {
+    await expect(
+      transferExpenseItemToList("source-1", {
+        targetListId: "target-list",
+        newListName: "New list",
+      } as never)
+    ).rejects.toThrow("genau eine Zielliste")
+    await expect(
+      transferExpenseItemToList("source-1", { newListName: " " })
+    ).rejects.toThrow("genau eine Zielliste")
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it("loads transfer relationships by linked item IDs", async () => {
+    mockRows([
+      {
+        transfer_id: "transfer-1",
+        source_item_id: "source-1",
+        offset_item_id: "offset-1",
+        target_item_id: "target-1",
+        is_root: true,
+      },
+    ])
+
+    await expect(getExpenseItemTransferPairs(["offset-1", "offset-1"])).resolves
+      .toEqual([
+        {
+          transferId: "transfer-1",
+          sourceItemId: "source-1",
+          offsetItemId: "offset-1",
+          targetItemId: "target-1",
+          isRoot: true,
+        },
+      ])
+    expect(from).toHaveBeenCalledWith("expense_item_transfer_pairs")
+    expect(query.or).toHaveBeenCalledWith(
+      "source_item_id.in.(offset-1),offset_item_id.in.(offset-1),target_item_id.in.(offset-1)"
+    )
+  })
+
   it("reads items of a list and maps them to camelCase", async () => {
     mockRows([
       {

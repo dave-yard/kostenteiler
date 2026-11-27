@@ -18,6 +18,22 @@ describe("getActionErrorMessage", () => {
     ).toBe("Die Prozentanteile müssen zusammen genau 100 % ergeben.")
   })
 
+  it("übersetzt typische Fehler bei Übertragungen", () => {
+    expect(
+      getActionErrorMessage(
+        new Error("Source and target expense lists must be open.")
+      )
+    ).toBe("Übertragen ist nur zwischen offenen Listen möglich.")
+    expect(
+      getActionErrorMessage(new Error("This item has already been transferred."))
+    ).toBe("Diese Position wurde bereits übertragen.")
+    expect(
+      getActionErrorMessage(new Error("Receipt is not fully itemized."))
+    ).toBe(
+      "Der Bon muss vollständig aufgeschlüsselt sein, bevor er übertragen werden kann."
+    )
+  })
+
   it("lässt unbekannte Meldungen unverändert durch", () => {
     expect(getActionErrorMessage(new Error("Verbindung fehlgeschlagen"))).toBe(
       "Verbindung fehlgeschlagen"
