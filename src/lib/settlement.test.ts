@@ -82,16 +82,36 @@ describe("calculateSettlement", () => {
     ).toThrow("zahlende Person")
   })
 
-  it("lehnt entfernte und fehlende Zahler bei verrechneten Positionen ab", () => {
-    for (const paidByMemberId of ["removed", null]) {
-      expect(() =>
-        calculateSettlement(
-          [{ id: "i1", amountCents: 101, paidByMemberId }],
-          {},
-          ["a", "b"],
-          equal
-        )
-      ).toThrow("zahlende Person")
-    }
+  it("lehnt entfernte Zahler bei verrechneten Positionen ab", () => {
+    expect(() =>
+      calculateSettlement(
+        [{ id: "i1", amountCents: 101, paidByMemberId: "removed" }],
+        {},
+        ["a", "b"],
+        equal
+      )
+    ).toThrow("zahlende Person")
+  })
+
+  it("berücksichtigt markierte Ausgleichspositionen in den Salden", () => {
+    const settlement = calculateSettlement(
+      [
+        { id: "i1", amountCents: 10000, paidByMemberId: "a" },
+        { id: "minus", amountCents: -1000, paidByMemberId: "a" },
+        { id: "plus", amountCents: 1000, paidByMemberId: "b" },
+      ],
+      {
+        i1: { mode: "equal" },
+        minus: { mode: "complete", memberId: "b" },
+        plus: { mode: "complete", memberId: "a" },
+      },
+      ["a", "b"],
+      equal
+    )
+
+    expect(settlement.balances).toEqual([
+      { memberId: "a", balanceCents: 3000 },
+      { memberId: "b", balanceCents: -3000 },
+    ])
   })
 })

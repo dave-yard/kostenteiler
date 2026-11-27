@@ -3,7 +3,10 @@ import {
   parseExpenseSplitRule,
   type ExpenseSplitRule,
 } from "@/lib/expenseSplit"
-import type { ExpenseItem } from "@/types/group"
+import type {
+  ExpenseItem,
+  ExpenseItemDatabaseRow,
+} from "@/types/group"
 
 export interface ExpenseItemInput {
   name: string
@@ -344,7 +347,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   const { data, error } = await getSupabaseClient()
     .from("expense_items")
     .select(
-      "id, list_id, name, amount_cents, paid_by_member_id, is_receipt, parent_item_id, item_date, created_at"
+      "id, list_id, name, amount_cents, paid_by_member_id, is_payer_allocation, is_receipt, parent_item_id, item_date, created_at"
     )
     .eq("list_id", listId)
 
@@ -359,11 +362,14 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
   }
 
   const items = data.map((row) => {
-    const isReceipt = row.is_receipt === true
+    const databaseRow = row as ExpenseItemDatabaseRow
+    const isReceipt = databaseRow.is_receipt === true
     const parentItemId =
-      typeof row.parent_item_id === "string" ? row.parent_item_id : null
+      typeof databaseRow.parent_item_id === "string"
+        ? databaseRow.parent_item_id
+        : null
     const paidByMemberId =
-      row.paid_by_member_id === null && isReceipt && !parentItemId
+      databaseRow.paid_by_member_id === null && isReceipt && !parentItemId
         ? null
         : readString(row, "paid_by_member_id")
 
@@ -373,6 +379,7 @@ export async function getExpenseItems(listId: string): Promise<ExpenseItem[]> {
       name: readString(row, "name"),
       amountCents: readInteger(row, "amount_cents"),
       paidByMemberId,
+      isPayerAllocation: databaseRow.is_payer_allocation === true,
       isReceipt,
       parentItemId,
       item_date: readString(row, "item_date") || readString(row, "item_date"),
@@ -482,7 +489,7 @@ export async function createExpenseItem(
       p_list_id: listId,
       p_name: input.name,
       p_amount_cents: input.amountCents,
-      p_paid_by_member_id: isReceiptHead ? null : input.paidByMemberId,
+      p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
       p_item_date: input.item_date ?? null,
@@ -524,13 +531,16 @@ export async function updateExpenseItem(
       p_item_id: itemId,
       p_name: input.name,
       p_amount_cents: input.amountCents,
-      p_paid_by_member_id: isReceiptHead ? null : input.paidByMemberId,
+      p_paid_by_member_id: input.paidByMemberId,
       p_split_rule: input.splitRule ?? null,
       p_is_receipt: input.isReceipt ?? false,
       p_item_date: itemIsoDate,
-      p_sync_children_paid_by: isReceiptHead
-        ? false
-        : (input.syncChildrenPaidBy ?? true),
+      p_sync_children_paid_by:
+        isReceiptHead && input.paidByMemberId !== null
+          ? true
+          : isReceiptHead
+            ? false
+            : (input.syncChildrenPaidBy ?? true),
     }
   )
 

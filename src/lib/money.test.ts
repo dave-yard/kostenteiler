@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { parseAmountToCents } from "./money"
+import { parseAmountToCents, parseSignedAmountToCents } from "./money"
 
 describe("parseAmountToCents", () => {
   it.each([
@@ -19,6 +19,24 @@ describe("parseAmountToCents", () => {
     ["1.234.567", 123456700],
   ])("wandelt %s in %i Cent um", (input, expected) => {
     expect(parseAmountToCents(input)).toBe(expected)
+  })
+
+  describe("parseSignedAmountToCents", () => {
+    it.each([
+      ["12,50", 1250],
+      ["-20", -2000],
+      ["-12,50", -1250],
+      ["-1.234,50", -123450],
+    ])("wandelt %s in %i Cent um", (input, expected) => {
+      expect(parseSignedAmountToCents(input)).toBe(expected)
+    })
+
+    it.each(["", "abc", "0", "-0,00", "-"])(
+      "lehnt %j ab",
+      (input) => {
+        expect(parseSignedAmountToCents(input)).toBeNull()
+      }
+    )
   })
 
   it.each([

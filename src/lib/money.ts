@@ -61,3 +61,27 @@ export function parseAmountToCents(input: string): number | null {
   // 0 lehnt auch die Datenbank ab (amount_cents > 0).
   return cents > 0 ? cents : null
 }
+
+/**
+ * Wandelt einen positiven oder negativen Euro-Betrag in ganze Cent um.
+ * Null und negative Null sind ungültig.
+ */
+export function parseSignedAmountToCents(input: string): number | null {
+  const text = input.trim()
+  if (!text) {
+    return null
+  }
+
+  const isNegative = text.startsWith("-")
+  const magnitude = isNegative ? text.slice(1).trim() : text
+  if (!magnitude) {
+    return null
+  }
+
+  const cents = parseAmountToCents(magnitude)
+  if (cents === null) {
+    return null
+  }
+
+  return isNegative ? -cents : cents
+}

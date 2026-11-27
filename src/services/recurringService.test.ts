@@ -48,6 +48,7 @@ const mockItems: ExpenseItem[] = [
     name: "Kaltmiete & Nebenkosten",
     amountCents: 100000,
     paidByMemberId: "m1",
+    isPayerAllocation: false,
     isReceipt: true,
     parentItemId: null,
     item_date: "2026-01-01",
@@ -59,6 +60,7 @@ const mockItems: ExpenseItem[] = [
     name: "Heizkosten",
     amountCents: 15000,
     paidByMemberId: "m2",
+    isPayerAllocation: false,
     isReceipt: false,
     parentItemId: "item-parent-1",
     item_date: "2026-01-01",
@@ -111,6 +113,36 @@ describe("recurringService", () => {
         parentItemId: "new-parent-id",
         item_date: expect.any(String),
       })
+    })
+
+    it("übernimmt Aufgeteilt und kopiert erzeugte Ausgleichspositionen nicht", async () => {
+      vi.mocked(getExpenseItems).mockResolvedValue([
+        { ...mockItems[0], isPayerAllocation: true },
+        mockItems[1],
+        {
+          ...mockItems[1],
+          id: "adjustment",
+          name: "Ausgleich Zahlung 1",
+          amountCents: -500,
+          isPayerAllocation: true,
+        },
+      ])
+
+      await copyItemsToNextPeriod("list-rec-1", "list-rec-2")
+
+      expect(createExpenseItem).toHaveBeenCalledTimes(2)
+      expect(createExpenseItem).toHaveBeenNthCalledWith(
+        1,
+        "list-rec-2",
+        expect.objectContaining({
+          isReceipt: true,
+          paidByMemberId: null,
+        })
+      )
+      expect(createExpenseItem).not.toHaveBeenCalledWith(
+        "list-rec-2",
+        expect.objectContaining({ name: "Ausgleich Zahlung 1" })
+      )
     })
   })
 

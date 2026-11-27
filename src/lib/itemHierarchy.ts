@@ -29,7 +29,8 @@ export function buildItemNodes(items: ExpenseItem[]): ItemNode[] {
         ? (childrenByParent.get(item.id) ?? [])
         : []
       const childrenCents = children.reduce(
-        (sum, child) => sum + child.amountCents,
+        (sum, child) =>
+          sum + (child.isPayerAllocation ? 0 : child.amountCents),
         0
       )
 
@@ -46,7 +47,7 @@ export function sumTopLevelCents(nodes: ItemNode[]) {
   return nodes.reduce((sum, node) => sum + node.item.amountCents, 0)
 }
 
-// Der Bon-Rest läuft mit Zahler und Schlüssel des Bons; Unterpositionen behalten ihre eigenen.
+// Automatische Zahler-Ausgleichspositionen bleiben für die Saldenberechnung erhalten.
 export function toSettlementItems(nodes: ItemNode[]) {
   return nodes.flatMap((node) => {
     if (!node.item.isReceipt) {
@@ -57,12 +58,6 @@ export function toSettlementItems(nodes: ItemNode[]) {
         `Die Unterpositionen von „${node.item.name} (${isoToGermanDateTime(node.item.item_date)})“ übersteigen die Bon-Summe.`
       )
     }
-    if (node.remainderCents > 0 && !node.item.paidByMemberId) {
-      throw new Error(
-        `Der Restbetrag von „${node.item.name}“ hat keinen Zahler. Bitte die Bon-Summe vollständig auf Unterpositionen verteilen.`
-      )
-    }
-
     return [
       ...(node.remainderCents > 0
         ? [{ ...node.item, amountCents: node.remainderCents }]

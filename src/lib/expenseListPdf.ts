@@ -1,6 +1,9 @@
 import type { jsPDF as JsPdf } from "jspdf"
 import { calculateExpenseSplit, type ExpenseSplitRule } from "./expenseSplit"
-import { toSettlementItems, type ItemNode } from "./itemHierarchy"
+import {
+  toSettlementItems,
+  type ItemNode,
+} from "./itemHierarchy"
 import { formatCents } from "./money"
 import { calculateSettlement } from "./settlement"
 import type { ExpenseList, Group, GroupMember } from "@/types/group"
@@ -99,7 +102,9 @@ export function buildExpenseListPdfRows({
   sort,
 }: BuildExpenseListPdfRowsOptions): ExpenseListPdfRow[] {
   const memberIds = members.map((member) => member.id)
-  const mainRows = nodes.map(({ item, children, remainderCents }) => {
+  const mainRows = nodes.map((node) => {
+    const { item, remainderCents } = node
+    const visibleChildren = node.children
     const sharesByMemberId = new Map(memberIds.map((memberId) => [memberId, 0]))
     const detailRows: ExpenseListPdfRow[] = []
     const mainRule = rules?.[item.id] ?? groupDefaultSplitRule
@@ -120,8 +125,23 @@ export function buildExpenseListPdfRows({
           item.id
         )
       }
-      for (const child of children) {
+      for (const child of visibleChildren) {
         const childRule = rules?.[child.id] ?? groupDefaultSplitRule
+        if (child.isPayerAllocation) {
+          detailRows.push({
+            id: child.id,
+            parentId: item.id,
+            name: child.name,
+            date: child.item_date,
+            payerId: child.paidByMemberId,
+            amountCents: child.amountCents,
+            sharesByMemberId: new Map(
+              memberIds.map((memberId) => [memberId, 0])
+            ),
+            includeInTotals: false,
+          })
+          continue
+        }
         addItemShares(
           sharesByMemberId,
           child.amountCents,

@@ -81,6 +81,7 @@ describe("itemService", () => {
         name: "Socken",
         amountCents: 500,
         paidByMemberId: "member-1",
+        isPayerAllocation: false,
         isReceipt: false,
         parentItemId: null,
         item_date: "2026-10-26T10:00:00.000Z",
@@ -184,8 +185,24 @@ describe("itemService", () => {
     )
   })
 
-  it("creates and updates receipt heads with null payer and no child synchronization", async () => {
-    await createExpenseItem("list-1", { ...input, isReceipt: true })
+  it("übergibt die Aufteilungsregel als JSON-Objekt", async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    const splitRule = { mode: "complete", memberId: "member-2" } as const
+
+    await updateExpenseItem("item-1", { ...input, splitRule })
+
+    expect(rpc).toHaveBeenCalledWith(
+      "update_expense_item_hierarchical",
+      expect.objectContaining({ p_split_rule: splitRule })
+    )
+  })
+
+  it("supports split and fixed payers on receipt heads", async () => {
+    await createExpenseItem("list-1", {
+      ...input,
+      isReceipt: true,
+      paidByMemberId: null,
+    })
     expect(rpc).toHaveBeenCalledWith(
       "create_expense_item_hierarchical",
       expect.objectContaining({
@@ -203,8 +220,8 @@ describe("itemService", () => {
     expect(rpc).toHaveBeenCalledWith(
       "update_expense_item_hierarchical",
       expect.objectContaining({
-        p_paid_by_member_id: null,
-        p_sync_children_paid_by: false,
+        p_paid_by_member_id: "member-1",
+        p_sync_children_paid_by: true,
       })
     )
   })
@@ -278,9 +295,12 @@ describe("itemService", () => {
 
     await deleteExpenseItem("item-1")
 
-    expect(rpc).toHaveBeenCalledWith("delete_expense_item", {
+    expect(rpc).toHaveBeenCalledWith(
+      "delete_expense_item",
+      {
       p_item_id: "item-1",
-    })
+      }
+    )
   })
 
   it("passes database errors on to the caller", async () => {

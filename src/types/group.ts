@@ -52,10 +52,24 @@ export interface ExpenseItem {
   name: string
   amountCents: number
   paidByMemberId: string | null
+  isPayerAllocation: boolean
   isReceipt: boolean
   parentItemId: string | null
   item_date: string
   createdAt: string
+}
+
+export interface ExpenseItemDatabaseRow {
+  id: string
+  list_id: string
+  name: string
+  amount_cents: number
+  paid_by_member_id: string | null
+  is_payer_allocation: boolean
+  is_receipt: boolean
+  parent_item_id: string | null
+  item_date: string
+  created_at: string
 }
 
 export interface GroupMemberPermissions {

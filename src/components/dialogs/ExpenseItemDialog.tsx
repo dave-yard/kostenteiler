@@ -15,13 +15,14 @@ import {
   type ExpenseSplitRule,
 } from "@/lib/expenseSplit"
 import { getActionErrorMessage } from "@/lib/errorMessage"
-import { formatCents, parseAmountToCents } from "@/lib/money"
+import { formatCents, parseSignedAmountToCents } from "@/lib/money"
 import {
   germanToIsoDateTime,
   isoToGermanDateTime,
-  todayIsoDate,
 } from "@/pages/ExpenseListDetail/ExpenseListDetail"
 import type { ExpenseItem, GroupMember } from "@/types/group"
+
+const splitPayerValue = "__split__"
 
 function areSplitRulesEqual(first: ExpenseSplitRule, second: ExpenseSplitRule) {
   if (first.mode !== second.mode) {
@@ -162,9 +163,11 @@ export function ExpenseItemDialog({
     parentItem ??
     (dialogParentId ? items.find((item) => item.id === dialogParentId) : null)
   const editingHasChildren = editingItem
-    ? items.some((item) => item.parentItemId === editingItem.id)
+    ? items.some(
+        (item) =>
+          item.parentItemId === editingItem.id && !item.isPayerAllocation
+      )
     : false
-
   const memberNames = useMemo(
     () => new Map(members.map((member) => [member.id, member.displayName])),
     [members]
@@ -228,11 +231,24 @@ export function ExpenseItemDialog({
     setItemDateText(formatted)
   }
 
+  function handleItemTypeChange(value: "single" | "receipt") {
+    const isReceipt = value === "receipt"
+    setIsReceiptDraft(isReceipt)
+    setPaidByMemberId((current) => {
+      if (isReceipt) {
+        return splitPayerValue
+      }
+      return current === splitPayerValue
+        ? (currentMemberId ?? members[0]?.id ?? "")
+        : current
+    })
+  }
+
   function handleAmountChange(rawValue: string) {
     setAmountText(rawValue)
 
     const editedMemberId = lastEditedFixedMemberId.current
-    const amountCents = parseAmountToCents(rawValue)
+    const amountCents = parseSignedAmountToCents(rawValue)
     if (
       customSplitMode !== "fixed" ||
       members.length !== 2 ||
@@ -249,7 +265,7 @@ export function ExpenseItemDialog({
       const otherMember = members.find((member) => member.id !== editedMemberId)
       if (
         editedAmountCents === null ||
-        editedAmountCents > amountCents ||
+        editedAmountCents > Math.abs(amountCents) ||
         !otherMember
       ) {
         return current
@@ -257,7 +273,7 @@ export function ExpenseItemDialog({
 
       return {
         ...current,
-        [otherMember.id]: ((amountCents - editedAmountCents) / 100)
+        [otherMember.id]: ((Math.abs(amountCents) - editedAmountCents) / 100)
           .toFixed(2)
           .replace(".", ","),
       }
@@ -282,14 +298,14 @@ export function ExpenseItemDialog({
         const otherMember = members.find((m) => m.id !== memberId)
         const sanitized = rawValue.trim().replace(/[,.]$/, "")
         const amountCents = parseNonNegativeCents(sanitized)
-        const itemAmountCents = parseAmountToCents(amountText)
+        const itemAmountCents = parseSignedAmountToCents(amountText)
         if (
           otherMember &&
           amountCents !== null &&
           itemAmountCents !== null &&
-          amountCents <= itemAmountCents
+          amountCents <= Math.abs(itemAmountCents)
         ) {
-          next[otherMember.id] = ((itemAmountCents - amountCents) / 100)
+          next[otherMember.id] = ((Math.abs(itemAmountCents) - amountCents) / 100)
             .toFixed(2)
             .replace(".", ",")
         }
@@ -313,11 +329,18 @@ export function ExpenseItemDialog({
         : ""
     )
     setItemDateText(
-      isoToGermanDateTime(editingItem?.item_date ?? todayIsoDate())
+      isoToGermanDateTime(editingItem?.item_date ?? new Date().toISOString())
     )
     setIsReceiptDraft(editingItem?.isReceipt ?? false)
     setPaidByMemberId(
-      editingItem?.paidByMemberId ?? currentMemberId ?? members[0]?.id ?? ""
+      editingItem?.isReceipt &&
+        (editingItem.isPayerAllocation === true ||
+          editingItem.paidByMemberId === null)
+        ? splitPayerValue
+        : (editingItem?.paidByMemberId ??
+            currentMemberId ??
+            members[0]?.id ??
+            "")
     )
     setDialogError(null)
 
@@ -355,7 +378,7 @@ export function ExpenseItemDialog({
     getExpenseItemSplitRule,
   ])
 
-  const amountForPreview = parseAmountToCents(amountText)
+  const amountForPreview = parseSignedAmountToCents(amountText)
   let previewRule: ExpenseSplitRule | null = null
   if (customSplitMode === "equal") {
     previewRule = { mode: "equal" }
@@ -428,7 +451,7 @@ export function ExpenseItemDialog({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const name = itemName.trim()
-    const amountCents = parseAmountToCents(amountText)
+    const amountCents = parseSignedAmountToCents(amountText)
 
     if (!name) {
       setDialogError("Bitte eine Bezeichnung eingeben.")
@@ -440,7 +463,7 @@ export function ExpenseItemDialog({
     }
     const isReceiptHead = !dialogParentId && isReceiptDraft
     if (
-      !isReceiptHead &&
+      (!isReceiptHead || paidByMemberId !== splitPayerValue) &&
       !members.some(
         (member) =>
           member.id === paidByMemberId && member.membershipStatus !== "removed"
@@ -526,17 +549,25 @@ export function ExpenseItemDialog({
         await updateExpenseItem(editingItem.id, {
           name,
           amountCents,
-          paidByMemberId: isReceiptHead ? null : paidByMemberId,
+          paidByMemberId:
+            isReceiptHead && paidByMemberId === splitPayerValue
+              ? null
+              : paidByMemberId,
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           item_date: itemDateIso,
-          syncChildrenPaidBy: !isReceiptHead,
+          syncChildrenPaidBy:
+            !isReceiptHead || paidByMemberId !== splitPayerValue,
+          parentItemId: dialogParentId,
         })
       } else {
         await createExpenseItem(listId, {
           name,
           amountCents,
-          paidByMemberId: isReceiptHead ? null : paidByMemberId,
+          paidByMemberId:
+            isReceiptHead && paidByMemberId === splitPayerValue
+              ? null
+              : paidByMemberId,
           splitRule,
           isReceipt: dialogParentId ? false : isReceiptDraft,
           parentItemId: dialogParentId,
@@ -655,9 +686,7 @@ export function ExpenseItemDialog({
                   <SelectField
                     disabled={editingHasChildren}
                     id="item-type"
-                    onValueChange={(value) =>
-                      setIsReceiptDraft(value === "receipt")
-                    }
+                    onValueChange={handleItemTypeChange}
                     value={isReceiptDraft ? "receipt" : "single"}
                     options={[
                       { value: "single", label: "Einzelposition" },
@@ -676,31 +705,27 @@ export function ExpenseItemDialog({
                 </div>
               )}
               <div className="flex-1 space-y-1.5">
-                {!dialogParentId && isReceiptDraft ? (
-                  <>
-                    <span className="text-sm font-medium">Bezahlt von</span>
-                    <p className="flex h-11 items-center text-sm">Aufgeteilt</p>
-                  </>
-                ) : (
-                  <>
-                    <label className="text-sm font-medium" htmlFor="item-payer">
-                      Bezahlt von
-                    </label>
-                    <SelectField
-                      id="item-payer"
-                      onValueChange={setPaidByMemberId}
-                      value={paidByMemberId}
-                      options={members
+                <label className="text-sm font-medium" htmlFor="item-payer">
+                  Bezahlt von
+                </label>
+                <SelectField
+                  id="item-payer"
+                  onValueChange={setPaidByMemberId}
+                  value={paidByMemberId}
+                  options={[
+                    ...(!dialogParentId && isReceiptDraft
+                      ? [{ value: splitPayerValue, label: "Aufgeteilt" }]
+                      : []),
+                    ...members
                         .filter(
                           (member) => member.membershipStatus !== "removed"
                         )
                         .map((member) => ({
                           value: member.id,
                           label: member.displayName,
-                        }))}
-                    />
-                  </>
-                )}
+                        })),
+                  ]}
+                />
               </div>
             </div>
             <hr className="border-border" />

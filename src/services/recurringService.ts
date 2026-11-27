@@ -49,7 +49,8 @@ export async function copyItemsToNextPeriod(
     const newId = await createExpenseItem(targetListId, {
       name: item.name,
       amountCents: item.amountCents,
-      paidByMemberId: item.paidByMemberId,
+      paidByMemberId:
+        item.isReceipt && item.isPayerAllocation ? null : item.paidByMemberId,
       splitRule: rules[item.id] ?? null,
       isReceipt: item.isReceipt,
       item_date: new Date().toISOString(),
@@ -58,8 +59,12 @@ export async function copyItemsToNextPeriod(
   }
 
   // 2. Danach Unterpositionen mit Verweis auf die neue Parent-ID anlegen
-  for (const item of items.filter((i) => Boolean(i.parentItemId))) {
-    const newParentId = item.parentItemId ? parentMap.get(item.parentItemId) ?? null : null
+  for (const item of items.filter(
+    (i) => Boolean(i.parentItemId) && !i.isPayerAllocation
+  )) {
+    const newParentId = item.parentItemId
+      ? (parentMap.get(item.parentItemId) ?? null)
+      : null
     await createExpenseItem(targetListId, {
       name: item.name,
       amountCents: item.amountCents,

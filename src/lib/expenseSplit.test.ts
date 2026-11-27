@@ -9,6 +9,32 @@ import {
 const memberIds = ["member-c", "member-a", "member-b"]
 
 describe("calculateExpenseSplit", () => {
+  it("supports negative positions across equal and percentage splits", () => {
+    expect(
+      calculateExpenseSplit(
+        -100,
+        memberIds,
+        { mode: "equal" },
+        { mode: "equal" },
+        "negative"
+      ).reduce((sum, allocation) => sum + allocation.amountCents, 0)
+    ).toBe(-100)
+
+    const percentage = calculateExpenseSplit(
+      -100,
+      memberIds,
+      {
+        mode: "percentage",
+        shares: [
+          { memberId: "member-c", basisPoints: 5000 },
+          { memberId: "member-a", basisPoints: 2500 },
+          { memberId: "member-b", basisPoints: 2500 },
+        ],
+      }
+    )
+    expect(percentage.reduce((sum, allocation) => sum + allocation.amountCents, 0)).toBe(-100)
+  })
+
   it("supports percentage precision of one hundredth of a percent", () => {
     expect(parsePercentageToBasisPoints("33,33")).toBe(3333)
     expect(parsePercentageToBasisPoints("0,29")).toBe(29)

@@ -12,6 +12,7 @@ function item(overrides: Partial<ExpenseItem> & { id: string }): ExpenseItem {
     name: overrides.id,
     amountCents: 100,
     paidByMemberId: "a",
+    isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
     item_date: "2026-10-28",
@@ -58,6 +59,28 @@ describe("itemHierarchy", () => {
     ])
   })
 
+  it("zählt Zahler-Ausgleichspositionen nicht zur Bon-Summe", () => {
+    const nodes = buildItemNodes([
+      item({ id: "bon", amountCents: 1000, isReceipt: true }),
+      item({ id: "child", amountCents: 1000, parentItemId: "bon" }),
+      item({
+        id: "positive",
+        amountCents: 100,
+        parentItemId: "bon",
+        isPayerAllocation: true,
+      }),
+      item({
+        id: "negative",
+        amountCents: -100,
+        parentItemId: "bon",
+        isPayerAllocation: true,
+      }),
+    ])
+
+    expect(nodes[0].childrenCents).toBe(1000)
+    expect(nodes[0].remainderCents).toBe(0)
+  })
+
   it("lässt den Bon-Rest weg, wenn die Unterpositionen die Summe ausschöpfen", () => {
     const result = toSettlementItems(
       buildItemNodes([
@@ -69,7 +92,7 @@ describe("itemHierarchy", () => {
     expect(result.map((entry) => entry.id)).toEqual(["x"])
   })
 
-  it("verrechnet einen vollständig abgedeckten Bon ohne Zahler nur über seine Unterpositionen", () => {
+  it("behält die Zahler von aufgeteilten Unterpositionen", () => {
     const result = toSettlementItems(
       buildItemNodes([
         item({
@@ -93,26 +116,68 @@ describe("itemHierarchy", () => {
       ])
     )
 
-    expect(result.map(({ id, amountCents }) => [id, amountCents])).toEqual([
-      ["a", 51],
-      ["b", 50],
+    expect(
+      result.map(({ id, amountCents, paidByMemberId }) => [
+        id,
+        amountCents,
+        paidByMemberId,
+      ])
+    ).toEqual([
+      ["a", 51, "a"],
+      ["b", 50, "b"],
     ])
   })
 
-  it("blockiert einen Bon-Rest ohne Zahler", () => {
-    expect(() =>
-      toSettlementItems(
-        buildItemNodes([
-          item({
-            id: "bon",
-            amountCents: 101,
-            isReceipt: true,
-            paidByMemberId: null,
-          }),
-          item({ id: "child", amountCents: 100, parentItemId: "bon" }),
-        ])
-      )
-    ).toThrow(/Restbetrag.*keinen Zahler/)
+  it("verrechnet den Rest eines aufgeteilten Bons ohne festen Zahler", () => {
+    const result = toSettlementItems(
+      buildItemNodes([
+        item({
+          id: "bon",
+          amountCents: 101,
+          isReceipt: true,
+          paidByMemberId: null,
+        }),
+        item({
+          id: "child",
+          amountCents: 100,
+          parentItemId: "bon",
+          paidByMemberId: "a",
+        }),
+      ])
+    )
+
+    expect(
+      result.map(({ id, amountCents, paidByMemberId }) => [
+        id,
+        amountCents,
+        paidByMemberId,
+      ])
+    ).toEqual([
+      ["bon", 1, null],
+      ["child", 100, "a"],
+    ])
+  })
+
+  it("behält markierte Ausgleichspositionen in der Abrechnung", () => {
+    const result = toSettlementItems(
+      buildItemNodes([
+        item({ id: "bon", amountCents: 100, isReceipt: true }),
+        item({
+          id: "child",
+          amountCents: 100,
+          parentItemId: "bon",
+        }),
+        item({
+          id: "adjustment",
+          amountCents: -20,
+          parentItemId: "bon",
+          paidByMemberId: "b",
+          isPayerAllocation: true,
+        }),
+      ])
+    )
+
+    expect(result.map(({ id }) => id)).toEqual(["child", "adjustment"])
   })
 
   it("meldet Unterpositionen über der Bon-Summe", () => {

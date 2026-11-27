@@ -57,6 +57,7 @@ const items: ExpenseItem[] = [
     name: "Socken",
     amountCents: 500,
     paidByMemberId: "m1",
+    isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
     item_date: "2026-01-03",
@@ -68,6 +69,7 @@ const items: ExpenseItem[] = [
     name: "Pizza",
     amountCents: 1250,
     paidByMemberId: "m2",
+    isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
     item_date: "2026-01-03",
@@ -359,6 +361,7 @@ describe("ExpenseListDetail", () => {
         name: "Älterer Beleg später erfasst",
         amountCents: 500,
         paidByMemberId: "m1",
+        isPayerAllocation: false,
         isReceipt: false,
         parentItemId: null,
         item_date: "2026-01-01",
@@ -370,6 +373,7 @@ describe("ExpenseListDetail", () => {
         name: "Neuerer Beleg früher erfasst",
         amountCents: 800,
         paidByMemberId: "m2",
+        isPayerAllocation: false,
         isReceipt: false,
         parentItemId: null,
         item_date: "2026-01-04",
@@ -414,6 +418,7 @@ describe("ExpenseListDetail", () => {
       name: "Supermarkt",
       amountCents: 3000,
       paidByMemberId: "m1",
+      isPayerAllocation: false,
       isReceipt: true,
       parentItemId: null,
       item_date: "2026-01-03T00:00:00.000Z",
@@ -425,6 +430,7 @@ describe("ExpenseListDetail", () => {
       name: "Geteiltes Brot",
       amountCents: 500,
       paidByMemberId: "m1",
+      isPayerAllocation: false,
       isReceipt: false,
       parentItemId: "bon1",
       item_date: "2026-01-03T00:00:00.000Z",
@@ -436,6 +442,7 @@ describe("ExpenseListDetail", () => {
       name: "Annas Schokolade",
       amountCents: 300,
       paidByMemberId: "m1",
+      isPayerAllocation: false,
       isReceipt: false,
       parentItemId: "bon1",
       item_date: "2026-01-03T03:00:00.000Z",
@@ -529,6 +536,7 @@ describe("ExpenseListDetail", () => {
 
   it("legt eine Position mit Betrag in Cent an", async () => {
     const user = userEvent.setup()
+    const beforeOpening = Date.now()
     getExpenseItems.mockResolvedValue([])
     createExpenseItem.mockResolvedValue("i3")
     mockAccess()
@@ -562,8 +570,6 @@ describe("ExpenseListDetail", () => {
     await user.click(screen.getByRole("option", { name: "Ben" }))
     await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
 
-    const todayString = new Date().toISOString().slice(0, 10) // Liefert z. B. "2026-10-30"
-
     expect(createExpenseItem).toHaveBeenCalledWith("l1", {
       name: "Brot",
       amountCents: 123450,
@@ -571,8 +577,14 @@ describe("ExpenseListDetail", () => {
       splitRule: null,
       isReceipt: false,
       parentItemId: null,
-      item_date: `${todayString}T00:00:00.000Z`, //germanToIsoDateTime(todayIsoDate()),
+      item_date: expect.any(String),
     })
+    const savedItemDate = vi.mocked(createExpenseItem).mock.calls[0][1]
+      .item_date
+    expect(savedItemDate).not.toBeNull()
+    expect(
+      Math.abs(new Date(savedItemDate!).getTime() - beforeOpening)
+    ).toBeLessThan(120_000)
     expect(
       await screen.findByText("Die Position wurde hinzugefügt.")
     ).toBeTruthy()
@@ -690,6 +702,29 @@ describe("ExpenseListDetail", () => {
     })
   })
 
+  it("speichert einen negativen Betrag", async () => {
+    const user = userEvent.setup()
+    getExpenseItems.mockResolvedValue([])
+    createExpenseItem.mockResolvedValue("i-negative")
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", { name: "Position hinzufügen" })
+    )
+    await user.type(screen.getByLabelText("Bezeichnung"), "Übertrag")
+    await user.type(screen.getByLabelText("Betrag in €"), "-20")
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }))
+
+    expect(createExpenseItem).toHaveBeenCalledWith(
+      "l1",
+      expect.objectContaining({
+        name: "Übertrag",
+        amountCents: -2000,
+      })
+    )
+  })
+
   it("meldet einen ungültigen Betrag, ohne zu speichern", async () => {
     const user = userEvent.setup()
     getExpenseItems.mockResolvedValue([])
@@ -739,6 +774,7 @@ describe("ExpenseListDetail", () => {
       paidByMemberId: "m1",
       splitRule: { mode: "equal" },
       isReceipt: false,
+      parentItemId: null,
       item_date: "2026-01-03T00:00:00.000Z",
       syncChildrenPaidBy: true,
     })
@@ -748,7 +784,7 @@ describe("ExpenseListDetail", () => {
     expect(getExpenseItems).toHaveBeenCalledTimes(2)
   })
 
-  it("speichert einen Bon-Kopf ohne Zahler und ohne Synchronisierung", async () => {
+  it("kann einen Bon-Kopf nachträglich einem festen Zahler zuordnen", async () => {
     const user = userEvent.setup()
     const receipt = {
       ...items[0],
@@ -779,8 +815,11 @@ describe("ExpenseListDetail", () => {
           .disabled
       ).toBe(false)
     )
-    expect(screen.getByText("Aufgeteilt")).toBeTruthy()
-    expect(screen.queryByRole("combobox", { name: "Bezahlt von" })).toBeNull()
+    const payerSelect = screen.getByRole("combobox", { name: "Bezahlt von" })
+    expect(payerSelect.textContent).toContain("Aufgeteilt")
+    payerSelect.focus()
+    await user.keyboard("{Enter}")
+    await user.click(screen.getByRole("option", { name: "Ben" }))
     expect(
       screen.queryByRole("checkbox", {
         name: /Zahler auch bei allen Unterpositionen/,
@@ -791,10 +830,72 @@ describe("ExpenseListDetail", () => {
     expect(updateExpenseItem).toHaveBeenCalledWith(
       receipt.id,
       expect.objectContaining({
-        paidByMemberId: null,
-        syncChildrenPaidBy: false,
+        paidByMemberId: "m2",
+        syncChildrenPaidBy: true,
       })
     )
+  })
+
+  it("zeigt bei aufgeteilten Bons die gespeicherten Zahler der Unterpositionen", async () => {
+    const user = userEvent.setup()
+    const receipt = {
+      ...items[0],
+      name: "Lidl",
+      amountCents: 533,
+      isReceipt: true,
+      isPayerAllocation: true,
+      paidByMemberId: null,
+    }
+    const daveChild = {
+      ...items[0],
+      id: "bread",
+      name: "Eiweißbrot",
+      amountCents: 179,
+      paidByMemberId: "m1",
+      parentItemId: receipt.id,
+    }
+    const annaChild = {
+      ...items[1],
+      id: "conditioner",
+      name: "Nat.SpülungMandel",
+      amountCents: 125,
+      paidByMemberId: "m2",
+      parentItemId: receipt.id,
+    }
+    const adjustment = {
+      ...items[0],
+      id: "adjustment",
+      name: "Ausgleich Zahlung 1",
+      amountCents: -87,
+      parentItemId: receipt.id,
+      isPayerAllocation: true,
+    }
+    getExpenseItems.mockResolvedValue([
+      receipt,
+      daveChild,
+      annaChild,
+      adjustment,
+    ])
+    getExpenseListSplitRules.mockResolvedValue({})
+    mockAccess()
+    renderDetail(vi.fn(), { ...list, status: "open", completedAt: null })
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Unterpositionen von Lidl anzeigen/,
+      })
+    )
+
+    const breadRow = screen.getByText("Eiweißbrot").closest("li")
+    const conditionerRow = screen
+      .getByText("Nat.SpülungMandel")
+      .closest("li")
+    expect(breadRow?.textContent).toContain("Bezahlt von Anna")
+    expect(conditionerRow?.textContent).toContain("Bezahlt von Ben")
+    expect(screen.getByText("Ausgleich Zahlung 1")).toBeTruthy()
+    expect(
+      screen.getByText("Ausgleich Zahlung 1").closest("li")?.textContent
+    ).toContain("Ausgleich")
   })
 
   it("legt einen Bon an und klappt seine Unterpositionen auf", async () => {
@@ -1020,6 +1121,7 @@ describe("ExpenseListDetail", () => {
       name: "Supermarkt",
       amountCents: 2000,
       paidByMemberId: "m1",
+      isPayerAllocation: false,
       isReceipt: true,
       parentItemId: null,
       item_date: "2026-01-03",
@@ -1031,6 +1133,7 @@ describe("ExpenseListDetail", () => {
       name: "Milch",
       amountCents: 150,
       paidByMemberId: "m1",
+      isPayerAllocation: false,
       isReceipt: false,
       parentItemId: "parent-1",
       item_date: "2026-01-03",

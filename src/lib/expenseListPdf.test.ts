@@ -64,6 +64,7 @@ function item(
   return {
     listId: "list",
     paidByMemberId: "anna",
+    isPayerAllocation: false,
     isReceipt: false,
     parentItemId: null,
     createdAt: "2026-01-01T12:00:00Z",
@@ -339,6 +340,55 @@ describe("buildExpenseListPdfRows", () => {
     expect(
       [...row.sharesByMemberId.values()].reduce((sum, value) => sum + value, 0)
     ).toBe(1000)
+  })
+
+  it("weist Zahler-Ausgleichspositionen im PDF als Details aus", () => {
+    const nodes = buildItemNodes([
+      item({
+        id: "receipt",
+        name: "Supermarkt",
+        amountCents: 1000,
+        item_date: "2026-01-03",
+        isReceipt: true,
+      }),
+      item({
+        id: "child",
+        name: "Kaffee",
+        amountCents: 1000,
+        item_date: "2026-01-03",
+        parentItemId: "receipt",
+      }),
+      item({
+        id: "allocation",
+        name: "Ausgleich",
+        amountCents: -200,
+        item_date: "2026-01-03",
+        parentItemId: "receipt",
+        isPayerAllocation: true,
+      }),
+    ])
+
+    const [row, detailRow] = buildExpenseListPdfRows({
+      nodes,
+      members,
+      rules: null,
+      groupDefaultSplitRule: { mode: "equal" },
+      sort: "date",
+    })
+
+    expect(row.amountCents).toBe(1000)
+    expect(detailRow).toMatchObject({
+      id: "allocation",
+      parentId: "receipt",
+      amountCents: -200,
+      includeInTotals: false,
+    })
+    expect(row.sharesByMemberId).toEqual(
+      new Map([
+        ["anna", 500],
+        ["ben", 500],
+      ])
+    )
   })
 
   it("listet abweichend aufgeteilte Unterpositionen unter der Hauptposition auf", () => {

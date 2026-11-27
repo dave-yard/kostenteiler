@@ -1,4 +1,4 @@
-import { parseAmountToCents } from "@/lib/money"
+import { parseSignedAmountToCents } from "@/lib/money"
 
 export type ExpenseSplitRule =
   | { mode: "equal" }
@@ -57,7 +57,8 @@ export function parseNonNegativeCents(input: string): number | null {
   if (/^0+(?:[.,]0{1,2})?$/.test(text)) {
     return 0
   }
-  return parseAmountToCents(text)
+  const cents = parseSignedAmountToCents(text)
+  return cents !== null && cents >= 0 ? cents : null
 }
 
 export function parseExpenseSplitRule(value: unknown): ExpenseSplitRule {
@@ -131,9 +132,9 @@ function assertValidMembers(memberIds: string[]) {
 }
 
 function assertValidAmount(amountCents: number) {
-  if (!Number.isSafeInteger(amountCents)) {
+  if (!Number.isSafeInteger(amountCents) || amountCents === 0) {
     throw new Error(
-      "Der Positionsbetrag muss eine positive ganze Centzahl sein."
+      "Der Positionsbetrag muss eine von null verschiedene ganze Centzahl sein."
     )
   }
 }
@@ -177,19 +178,22 @@ function splitEvenly(
   memberIds: string[],
   allocationSeed: string
 ): Map<string, number> {
+  const sign = amountCents < 0 ? -1 : 1
+  const absoluteAmountCents = Math.abs(amountCents)
   const sortedIds = sortedMemberIds(memberIds)
-  const baseCents = Math.floor(amountCents / sortedIds.length)
-  const remainderCents = amountCents % sortedIds.length
+  const baseCents = Math.floor(absoluteAmountCents / sortedIds.length)
+  const remainderCents = absoluteAmountCents % sortedIds.length
   const startIndex = getSeededStartIndex(allocationSeed, sortedIds.length)
 
   return new Map(
     sortedIds.map((memberId, index) => [
       memberId,
-      baseCents +
-        ((index - startIndex + sortedIds.length) % sortedIds.length <
-        remainderCents
-          ? 1
-          : 0),
+      sign *
+        (baseCents +
+          ((index - startIndex + sortedIds.length) % sortedIds.length <
+          remainderCents
+            ? 1
+            : 0)),
     ])
   )
 }
@@ -200,6 +204,8 @@ function allocatePercentage(
   shares: Array<{ memberId: string; basisPoints: number }>
 ): Map<string, number> {
   assertKnownUniqueShares(memberIds, shares)
+  const sign = amountCents < 0 ? -1 : 1
+  const absoluteAmountCents = Math.abs(amountCents)
 
   if (
     shares.some(
@@ -217,7 +223,8 @@ function allocatePercentage(
     shares.map(({ memberId, basisPoints }) => [memberId, basisPoints])
   )
   const fractionalAllocations = memberIds.map((memberId) => {
-    const numerator = amountCents * (shareByMember.get(memberId) ?? 0)
+    const numerator =
+      absoluteAmountCents * (shareByMember.get(memberId) ?? 0)
     return {
       memberId,
       amountCents: Math.floor(numerator / 10_000),
@@ -228,7 +235,7 @@ function allocatePercentage(
     (sum, allocation) => sum + allocation.amountCents,
     0
   )
-  const centsToDistribute = amountCents - allocatedCents
+  const centsToDistribute = absoluteAmountCents - allocatedCents
   const remainderOrder = [...fractionalAllocations].sort(
     (a, b) => b.remainder - a.remainder || a.memberId.localeCompare(b.memberId)
   )
@@ -241,7 +248,7 @@ function allocatePercentage(
   return new Map(
     fractionalAllocations.map(({ memberId, amountCents: cents }) => [
       memberId,
-      cents + (extraCentMembers.has(memberId) ? 1 : 0),
+      sign * (cents + (extraCentMembers.has(memberId) ? 1 : 0)),
     ])
   )
 }
@@ -254,6 +261,8 @@ function allocateFixed(
   allocationSeed: string
 ): Map<string, number> {
   assertKnownUniqueShares(memberIds, shares)
+  const sign = amountCents < 0 ? -1 : 1
+  const absoluteAmountCents = Math.abs(amountCents)
 
   if (
     shares.some(
@@ -267,13 +276,16 @@ function allocateFixed(
   }
 
   const fixedTotal = shares.reduce((sum, share) => sum + share.amountCents, 0)
-  if (!Number.isSafeInteger(fixedTotal) || fixedTotal > amountCents) {
+  if (
+    !Number.isSafeInteger(fixedTotal) ||
+    fixedTotal > absoluteAmountCents
+  ) {
     throw new Error(
       "Die festen Aufteilungsbeträge dürfen den Positionsbetrag nicht überschreiten."
     )
   }
 
-  const remainingCents = amountCents - fixedTotal
+  const remainingCents = absoluteAmountCents - fixedTotal
   const remainder =
     remainingCents === 0
       ? new Map(memberIds.map((memberId) => [memberId, 0]))
@@ -298,7 +310,9 @@ function allocateFixed(
   return new Map(
     memberIds.map((memberId) => [
       memberId,
-      (fixedByMember.get(memberId) ?? 0) + (remainder.get(memberId) ?? 0),
+      sign *
+        ((fixedByMember.get(memberId) ?? 0) +
+          (remainder.get(memberId) ?? 0)),
     ])
   )
 }

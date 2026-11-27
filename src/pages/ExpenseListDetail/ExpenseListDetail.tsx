@@ -378,21 +378,31 @@ export function ExpenseListDetail({
       result?.access?.currentMemberId ?? null,
       memberNames
     )
-    const payerName = item.paidByMemberId
-      ? (memberNames.get(item.paidByMemberId) ?? "Unbekannt")
-      : "Aufgeteilt"
+    const payerName =
+      (item.isReceipt && item.isPayerAllocation) ||
+      !item.paidByMemberId
+        ? "Aufgeteilt"
+        : (memberNames.get(item.paidByMemberId) ?? "Unbekannt")
     const amount = formatCents(item.amountCents)
+    const isGeneratedAllocation = Boolean(
+      item.isPayerAllocation && !item.isReceipt
+    )
 
     return (
       <div
         className={`relative flex items-start justify-between gap-3 py-3 ${
           canDeleteItems && deleteMode ? "pr-10" : ""
         }`}
-        onClick={() => openDialog(item)}
+        onClick={() => {
+          if (!isGeneratedAllocation) {
+            openDialog(item)
+          }
+        }}
       >
         <div className="min-w-0">
           <Button
             className="h-auto max-w-full justify-start p-0 text-left font-medium break-words whitespace-normal hover:bg-transparent"
+            disabled={isGeneratedAllocation}
             onClick={(event) => {
               event.stopPropagation()
               void openDialog(item)
@@ -416,6 +426,11 @@ export function ExpenseListDetail({
                   Bon
                 </span>
               )}
+              {isGeneratedAllocation && (
+                <span className="ml-2 rounded-full bg-muted px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">
+                  Ausgleich
+                </span>
+              )}
             </span>
           </Button>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -433,7 +448,7 @@ export function ExpenseListDetail({
               </p>
             )}
           </div>
-          {canEditItems && (
+          {canEditItems && !isGeneratedAllocation && (
             <Button
               aria-label={`Position bearbeiten: ${item.name}`}
               className="size-8 p-0 text-muted-foreground"
@@ -447,7 +462,7 @@ export function ExpenseListDetail({
               <Pencil aria-hidden="true" className="size-4" />
             </Button>
           )}
-          {canDeleteItems && deleteMode && (
+          {canDeleteItems && deleteMode && !isGeneratedAllocation && (
             <Button
               aria-label={`Position löschen: ${item.name}`}
               className="absolute top-2 right-0 size-8 p-0 text-destructive hover:text-danger-text"
@@ -948,6 +963,7 @@ export function ExpenseListDetail({
               {sortedNodes.map((node) => {
                 const { item } = node
                 const isExpanded = expandedIds.has(item.id)
+                const visibleChildren = node.children
 
                 return (
                   <li key={item.id}>
@@ -975,8 +991,8 @@ export function ExpenseListDetail({
                           variant="ghost"
                         >
                           <span>
-                            Bon · {node.children.length}{" "}
-                            {node.children.length === 1
+                            Bon · {visibleChildren.length}{" "}
+                            {visibleChildren.length === 1
                               ? "Unterposition"
                               : "Unterpositionen"}
                             {" · "}
@@ -998,7 +1014,7 @@ export function ExpenseListDetail({
                             <div className="flex flex-col gap-4 lg:flex-row">
                               <div className="min-w-0 flex-1">
                                 <ul className="divide-y divide-border">
-                                  {node.children.map((child) => (
+                                  {visibleChildren.map((child) => (
                                     <li key={child.id}>
                                       {renderItemRow(child)}
                                     </li>

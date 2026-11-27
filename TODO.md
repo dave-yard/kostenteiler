@@ -149,10 +149,6 @@ Grundlage: [Anwendungs-Regelwerk](./APP_REQUIREMENT.md),
       auch der Hinweis auf `selectedList` in der Gruppenübersicht bildet das
       Routing nicht vollständig ab. Allgemeine Regeln und Beispiele als solche
       erhalten. ([Architektur](./ARCHITEKTUR.md), [App](./src/App.tsx))
-- [ ] README-Hinweis zur Einrichtung der Bon-Erkennung präzisieren: benötigte
-      serverseitige Konfiguration und Deployment dokumentieren, ohne Geheimnisse
-      im Frontend oder Repository abzulegen. Schreibweise und Format des
-      Info-Abschnitts korrigieren. ([README](./README.md))
 - [ ] Passwort-Recovery-Weiterleitung unter dem GitHub-Pages-Basispfad
       überprüfen: Der Recovery-Service verwendet `window.location.origin`,
       während andere Auth-Weiterleitungen einen projektspezifischen Pfad
@@ -166,6 +162,9 @@ Grundlage: [Anwendungs-Regelwerk](./APP_REQUIREMENT.md),
 
 ## Nice to Have
 
+- [ ] Übertragung von Positionen auf eine neue Liste
+      Manchmal solen Positionen oder Beträge erst später bezahlt werden. Dafür soll es möglich sein in Liste A eine Übertragsposition zu erzeugen. Diese ist negativ.
+      Dabei soll dann eine andere Liste gewählt oder erzeugt werden können, die dann die Position als Gegenposition annimmt.
 - [x] Frontend-Anbindung für Bon-Upload, Verarbeitung, Abweichungswarnung und
       Bild-/PDF-Vorschau ist vorhanden; Backend und produktiver Ablauf sind damit
       noch nicht nachgewiesen.
